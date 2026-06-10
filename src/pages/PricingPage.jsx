@@ -1,5 +1,6 @@
 import { Icon, ic, Label, Btn, Wrap, Sec, sectionBorder, textSub } from "../components/UI";
 import { COLORS, PRICING, COMPANY } from "../config";
+import FAQAccordion from "../components/FAQAccordion";
 
 const FREE_FEATURES  = ["Full access to all 5 communities","Unlimited Vibes","Join any public Space","DMs and group chats","Translation in 1 language","Basic creator profile"];
 const PRO_FEATURES   = ["Everything in Free","Translation in up to 5 languages","Advanced creator analytics","AI Vibe Assistant","Autopilot scheduled posting","Ad-free experience","Priority discovery","Unlimited Spaces hosting","Raven badge + founding rate"];
@@ -75,6 +76,10 @@ export default function PricingPage({ dark }) {
             <a href={`mailto:${COMPANY.email}?subject=Organization inquiry`}>
               <Btn variant="outline">Contact us</Btn>
             </a>
+          </div>
+
+          <div className="mt-24 border-t border-neutral-500/10 pt-16">
+            <FAQAccordion dark={dark} />
           </div>
         </Wrap>
       </Sec>

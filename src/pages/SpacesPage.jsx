@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Icon, ic, Label, SectionLabel, Btn, Wrap, Sec, sectionBorder, textSub, textMuted } from "../components/UI";
 import { LIVE_SPACES } from "../data";
 import { COLORS, IMAGES } from "../config";
+import LiveSpacePlayer from "../components/LiveSpacePlayer";
 
 export default function SpacesPage({ dark }) {
+  const [activeSpace, setActiveSpace] = useState(null);
   const border = sectionBorder(dark);
   const sub    = textSub(dark);
   const muted  = textMuted(dark);
@@ -48,7 +51,7 @@ export default function SpacesPage({ dark }) {
                 <p className="font-mono text-[10px]" style={{ color: muted }}>{s.host} · {s.cat}</p>
                 <div className="flex items-center justify-between mt-4">
                   <span className="font-mono text-xs font-semibold" style={{ color: s.accent }}>{s.listeners.toLocaleString()} listening</span>
-                  <Btn variant="outline">Join</Btn>
+                  <Btn variant="outline" onClick={() => setActiveSpace(s)}>Join</Btn>
                 </div>
               </div>
             ))}
@@ -71,6 +74,14 @@ export default function SpacesPage({ dark }) {
           </div>
         </Wrap>
       </Sec>
+
+      {activeSpace && (
+        <LiveSpacePlayer
+          space={activeSpace}
+          onClose={() => setActiveSpace(null)}
+          dark={dark}
+        />
+      )}
     </div>
   );
 }

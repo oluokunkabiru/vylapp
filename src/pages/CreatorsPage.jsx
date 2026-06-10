@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Icon, ic, Label, SectionLabel, Btn, Wrap, Sec, sectionBorder, textSub } from "../components/UI";
 import { COLORS, STATS, IMAGES } from "../config";
+import EarningsCalculator from "../components/EarningsCalculator";
+import WaitlistModal from "../components/WaitlistModal";
 
 const COMPARE = [
   { p: "Instagram", split: "0%",   risk: "Algorithm controls reach",    own: "No" },
@@ -18,6 +21,7 @@ const TOOLS = [
 ];
 
 export default function CreatorsPage({ dark }) {
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
   const border = sectionBorder(dark);
   const sub    = textSub(dark);
   const card   = dark
@@ -38,7 +42,7 @@ export default function CreatorsPage({ dark }) {
               <p className="mt-6 text-xl font-dm leading-relaxed" style={{ color: sub }}>
                 Vylapp is the first platform where walking away never means starting over.
               </p>
-              <Btn variant="primary" onClick={() => {}} className="mt-8">Join the founding cohort</Btn>
+              <Btn variant="primary" onClick={() => setWaitlistOpen(true)} className="mt-8">Join the founding cohort</Btn>
             </div>
             <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${border}` }}>
               <img src={IMAGES.creator} alt="Creator building their community" className="w-full h-[400px] object-cover" style={{ opacity: dark ? 0.8 : 0.95 }} />
@@ -71,6 +75,10 @@ export default function CreatorsPage({ dark }) {
               </tbody>
             </table>
           </div>
+
+          <div className="mt-16">
+            <EarningsCalculator dark={dark} />
+          </div>
         </Wrap>
       </Sec>
 
@@ -92,6 +100,8 @@ export default function CreatorsPage({ dark }) {
           </div>
         </Wrap>
       </Sec>
+
+      <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} dark={dark} />
     </div>
   );
 }

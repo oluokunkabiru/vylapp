@@ -1,9 +1,13 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { Icon, ic, Label, SectionLabel, Btn, Avatar, Wrap, Sec, Card, sectionBorder, textSub, textMuted } from "../components/UI";
 import { COMMUNITIES, VIBES_TICKER } from "../data";
 import { COLORS, BRAND, STATS, IMAGES } from "../config";
+import TranslationPlayground from "../components/TranslationPlayground";
+import WaitlistModal from "../components/WaitlistModal";
 
 export default function HomePage({ dark }) {
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
   const border = sectionBorder(dark);
   const sub    = textSub(dark);
   const muted  = textMuted(dark);
@@ -28,13 +32,11 @@ export default function HomePage({ dark }) {
                 {BRAND.description} Real conversations, live Spaces, and creators who own what they build.
               </p>
               <div className="flex flex-wrap gap-3 mt-10">
+                <Btn variant="primary" onClick={() => setWaitlistOpen(true)}>
+                  Join the waitlist <Icon d={ic.arrow} s={15} />
+                </Btn>
                 <Link to="/features">
-                  <Btn variant="primary">
-                    Explore the platform <Icon d={ic.arrow} s={15} />
-                  </Btn>
-                </Link>
-                <Link to="/creators">
-                  <Btn variant="outline">For creators</Btn>
+                  <Btn variant="outline">Explore features</Btn>
                 </Link>
               </div>
               <div className="flex flex-wrap gap-8 mt-12 pt-10" style={{ borderTop: `1px solid ${border}` }}>
@@ -120,8 +122,8 @@ export default function HomePage({ dark }) {
       <Sec style={{ borderBottom: `1px solid ${border}` }}>
         <Wrap>
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${border}` }}>
-              <img src={IMAGES.community} alt="Global community connecting" className="w-full h-[380px] object-cover" style={{ opacity: dark ? 0.8 : 0.95 }} />
+            <div>
+              <TranslationPlayground dark={dark} />
             </div>
             <div>
               <SectionLabel color={COLORS.teal}>Translation moat</SectionLabel>
@@ -202,12 +204,14 @@ export default function HomePage({ dark }) {
               Join thousands of creators and community members building in public — in their own language.
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
-              <Btn variant="primary">Create free account</Btn>
+              <Btn variant="primary" onClick={() => setWaitlistOpen(true)}>Join early access</Btn>
               <Link to="/about"><Btn variant="ghost">Learn about Vylapp</Btn></Link>
             </div>
           </div>
         </Wrap>
       </Sec>
+
+      <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} dark={dark} />
     </div>
   );
 }
