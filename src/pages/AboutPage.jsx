@@ -1,5 +1,6 @@
 import { Icon, ic, Label, SectionLabel, Wrap, Sec, Avatar, sectionBorder, textSub } from "../components/UI";
 import { COLORS, COMPANY, IMAGES } from "../config";
+import { TEAM_MEMBERS } from "../data";
 
 export default function AboutPage({ dark }) {
   const border = sectionBorder(dark);
@@ -56,12 +57,7 @@ export default function AboutPage({ dark }) {
         <Wrap>
           <SectionLabel color={COLORS.violet}>Our team & advisors</SectionLabel>
           <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { name: "Remi Kowalski", role: "CEO & Co-founder", desc: "Built decentralized agri-networks across East Africa.", avatarColor: COLORS.violet },
-              { name: "Sena Osei", role: "CTO & Co-founder", desc: "Creator of phonetic-matrix NLP parser for low-resource languages.", avatarColor: COLORS.teal },
-              { name: "Leon Chen", role: "Product Director", desc: "Ex-Design Lead at leading global collaboration networks.", avatarColor: COLORS.coral },
-              { name: "Tanvi Patel", role: "Advisory Board", desc: "Director of Global Language Inclusion at ImpactDAO.", avatarColor: COLORS.amber }
-            ].map((m) => (
+            {TEAM_MEMBERS.map((m) => (
               <div key={m.name} className="p-6 rounded-xl flex flex-col items-center text-center" style={card}>
                 <Avatar name={m.name} color={m.avatarColor} size={64} />
                 <p className="font-sora font-bold mt-4 text-base">{m.name}</p>

@@ -1,37 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { COLORS } from "../config";
 import { Icon, ic, Avatar } from "./UI";
-
-const SIMULATED_TRANSCRIPT = {
-  english: [
-    { speaker: "Leon Chen", text: "Welcome to today's Space on Building Your Second Brain." },
-    { speaker: "Leon Chen", text: "The main idea is that our brains are for having ideas, not holding them." },
-    { speaker: "Leon Chen", text: "When you externalize your thinking, you free up cognitive load." },
-    { speaker: "Aisha Kamara", text: "Absolutely, I've been using this to manage all my Web3 project docs." },
-    { speaker: "Leon Chen", text: "Exactly! And the organic translation lets us share these frameworks globally." }
-  ],
-  swahili: [
-    { speaker: "Leon Chen", text: "Karibu kwenye Space ya leo kuhusu Kujenga Ubongo Wako wa Pili." },
-    { speaker: "Leon Chen", text: "Wazo kuu ni kwamba akili zetu ni kwa ajili ya kupata mawazo, sio kuyashikilia." },
-    { speaker: "Leon Chen", text: "Unapoweka wazi fikra zako, unapunguza mzigo wa kiakili." },
-    { speaker: "Aisha Kamara", text: "Kabisa, nimekuwa nikitumia hii kudhibiti hati zote za mradi wangu wa Web3." },
-    { speaker: "Leon Chen", text: "Kabisa! Na tafsiri ya kikaboni inaruhusu kushiriki mifumo hii ulimwenguni kote." }
-  ],
-  yoruba: [
-    { speaker: "Leon Chen", text: "Kaabo si Aaye oni lori Kikọ Brain Keji Rẹ." },
-    { speaker: "Leon Chen", text: "Eto akọkọ ni pe awọn ọpọlọ wa jẹ fun nini awọn imọran, kii ṣe idaduro wọn." },
-    { speaker: "Leon Chen", text: "Nigbati o ba sọ ero rẹ di ita, o tu ẹru oye silẹ." },
-    { speaker: "Aisha Kamara", text: "Lootọ, Mo ti n lo eyi lati ṣakoso gbogbo awọn iwe aṣẹ iṣẹ akanṣe Web3 mi." },
-    { speaker: "Leon Chen", text: "Gangan! Ati pe translation yii n jẹ ki a pin awọn ilana wọnyi kaakiri agbaye." }
-  ],
-  igbo: [
-    { speaker: "Leon Chen", text: "Nnọọ na oghere nke taa gbasara iwu ụbụrụ nke abụọ gị." },
-    { speaker: "Leon Chen", text: "Isi echiche bụ na ụbụrụ anyị bụ maka inwe echiche, ọ bụghị ijide ha." },
-    { speaker: "Leon Chen", text: "Mgbe ị wepụrụ echiche gị n'èzí, ị na-ahapụ ibu ọrụ ọgụgụ isi." },
-    { speaker: "Aisha Kamara", text: "N'ezie, ejirila m ihe a jikwaa akwụkwọ ọrụ Web3 m niile." },
-    { speaker: "Leon Chen", text: "Kpọmkwem! Ma organic translation na-enye anyị ohere ịkekọrịta usoro ndị a n'ụwa niile." }
-  ]
-};
+import { SPACES_SIMULATED_TRANSCRIPT } from "../data";
 
 export default function LiveSpacePlayer({ space, onClose, dark }) {
   const [lang, setLang] = useState("english");
@@ -48,7 +18,7 @@ export default function LiveSpacePlayer({ space, onClose, dark }) {
     setHistory([]);
     setLineIdx(0);
 
-    const dialogs = SIMULATED_TRANSCRIPT[lang];
+    const dialogs = SPACES_SIMULATED_TRANSCRIPT[lang] || SPACES_SIMULATED_TRANSCRIPT.english;
     const interval = setInterval(() => {
       setLineIdx((prevIdx) => {
         const nextIdx = (prevIdx + 1) % dialogs.length;

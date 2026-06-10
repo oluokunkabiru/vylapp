@@ -1,67 +1,10 @@
 import { useState, useEffect } from "react";
 import { COLORS } from "../config";
 import { Icon, ic } from "./UI";
-
-const SENTENCES = [
-  {
-    id: 1,
-    text: "Welcome to our community, we are glad to have you here!"
-  },
-  {
-    id: 2,
-    text: "Real conversations happen when we speak from our hearts."
-  },
-  {
-    id: 3,
-    text: "Let's build agricultural innovation together for the future."
-  }
-];
-
-const TRANSLATIONS = {
-  swahili: {
-    name: "Swahili (Kiswahili)",
-    flag: "🌍",
-    accent: COLORS.teal,
-    1: "Karibu kwenye jumuiya yetu, tuna furaha kuwa nawe hapa!",
-    2: "Mazungumzo ya kweli hutokea tunapozungumza kutoka mioyoni mwetu.",
-    3: "Tujenge uvumbuzi wa kilimo pamoja kwa ajili ya siku zijazo."
-  },
-  yoruba: {
-    name: "Yoruba (Èdè Yorùbá)",
-    flag: "🇳🇬",
-    accent: COLORS.violet,
-    1: "Kaabo si agbegbe wa, inu wa dun lati ni o nibi!",
-    2: "Awọn ibaraẹnisọrọ gidi n ṣẹlẹ nigbati a ba sọrọ lati ọkan wa.",
-    3: "Jẹ ki a kọ isọdọtun iṣẹ-ogbin papọ fun ọjọ iwaju."
-  },
-  igbo: {
-    name: "Igbo (Asụsụ Igbo)",
-    flag: "🇳🇬",
-    accent: COLORS.coral,
-    1: "Nnọọ na obodo anyị, anyị nwere obi ụtọ inwe gị ebe a!",
-    2: "Ezigbo mkparịta ụka na-eme mgbe anyị siri n'obi anyị kwuo okwu.",
-    3: "Ka anyị mekọọ ihe ọhụrụ n'ọrụ ugbo ọnụ maka ọdịnihu."
-  },
-  amharic: {
-    name: "Amharic (አማርኛ)",
-    flag: "🇪🇹",
-    accent: COLORS.amber,
-    1: "ወደ ማህበረሰባችን እንኳን በደህና መጡ፣ እዚህ በመገኘትዎ ደስ ብሎናል!",
-    2: "እውነተኛ ውይይቶች የሚከናወኑት ከልባችን ስንናገር ነው።",
-    3: "ለወደፊቱ የእርሻ ፈጠራን አብረን እንገንባ።"
-  },
-  hausa: {
-    name: "Hausa (Harshen Hausa)",
-    flag: "🇳🇬",
-    accent: COLORS.teal,
-    1: "Barka da zuwa ga al'ummarmu, muna farin cikin samun ku a nan!",
-    2: "Tattaunawa ta gari tana faruwa ne lokacin da muke magana daga cikin zukatanmu.",
-    3: "Bari mu gina dabarun aikin gona tare don gaba."
-  }
-};
+import { TRANSLATION_SENTENCES, TRANSLATION_LANGUAGES } from "../data";
 
 export default function TranslationPlayground({ dark }) {
-  const [selectedSentence, setSelectedSentence] = useState(SENTENCES[0]);
+  const [selectedSentence, setSelectedSentence] = useState(TRANSLATION_SENTENCES[0]);
   const [selectedLang, setSelectedLang] = useState("swahili");
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedText, setTranslatedText] = useState("");
@@ -76,7 +19,7 @@ export default function TranslationPlayground({ dark }) {
     setIsPlayingAudio(false);
 
     const timer = setTimeout(() => {
-      const translation = TRANSLATIONS[selectedLang][selectedSentence.id];
+      const translation = TRANSLATION_LANGUAGES[selectedLang][selectedSentence.id];
       setTranslatedText(translation);
       setIsTranslating(false);
     }, 800);
@@ -93,7 +36,10 @@ export default function TranslationPlayground({ dark }) {
 
       const interval = setInterval(() => {
         if (currentIdx < words.length) {
-          setTypedText((prev) => (prev ? prev + " " + words[currentIdx] : words[currentIdx]));
+          const nextWord = words[currentIdx];
+          if (nextWord !== undefined) {
+            setTypedText((prev) => (prev ? prev + " " + nextWord : nextWord));
+          }
           currentIdx++;
         } else {
           clearInterval(interval);
@@ -104,7 +50,7 @@ export default function TranslationPlayground({ dark }) {
     }
   }, [isTranslating, translatedText]);
 
-  const langInfo = TRANSLATIONS[selectedLang];
+  const langInfo = TRANSLATION_LANGUAGES[selectedLang];
 
   return (
     <div
@@ -126,7 +72,7 @@ export default function TranslationPlayground({ dark }) {
           1. Select input sentence (English)
         </label>
         <div className="flex flex-col gap-2">
-          {SENTENCES.map((s) => (
+          {TRANSLATION_SENTENCES.map((s) => (
             <button
               key={s.id}
               onClick={() => setSelectedSentence(s)}
@@ -153,7 +99,7 @@ export default function TranslationPlayground({ dark }) {
           2. Target Language
         </label>
         <div className="flex flex-wrap gap-2">
-          {Object.entries(TRANSLATIONS).map(([key, value]) => (
+          {Object.entries(TRANSLATION_LANGUAGES).map(([key, value]) => (
             <button
               key={key}
               onClick={() => setSelectedLang(key)}

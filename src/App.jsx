@@ -6,6 +6,7 @@ import Navbar              from "./components/Navbar";
 import Footer              from "./components/Footer";
 
 import HomePage            from "./pages/HomePage";
+import NotFoundPage        from "./pages/NotFoundPage";
 import AboutPage           from "./pages/AboutPage";
 import FeaturesPage        from "./pages/FeaturesPage";
 import CommunitiesPage     from "./pages/CommunitiesPage";
@@ -68,7 +69,7 @@ function AppRoutes({ dark, setDark }) {
         <Route path="/privacy"     element={<LegalPage {...PRIVACY}    {...props} />} />
         <Route path="/guidelines"  element={<LegalPage {...GUIDELINES} {...props} />} />
         {/* 404 fallback */}
-        <Route path="*"            element={<HomePage       {...props} />} />
+        <Route path="*"            element={<NotFoundPage   {...props} />} />
       </Routes>
     </Layout>
   );

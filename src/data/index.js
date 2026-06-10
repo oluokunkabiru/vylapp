@@ -65,3 +65,113 @@ export const FOOTER_LINKS = [
   { title: "Company",  links: [["/about","About"],["/press","Press"],["/contact","Contact"],["/help","Help"]] },
   { title: "Legal",    links: [["/terms","Terms"],["/privacy","Privacy"],["/guidelines","Guidelines"]] },
 ];
+
+export const TRANSLATION_SENTENCES = [
+  { id: 1, text: "Welcome to our community, we are glad to have you here!" },
+  { id: 2, text: "Real conversations happen when we speak from our hearts." },
+  { id: 3, text: "Let's build agricultural innovation together for the future." }
+];
+
+export const TRANSLATION_LANGUAGES = {
+  swahili: {
+    name: "Swahili (Kiswahili)",
+    flag: "🌍",
+    accent: "#1D9E75",
+    1: "Karibu kwenye jumuiya yetu, tuna furaha kuwa nawe hapa!",
+    2: "Mazungumzo ya kweli hutokea tunapozungumza kutoka mioyoni mwetu.",
+    3: "Tujenge uvumbuzi wa kilimo pamoja kwa ajili ya siku zijazo."
+  },
+  yoruba: {
+    name: "Yoruba (Èdè Yorùbá)",
+    flag: "🇳🇬",
+    accent: "#7C3AED",
+    1: "Kaabo si agbegbe wa, inu wa dun lati ni o nibi!",
+    2: "Awọn ibaraẹnisọrọ gidi n ṣẹlẹ nigbati a ba sọrọ lati ọkan wa.",
+    3: "Jẹ ki a kọ isọdọtun iṣẹ-ogbin papọ fun ọjọ iwaju."
+  },
+  igbo: {
+    name: "Igbo (Asụsụ Igbo)",
+    flag: "🇳🇬",
+    accent: "#FF6B6B",
+    1: "Nnọọ na obodo anyị, anyị nwere obi ụtọ inwe gị ebe a!",
+    2: "Ezigbo mkparịta ụka na-eme mgbe anyị siri n'obi anyị kwuo okwu.",
+    3: "Ka anyị mekọọ ihe ọhụrụ n'ọrụ ugbo ọnụ maka ọdịnihu."
+  },
+  amharic: {
+    name: "Amharic (አማርኛ)",
+    flag: "🇪🇹",
+    accent: "#FFB830",
+    1: "ወደ ማህበረሰባችን እንኳን በደህና መጡ፣ እዚህ በመገኘትዎ ደስ ብሎናል!",
+    2: "እውነተኛ ውይይቶች የሚከናወኑት ከልባችን ስንናገር ነው።",
+    3: "ለወደፊቱ የእርሻ ፈጠራን አብረን እንገንባ።"
+  },
+  hausa: {
+    name: "Hausa (Harshen Hausa)",
+    flag: "🇳🇬",
+    accent: "#1D9E75",
+    1: "Barka da zuwa ga al'ummarmu, muna farin cikin samun ku a nan!",
+    2: "Tattaunawa ta gari tana faruwa ne lokacin da muke magana daga cikin zukatanmu.",
+    3: "Bari mu gina dabarun aikin gona tare don gaba."
+  }
+};
+
+export const FAQ_ITEMS = [
+  {
+    q: "How does the organic translation engine work?",
+    a: "Vylapp does not rely on third-party translation APIs or remote services that compromise data privacy. Instead, we built a light, specialized client-side engine using locally cached vocabulary structures and phonetic matrices. This allows for near zero-latency captioning and offline-first queue translations."
+  },
+  {
+    q: "What is the Raven Program, and how does the locked rate work?",
+    a: "The Raven Program is our exclusive tier for early-cohort creators. By registering now, you lock in an 85% creator split forever. Even as the platform introduces new merchant products or tiered services, your standard community splits are guaranteed by our founding agreement terms."
+  },
+  {
+    q: "Is there a limit to the number of languages I can use?",
+    a: "Free tier users can select one default target language for translation. Pro tier members get simultaneous caption translation of up to 5 active languages, allowing you to run global community groups where Swahili, Yoruba, Amharic, and English speakers converse in a single stream."
+  },
+  {
+    q: "Can I export my subscriber list or community data?",
+    a: "Yes, always. Vylapp operates on a user-owned model. Your subscriber lists, community structure, and transcripts belong to you. You can export your entire data folder as standard JSON/CSV files at any time. There are no lock-in mechanisms."
+  },
+  {
+    q: "How does real-time sound captioning work in Spaces?",
+    a: "When you host a Space, our in-browser multilingual parser listens to audio chunks on the fly. It translates and feeds text captions onto listeners' dashboards in their chosen dialect. This creates a caption stream that operates under a 120ms network window."
+  }
+];
+
+export const TEAM_MEMBERS = [
+  { name: "Remi Kowalski", role: "CEO & Co-founder", desc: "Built decentralized agri-networks across East Africa.", avatarColor: "#7C3AED" },
+  { name: "Sena Osei", role: "CTO & Co-founder", desc: "Creator of phonetic-matrix NLP parser for low-resource languages.", avatarColor: "#1D9E75" },
+  { name: "Leon Chen", role: "Product Director", desc: "Ex-Design Lead at leading global collaboration networks.", avatarColor: "#FF6B6B" },
+  { name: "Tanvi Patel", role: "Advisory Board", desc: "Director of Global Language Inclusion at ImpactDAO.", avatarColor: "#FFB830" }
+];
+
+export const SPACES_SIMULATED_TRANSCRIPT = {
+  english: [
+    { speaker: "Leon Chen", text: "Welcome to today's Space on Building Your Second Brain." },
+    { speaker: "Leon Chen", text: "The main idea is that our brains are for having ideas, not holding them." },
+    { speaker: "Leon Chen", text: "When you externalize your thinking, you free up cognitive load." },
+    { speaker: "Aisha Kamara", text: "Absolutely, I've been using this to manage all my Web3 project docs." },
+    { speaker: "Leon Chen", text: "Exactly! And the organic translation lets us share these frameworks globally." }
+  ],
+  swahili: [
+    { speaker: "Leon Chen", text: "Karibu kwenye Space ya leo kuhusu Kujenga Ubongo Wako wa Pili." },
+    { speaker: "Leon Chen", text: "Wazo kuu ni kwamba akili zetu ni kwa ajili ya kupata mawazo, sio kuyashikilia." },
+    { speaker: "Leon Chen", text: "Unapoweka wazi fikra zako, unapunguza mzigo wa kiakili." },
+    { speaker: "Aisha Kamara", text: "Kabisa, nimekuwa nikitumia hii kudhibiti hati zote za mradi wangu wa Web3." },
+    { speaker: "Leon Chen", text: "Kabisa! Na tafsiri ya kikaboni inaruhusu kushiriki mifumo hii ulimwenguni kote." }
+  ],
+  yoruba: [
+    { speaker: "Leon Chen", text: "Kaabo si Aaye oni lori Kikọ Brain Keji Rẹ." },
+    { speaker: "Leon Chen", text: "Eto akọkọ ni pe awọn ọpọlọ wa jẹ fun nini awọn imọran, kii ṣe idaduro wọn." },
+    { speaker: "Leon Chen", text: "Nigbati o ba sọ ero rẹ di ita, o tu ero inu silẹ." },
+    { speaker: "Aisha Kamara", text: "Lootọ, Mo ti n lo eyi lati ṣakoso gbogbo awọn iwe aṣẹ iṣẹ akanṣe Web3 mi." },
+    { speaker: "Leon Chen", text: "Gangan! Ati pe translation yii n jẹ ki a pin awọn ilana wọnyi kaakiri agbaye." }
+  ],
+  igbo: [
+    { speaker: "Leon Chen", text: "Nnọọ na oghere nke taa gbasara iwu ụbụrụ nke abụọ gị." },
+    { speaker: "Leon Chen", text: "Isi echiche bụ na ụbụrụ anyị bụ maka inwe echiche, ọ bụghị ijide ha." },
+    { speaker: "Leon Chen", text: "Mgbe ị wepụrụ echiche gị n'èzí, ị na-ahapụ ibu ọrụ ọgụgụ isi." },
+    { speaker: "Aisha Kamara", text: "N'ezie, ejirila m ihe a jikwaa akwụkwọ ọrụ Web3 m niile." },
+    { speaker: "Leon Chen", text: "Kpọmkwem! Ma organic translation na-enye anyị ohere ịkekọrịta usoro ndị a n'ụwa niile." }
+  ]
+};
