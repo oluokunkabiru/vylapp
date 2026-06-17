@@ -95,17 +95,23 @@ export function InvestorsPage({ dark }) {
         <Wrap narrow>
           <Label color={COLORS.amber}>Investors</Label>
           <h1 className="font-sora font-extrabold text-5xl md:text-6xl mt-6 leading-tight">
-            The community platform for the next 5 billion.
+            The community platform for the next billion.
           </h1>
           <p className="mt-4 font-dm text-xl leading-relaxed" style={{ color: sub }}>
-            Raising a pre-seed SAFE note (YC-style, post-money). Building for multilingual, underrepresented markets worldwide.
+            We are raising a pre-seed round via a SAFE Note (YC post-money style, adapted for an Indiana LLC). Building for multilingual, underrepresented markets — starting with Africa and the African diaspora.
           </p>
         </Wrap>
       </Sec>
       <Sec>
         <Wrap>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-            {[["Instrument","SAFE Note","YC post-money style · Indiana LLC"],["Stage","Pre-seed","Working product & full legal suite"],["Market","$500B+","Creator economy + multilingual community"],["Moat","4-layer","Feed + Spaces + Creator economy + Translation"]].map(([l,v,s]) => (
+          {/* Key metrics */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-14">
+            {[
+              ["Instrument","SAFE Note","YC post-money style · Indiana LLC"],
+              ["Stage","Pre-seed","Working product & full legal suite"],
+              ["Market","$500B+","Creator economy + multilingual community"],
+              ["Moat","4-layer","Feed + Spaces + Creator economy + Translation"],
+            ].map(([l,v,s]) => (
               <div key={l} className="p-6 rounded-xl" style={card}>
                 <p className="font-mono text-[10px] uppercase tracking-wider mb-2" style={{ color: dark ? "#4A4962" : "#A0A0B0" }}>{l}</p>
                 <p className="font-sora font-extrabold text-2xl" style={{ color: COLORS.amber }}>{v}</p>
@@ -114,9 +120,27 @@ export function InvestorsPage({ dark }) {
             ))}
           </div>
 
+          {/* SAFE terms */}
+          <SectionLabel color={COLORS.amber}>SAFE instrument highlights</SectionLabel>
+          <div className="grid sm:grid-cols-2 gap-4 max-w-3xl mb-14">
+            {[
+              ["Structure","Simple Agreement for Future Equity (SAFE) — post-money, based on YC standard form adapted for Indiana LLC. No interest. No maturity date. Not a debt instrument."],
+              ["Conversion","Converts upon next Equity Financing (≥ $1M), Liquidity Event (sale/merger), or Dissolution. Investor receives the more favorable of the Valuation Cap price or Discount Rate price."],
+              ["Pro-Rata Rights","Investors have the right to participate in future financing rounds up to their ownership percentage — protecting your position as we grow."],
+              ["MFN Clause","Most Favored Nation protection: if we issue a SAFE with more favorable terms before the next round, you may elect to receive those same terms."],
+              ["Information Rights","Quarterly financial statements. Annual audited or reviewed financials available on request."],
+              ["Use of Proceeds","Platform & product engineering · Marketing & community growth · Operations & infrastructure · Legal, accounting & compliance · Working capital"],
+            ].map(([t, d]) => (
+              <div key={t} className="p-5 rounded-xl" style={card}>
+                <p className="font-sora font-bold text-sm mb-2">{t}</p>
+                <p className="font-dm text-sm leading-relaxed" style={{ color: sub }}>{d}</p>
+              </div>
+            ))}
+          </div>
+
           <SectionLabel color={COLORS.amber}>Why now</SectionLabel>
-          <div className="max-w-3xl space-y-3 mb-10">
-            {["Creator economy reaching $500B by 2027","Live audio proven — Clubhouse, X Spaces, Discord","AI translation now fast enough for real-time use","Gen Z demands authenticity over algorithmic feeds","Community platforms outperform social in long-term retention","No platform combines feed + live + creator economy + translation"].map(w => (
+          <div className="max-w-3xl space-y-3 mb-12">
+            {["Creator economy projected to reach $500B+ by 2027","Live audio proven at scale — Clubhouse, X Spaces, Discord","AI translation now fast enough for real-time captioning","Gen Z demands authenticity over algorithmic feeds","No platform combines feed + live audio + creator economy + translation in one product","Africa & the African diaspora represent the largest untapped social community market"].map(w => (
               <div key={w} className="flex gap-3 items-start p-4 rounded-xl" style={card}>
                 <Icon d={ic.check} s={13} style={{ color: COLORS.amber, marginTop: 2, flexShrink: 0 }} />
                 <span className="font-dm text-sm" style={{ color: sub }}>{w}</span>
@@ -124,11 +148,12 @@ export function InvestorsPage({ dark }) {
             ))}
           </div>
 
+          {/* Contact CTA */}
           <div className="p-6 rounded-xl max-w-3xl" style={{ border: `2px solid ${COLORS.amber}40`, background: `${COLORS.amber}06` }}>
             <p className="font-sora font-bold mb-2">Request the investor deck</p>
             <p className="font-dm text-sm mb-4" style={{ color: sub }}>
               Email <strong>{COMPANY.investorEmail}</strong> with subject line <em>"Investor inquiry"</em> — we respond within 48 hours.
-              Our SAFE instrument is based on the standard YC post-money form, adapted for an Indiana LLC.
+              Our SAFE instrument is based on the standard YC post-money form, adapted for {COMPANY.name} ({COMPANY.state} LLC).
             </p>
             <a href={`mailto:${COMPANY.investorEmail}?subject=Investor inquiry`}>
               <Btn variant="primary">Request the deck</Btn>
@@ -139,3 +164,4 @@ export function InvestorsPage({ dark }) {
     </div>
   );
 }
+

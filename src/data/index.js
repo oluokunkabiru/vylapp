@@ -50,18 +50,16 @@ export const NAV_MAIN = [
 
 export const NAV_MORE = [
   { path: "/spaces",    label: "Spaces" },
-  { path: "/blog",      label: "Blog" },
   { path: "/press",     label: "Press" },
   { path: "/help",      label: "Help" },
   { path: "/manifesto", label: "Manifesto" },
-  { path: "/changelog", label: "Changelog" },
   { path: "/investors", label: "Investors" },
   { path: "/contact",   label: "Contact" },
 ];
 
 export const FOOTER_LINKS = [
   { title: "Platform", links: [["/features","Features"],["/communities","Communities"],["/spaces","Spaces"],["/pricing","Pricing"]] },
-  { title: "Creators",  links: [["/creators","For Creators"],["/changelog","Changelog"],["/blog","Blog"],["/investors","Investors"]] },
+  { title: "Creators",  links: [["/creators","For Creators"],["/investors","Investors"],["/manifesto","Manifesto"]] },
   { title: "Company",  links: [["/about","About"],["/press","Press"],["/contact","Contact"],["/help","Help"]] },
   { title: "Legal",    links: [["/terms","Terms"],["/privacy","Privacy"],["/guidelines","Guidelines"]] },
 ];
@@ -139,10 +137,10 @@ export const FAQ_ITEMS = [
 ];
 
 export const TEAM_MEMBERS = [
-  { name: "Temim Bashiru", role: "Founder & CEO",       photo: "/temim.jpeg",   desc: "Founded Vylapp with a mission to remove language as a barrier to global community. Registered Agent & Managing Member, Vylapp LLC.", avatarColor: "#7C3AED" },
-  { name: "Yemi Alade",    role: "Engineering Lead",    photo: "/yemi.png",     desc: "Architect of Vylapp's organic translation engine and real-time WebSocket infrastructure.", avatarColor: "#1D9E75" },
-  { name: "Adesina Taiwo", role: "Community & Growth",  photo: "/adesina.jpeg", desc: "Drives creator partnerships, community health strategy, and the Raven founding cohort.", avatarColor: "#FF6B6B" },
-  { name: "Tanvi Patel",   role: "Product Design",      photo: null,            desc: "Leads platform experience design and the Vylapp global brand system.", avatarColor: "#FFB830" }
+  { name: "Temim Bashiru",          role: "Founder & CEO · Finance & Business Systems Lead", photo: "/temim.jpeg",   desc: "A seasoned banker and management professional with deep experience in financial operations, compliance, and organizational performance. Oversees management, financial planning, budgeting, and business workflows for Vylapp LLC.", avatarColor: "#7C3AED" },
+  { name: "Shefiu Azeez",           role: "Creative Director & Strategic Lead",               photo: null,            desc: "A visionary video director specializing in AI-enhanced and futuristic content. Leads creative direction, brand identity, content production, and long-term platform strategy for Vylapp.", avatarColor: "#FF6B6B" },
+  { name: "Oluokun Kabiru Adesina", role: "Software Engineering & Data Systems Lead",         photo: "/adesina.jpeg", desc: "A software engineer with hands-on experience building backend systems, APIs, and data-driven platforms across fintech, edtech, and enterprise. Leads backend architecture, data pipelines, and scalable infrastructure.", avatarColor: "#1D9E75" },
+  { name: "Huswat Lawal",           role: "Brand Partnerships, R&D & Customer Success Lead",  photo: null,            desc: "An experienced banker and data analysis specialist. Passionate about Yoruba language and culture, she brings a unique cultural lens to brand development, user engagement, and community-centered innovation.", avatarColor: "#FFB830" },
 ];
 
 export const SPACES_SIMULATED_TRANSCRIPT = {

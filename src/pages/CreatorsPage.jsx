@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Icon, ic, Label, SectionLabel, Btn, Wrap, Sec, sectionBorder, textSub } from "../components/UI";
-import { COLORS, STATS, IMAGES } from "../config";
-import EarningsCalculator from "../components/EarningsCalculator";
+import { COLORS, STATS, IMAGES, COMPANY } from "../config";
 import WaitlistModal from "../components/WaitlistModal";
 
 const COMPARE = [
@@ -76,8 +75,31 @@ export default function CreatorsPage({ dark }) {
             </table>
           </div>
 
-          <div className="mt-16">
-            <EarningsCalculator dark={dark} />
+          {/* Monetization metrics */}
+          <div className="mt-14">
+            <SectionLabel color={COLORS.amber}>What you actually keep</SectionLabel>
+            <div className="grid sm:grid-cols-3 gap-5 mt-6 max-w-3xl">
+              {[
+                ["85%", "Revenue split", "The highest guaranteed split in the creator economy. Every subscription, every tip."],
+                ["0%", "Audience lock-in", "Export your subscriber list at any time. Yours forever, no matter what."],
+                ["Life", "Raven rate locked", "Founding creators lock their 85/15 for life — the rate never changes for them."],
+              ].map(([v, l, d]) => (
+                <div key={l} className="p-6 rounded-2xl" style={card}>
+                  <p className="font-sora font-extrabold text-4xl" style={{ color: COLORS.amber }}>{v}</p>
+                  <p className="font-sora font-bold text-sm mt-2">{l}</p>
+                  <p className="font-dm text-xs mt-2 leading-relaxed" style={{ color: sub }}>{d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="mt-12 p-6 rounded-2xl max-w-3xl" style={{ border: `2px solid ${COLORS.amber}30`, background: `${COLORS.amber}06` }}>
+            <p className="font-sora font-bold text-lg mb-2">Join the Raven founding cohort</p>
+            <p className="font-dm text-sm mb-4" style={{ color: sub }}>
+              The Raven program is for early creators who join before launch. You lock in 85/15 for life, get a Raven badge on your profile, and are first in the door when the community opens.
+            </p>
+            <Btn variant="primary" onClick={() => setWaitlistOpen(true)}>Apply for Raven access</Btn>
           </div>
         </Wrap>
       </Sec>
