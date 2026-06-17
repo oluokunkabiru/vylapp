@@ -23,8 +23,21 @@ export default function AboutPage({ dark }) {
         </Wrap>
       </Sec>
 
-      <div style={{ borderBottom: `1px solid ${border}` }}>
-        <img src={IMAGES.africa} alt="Community connected globally" className="w-full max-h-80 object-cover object-top" style={{ opacity: dark ? 0.7 : 0.9 }} />
+      <div className="px-6 md:px-12 max-w-6xl mx-auto pb-10" style={{ borderBottom: `1px solid ${border}` }}>
+        <div className="relative rounded-2xl overflow-hidden" style={{ border: `1px solid ${border}` }}>
+          <img
+            src={IMAGES.africa}
+            alt="Vylapp vision — diverse creators across Lagos, Kano, Nairobi, and London connected through language"
+            className="w-full max-h-[460px] object-cover"
+            style={{ opacity: dark ? 0.85 : 0.95 }}
+          />
+          <div className="absolute bottom-0 left-0 right-0 px-6 py-4" style={{ background: "linear-gradient(to top, rgba(8,7,15,0.85) 0%, transparent 100%)" }}>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/60">The Vylapp Vision</p>
+            <p className="font-dm text-white/90 text-sm mt-1">
+              Creators in Lagos, Kano, Nairobi, and London — in the same community, in their own language.
+            </p>
+          </div>
+        </div>
       </div>
 
       <Sec style={{ borderBottom: `1px solid ${border}` }}>

@@ -100,20 +100,20 @@ export const APP_STORES = {
 // Images — swap any entry via .env or update URL below.
 // Unsplash photos chosen specifically for ethnic diversity and African representation.
 export const IMAGES = {
-  // Hero: diverse African tech community collaborating
-  hero:      import.meta.env.VITE_IMG_HERO      || "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1400&q=85&auto=format&fit=crop",
-  // Community: African professionals in conversation
-  community: import.meta.env.VITE_IMG_COMMUNITY || "https://images.unsplash.com/photo-1529390079861-591de354faf5?w=900&q=80&auto=format&fit=crop",
-  // Creator: African woman creating content
-  creator:   import.meta.env.VITE_IMG_CREATOR   || "https://images.unsplash.com/photo-1589156229687-496a31ad1d1f?w=900&q=80&auto=format&fit=crop",
-  // Spaces: diverse group in live audio discussion
-  spaces:    import.meta.env.VITE_IMG_SPACES     || "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=900&q=80&auto=format&fit=crop",
-  // About page banner: African professionals/community
-  africa:    import.meta.env.VITE_IMG_AFRICA     || "https://images.unsplash.com/photo-1504805572947-34fad45aed93?w=900&q=80&auto=format&fit=crop",
-  // Phone mockup (app download section)
-  phone:     import.meta.env.VITE_IMG_PHONE      || "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=600&q=80&auto=format&fit=crop",
-  // Manifesto: inspiring African cityscape / community
-  manifesto: import.meta.env.VITE_IMG_MANIFESTO  || "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=1400&q=85&auto=format&fit=crop",
+  // Hero: diverse African tech community in a Lagos coworking space
+  hero:      import.meta.env.VITE_IMG_HERO      || "/vylapp-hero.png",
+  // Community: diverse global professionals collaborating
+  community: import.meta.env.VITE_IMG_COMMUNITY || "/vylapp-community.png",
+  // Creator: African woman content creator at streaming desk
+  creator:   import.meta.env.VITE_IMG_CREATOR   || "/vylapp-creator.png",
+  // Spaces: diverse group in live audio/podcast discussion
+  spaces:    import.meta.env.VITE_IMG_SPACES     || "/vylapp-spaces.png",
+  // About page banner: Vylapp vision — creators connected across languages
+  africa:    import.meta.env.VITE_IMG_AFRICA     || "/vylapp-vision.png",
+  // Phone mockup — reuse hero image until a dedicated asset is available
+  phone:     import.meta.env.VITE_IMG_PHONE      || "/vylapp-creator.png",
+  // Manifesto: African city skyline at golden hour
+  manifesto: import.meta.env.VITE_IMG_MANIFESTO  || "/vylapp-manifesto.png",
 };
 
 // Team member photos — local public/ files
