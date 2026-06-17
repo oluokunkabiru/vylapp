@@ -24,8 +24,8 @@ export default function PressPage({ dark }) {
             <div>
               <SectionLabel color={COLORS.violet}>Company facts</SectionLabel>
               <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${border}` }}>
-                {[["Company",COMPANY.name],["Founded",COMPANY.year],["HQ","Indianapolis, Indiana"],["Founder","Temim Bashiru"],["Stage","Pre-seed"],["Raise","$250K–$500K SAFE"],["Website",COMPANY.website],["Email",COMPANY.email]].map(([k,v],i) => (
-                  <div key={k} className="flex justify-between items-center px-5 py-3.5" style={{ background: i%2===0 ? (dark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.01)") : "transparent", borderBottom: i<7 ? `1px solid ${border}` : "none" }}>
+                {[["Company",COMPANY.name],["Founded",COMPANY.year],["HQ","Indianapolis, Indiana"],["Entity",`${COMPANY.state} LLC`],["Founder",COMPANY.founder],["Stage","Pre-seed"],["Instrument","SAFE Note (YC post-money style)"],["Website",COMPANY.website],["Press contact",COMPANY.pressEmail]].map(([k,v],i) => (
+                  <div key={k} className="flex justify-between items-center px-5 py-3.5" style={{ background: i%2===0 ? (dark?"rgba(255,255,255,0.02)":"rgba(0,0,0,0.01)") : "transparent", borderBottom: i<8 ? `1px solid ${border}` : "none" }}>
                     <span className="font-mono text-[10px] uppercase tracking-wider" style={{ color: muted }}>{k}</span>
                     <span className="font-dm text-sm font-semibold">{v}</span>
                   </div>
@@ -46,7 +46,7 @@ export default function PressPage({ dark }) {
             <div className="flex items-center gap-4 p-5 rounded-xl" style={card}>
               <Icon d={ic.mail} s={18} style={{ color: COLORS.violet, flexShrink: 0 }} />
               <div>
-                <p className="font-dm font-semibold">{COMPANY.email}</p>
+                <a href={`mailto:${COMPANY.pressEmail}?subject=Press inquiry`} className="font-dm font-semibold hover:underline">{COMPANY.pressEmail}</a>
                 <p className="font-dm text-sm" style={{ color: sub }}>Press inquiries answered within 24 hours.</p>
               </div>
             </div>

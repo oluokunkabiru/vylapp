@@ -31,7 +31,7 @@ export function ManifestoPage({ dark }) {
             <p>These are not marketing words. They are an architecture. Vibe: create and share who you are. Learn: grow through the people around you. Connect: build relationships that outlast any algorithm.</p>
             <p>The world has always been multilingual. The internet should be too.</p>
             <p className="font-mono text-[11px] mt-12" style={{ color: dark ? "#4A4962" : "#BABAC8" }}>
-              — Temim Bashiru, Founder, {COMPANY.name}
+              — {COMPANY.founder}, Founder, {COMPANY.name}
             </p>
           </div>
         </div>
@@ -98,14 +98,14 @@ export function InvestorsPage({ dark }) {
             The community platform for the next 5 billion.
           </h1>
           <p className="mt-4 font-dm text-xl leading-relaxed" style={{ color: sub }}>
-            Raising $250K–$500K pre-seed SAFE. Building for underrepresented markets and multilingual communities.
+            Raising a pre-seed SAFE note (YC-style, post-money). Building for multilingual, underrepresented markets worldwide.
           </p>
         </Wrap>
       </Sec>
       <Sec>
         <Wrap>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
-            {[["Raise","$250K–$500K","Pre-seed SAFE note"],["Stage","Pre-seed","Working product & legal suite"],["Market","$500B+","Creator economy + community"],["Moat","Translation","No competitor has all four layers"]].map(([l,v,s]) => (
+            {[["Instrument","SAFE Note","YC post-money style · Indiana LLC"],["Stage","Pre-seed","Working product & full legal suite"],["Market","$500B+","Creator economy + multilingual community"],["Moat","4-layer","Feed + Spaces + Creator economy + Translation"]].map(([l,v,s]) => (
               <div key={l} className="p-6 rounded-xl" style={card}>
                 <p className="font-mono text-[10px] uppercase tracking-wider mb-2" style={{ color: dark ? "#4A4962" : "#A0A0B0" }}>{l}</p>
                 <p className="font-sora font-extrabold text-2xl" style={{ color: COLORS.amber }}>{v}</p>
@@ -125,12 +125,13 @@ export function InvestorsPage({ dark }) {
           </div>
 
           <div className="p-6 rounded-xl max-w-3xl" style={{ border: `2px solid ${COLORS.amber}40`, background: `${COLORS.amber}06` }}>
-            <p className="font-sora font-bold mb-2">Request the pitch deck</p>
+            <p className="font-sora font-bold mb-2">Request the investor deck</p>
             <p className="font-dm text-sm mb-4" style={{ color: sub }}>
-              Email {COMPANY.email} with subject "Investor inquiry" — we respond within 48 hours.
+              Email <strong>{COMPANY.investorEmail}</strong> with subject line <em>"Investor inquiry"</em> — we respond within 48 hours.
+              Our SAFE instrument is based on the standard YC post-money form, adapted for an Indiana LLC.
             </p>
-            <a href={`mailto:${COMPANY.email}?subject=Investor inquiry`}>
-              <Btn variant="primary">Email us now</Btn>
+            <a href={`mailto:${COMPANY.investorEmail}?subject=Investor inquiry`}>
+              <Btn variant="primary">Request the deck</Btn>
             </a>
           </div>
         </Wrap>

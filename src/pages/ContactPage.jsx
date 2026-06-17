@@ -82,12 +82,21 @@ export default function ContactPage({ dark }) {
             )}
 
             <div className="space-y-4">
-              {[[ic.mail,"Email",COMPANY.email],[ic.globe,"Website",COMPANY.website],[ic.brief,"Address",COMPANY.address]].map(([d,t,v]) => (
+              {[
+                [ic.mail,  "General",         COMPANY.supportEmail,  `mailto:${COMPANY.supportEmail}`],
+                [ic.mail,  "Press",           COMPANY.pressEmail,   `mailto:${COMPANY.pressEmail}?subject=Press inquiry`],
+                [ic.mail,  "Investor relations", COMPANY.investorEmail, `mailto:${COMPANY.investorEmail}?subject=Investor inquiry`],
+                [ic.globe, "Website",         COMPANY.website,      `https://${COMPANY.website}`],
+                [ic.brief, "Address",         COMPANY.address,      null],
+              ].map(([d, t, v, href]) => (
                 <div key={t} className="flex gap-4 p-5 rounded-xl" style={card}>
                   <Icon d={d} s={17} style={{ color: COLORS.violet, flexShrink: 0, marginTop: 2 }} />
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-wider mb-1" style={{ color: muted }}>{t}</p>
-                    <p className="font-dm text-sm">{v}</p>
+                    {href
+                      ? <a href={href} className="font-dm text-sm hover:underline">{v}</a>
+                      : <p className="font-dm text-sm">{v}</p>
+                    }
                   </div>
                 </div>
               ))}

@@ -15,6 +15,11 @@ export const COMPANY = {
   address: import.meta.env.VITE_COMPANY_ADDRESS || "1680 Foyt Dr, Apt D, Indianapolis, Indiana 46224",
   state:   import.meta.env.VITE_COMPANY_STATE   || "Indiana",
   year:    import.meta.env.VITE_COMPANY_YEAR    || "2025",
+  founder: import.meta.env.VITE_COMPANY_FOUNDER || "Temim Bashiru",
+  supportEmail: import.meta.env.VITE_COMPANY_SUPPORT_EMAIL || "hello@vylapp.com",
+  legalEmail:   import.meta.env.VITE_COMPANY_LEGAL_EMAIL   || "hello@vylapp.com",
+  pressEmail:   import.meta.env.VITE_COMPANY_PRESS_EMAIL   || "hello@vylapp.com",
+  investorEmail:import.meta.env.VITE_COMPANY_INVESTOR_EMAIL|| "hello@vylapp.com",
 };
 
 export const COLORS = {
@@ -92,13 +97,28 @@ export const APP_STORES = {
   android: import.meta.env.VITE_APP_ANDROID || "#",
 };
 
-// Unsplash image IDs — swap out to change hero/section photos
+// Images — swap any entry via .env or update URL below.
+// Unsplash photos chosen specifically for ethnic diversity and African representation.
 export const IMAGES = {
-  hero:      "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=1400&q=85&auto=format&fit=crop",
-  community: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=900&q=80&auto=format&fit=crop",
-  creator:   "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=900&q=80&auto=format&fit=crop",
-  spaces:    "https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=900&q=80&auto=format&fit=crop",
-  africa:    "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=900&q=80&auto=format&fit=crop",
-  phone:     "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=600&q=80&auto=format&fit=crop",
-  manifesto: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1400&q=85&auto=format&fit=crop",
+  // Hero: diverse African tech community collaborating
+  hero:      import.meta.env.VITE_IMG_HERO      || "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1400&q=85&auto=format&fit=crop",
+  // Community: African professionals in conversation
+  community: import.meta.env.VITE_IMG_COMMUNITY || "https://images.unsplash.com/photo-1529390079861-591de354faf5?w=900&q=80&auto=format&fit=crop",
+  // Creator: African woman creating content
+  creator:   import.meta.env.VITE_IMG_CREATOR   || "https://images.unsplash.com/photo-1589156229687-496a31ad1d1f?w=900&q=80&auto=format&fit=crop",
+  // Spaces: diverse group in live audio discussion
+  spaces:    import.meta.env.VITE_IMG_SPACES     || "https://images.unsplash.com/photo-1543269865-cbf427effbad?w=900&q=80&auto=format&fit=crop",
+  // About page banner: African professionals/community
+  africa:    import.meta.env.VITE_IMG_AFRICA     || "https://images.unsplash.com/photo-1504805572947-34fad45aed93?w=900&q=80&auto=format&fit=crop",
+  // Phone mockup (app download section)
+  phone:     import.meta.env.VITE_IMG_PHONE      || "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=600&q=80&auto=format&fit=crop",
+  // Manifesto: inspiring African cityscape / community
+  manifesto: import.meta.env.VITE_IMG_MANIFESTO  || "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=1400&q=85&auto=format&fit=crop",
+};
+
+// Team member photos — local public/ files
+export const TEAM_PHOTOS = {
+  temim:   "/temim.jpeg",
+  yemi:    "/yemi.png",
+  adesina: "/adesina.jpeg",
 };

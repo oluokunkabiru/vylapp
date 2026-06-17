@@ -139,10 +139,10 @@ export const FAQ_ITEMS = [
 ];
 
 export const TEAM_MEMBERS = [
-  { name: "Remi Kowalski", role: "CEO & Co-founder", desc: "Built decentralized agri-networks across East Africa.", avatarColor: "#7C3AED" },
-  { name: "Sena Osei", role: "CTO & Co-founder", desc: "Creator of phonetic-matrix NLP parser for low-resource languages.", avatarColor: "#1D9E75" },
-  { name: "Leon Chen", role: "Product Director", desc: "Ex-Design Lead at leading global collaboration networks.", avatarColor: "#FF6B6B" },
-  { name: "Tanvi Patel", role: "Advisory Board", desc: "Director of Global Language Inclusion at ImpactDAO.", avatarColor: "#FFB830" }
+  { name: "Temim Bashiru", role: "Founder & CEO",       photo: "/temim.jpeg",   desc: "Founded Vylapp with a mission to remove language as a barrier to global community. Registered Agent & Managing Member, Vylapp LLC.", avatarColor: "#7C3AED" },
+  { name: "Yemi Alade",    role: "Engineering Lead",    photo: "/yemi.png",     desc: "Architect of Vylapp's organic translation engine and real-time WebSocket infrastructure.", avatarColor: "#1D9E75" },
+  { name: "Adesina Taiwo", role: "Community & Growth",  photo: "/adesina.jpeg", desc: "Drives creator partnerships, community health strategy, and the Raven founding cohort.", avatarColor: "#FF6B6B" },
+  { name: "Tanvi Patel",   role: "Product Design",      photo: null,            desc: "Leads platform experience design and the Vylapp global brand system.", avatarColor: "#FFB830" }
 ];
 
 export const SPACES_SIMULATED_TRANSCRIPT = {

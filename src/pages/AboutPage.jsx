@@ -41,8 +41,13 @@ export default function AboutPage({ dark }) {
       <Sec style={{ borderBottom: `1px solid ${border}` }}>
         <Wrap>
           <SectionLabel color={COLORS.teal}>Company</SectionLabel>
-          <div className="grid sm:grid-cols-3 gap-5">
-            {[["Founded", COMPANY.year, "Indianapolis, Indiana"], ["Entity", COMPANY.name, `${COMPANY.state} LLC`], ["Contact", COMPANY.email, COMPANY.website]].map(([l, v, s]) => (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {[
+              ["Founded",  COMPANY.year,    "Indianapolis, Indiana"],
+              ["Entity",   COMPANY.name,    `${COMPANY.state} LLC`],
+              ["Founder",  COMPANY.founder, "Managing Member & Registered Agent"],
+              ["Contact",  COMPANY.email,   COMPANY.website],
+            ].map(([l, v, s]) => (
               <div key={l} className="p-6 rounded-xl" style={card}>
                 <p className="font-mono text-[10px] uppercase tracking-wider mb-2" style={{ color: dark ? "#4A4962" : "#A0A0B0" }}>{l}</p>
                 <p className="font-sora font-bold text-lg">{v}</p>
