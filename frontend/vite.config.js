@@ -7,12 +7,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:4000",
+        target: process.env.BACKEND_URL || "http://localhost:4000",
         rewrite: (path) => path.replace(/^\/api/, ""),
         changeOrigin: true,
       },
       "/socket.io": {
-        target: "http://localhost:4000",
+        target: process.env.BACKEND_URL || "http://localhost:4000",
         ws: true,
         changeOrigin: true,
       },

@@ -64,9 +64,9 @@ export default function App() {
   const mainContent = (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/" element={<Home {...commonProps} />} />
-      <Route path="/explore" element={<Explore />} />
-      <Route path="/spaces" element={<SpacesPage />} />
+      <Route path="/" element={<RequireAuth><Home {...commonProps} /></RequireAuth>} />
+      <Route path="/explore" element={<RequireAuth><Explore /></RequireAuth>} />
+      <Route path="/spaces" element={<RequireAuth><SpacesPage /></RequireAuth>} />
       <Route path="/notifications" element={
         <RequireAuth><Notifications onClearBadge={()=>setNotifCount(0)} /></RequireAuth>
       } />
@@ -76,14 +76,14 @@ export default function App() {
       <Route path="/profile" element={
         <RequireAuth><Profile /></RequireAuth>
       } />
-      <Route path="/profile/:handle" element={<Profile />} />
+      <Route path="/profile/:handle" element={<RequireAuth><Profile /></RequireAuth>} />
       <Route path="/autopilot" element={
         <RequireAuth><Autopilot /></RequireAuth>
       } />
       <Route path="/creator" element={
         <RequireAuth><CreatorEarnings /></RequireAuth>
       } />
-      <Route path="/raven" element={<RavenLeaderboard />} />
+      <Route path="/raven" element={<RequireAuth><RavenLeaderboard /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
