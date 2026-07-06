@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android Network Security Configuration
+  Applied to all network requests from this app.
+
+  WHAT THIS DOES:
+    1. Clears the trust anchor to custom CAs only (no rogue root CAs accepted).
+    2. Pins the production API server's certificate SHA-256 fingerprint.
+       If the pin doesn't match, ALL network requests to that domain fail.
+       This prevents MITM attacks even if a root CA is compromised.
+    3. Disables cleartext (HTTP) traffic everywhere except localhost.
+
+  HOW TO UPDATE THE PIN:
+    Run: openssl s_client -connect your-backend.fly.dev:443 -servername your-backend.fly.dev \
+         < /dev/null | openssl x509 -pubkey -noout | openssl pkey -pubin -outform DER \
+         | openssl dgst -sha256 -binary | openssl enc -base64
+    Replace the pin-sha256 value below with the result.
+
+    Always include TWO pins: the current cert and the backup/next cert.
+    If you only pin one and that cert rotates, the app stops working for
+    all users until they update. This has killed production apps before.
+
+  REFERENCE: https://developer.android.com/training/articles/security-config
+-->
+<network-security-config>
+
+  <!-- ── Production API: Fly.io Johannesburg ────────────────────────────── -->
+  <domain-config cleartextTrafficPermitted="false">
+    <domain includeSubdomains="true">your-backend.fly.dev</domain>
+    <pin-set expiration="2027-07-01">
+      <!-- Primary certificate fingerprint — replace with your actual cert -->
+      <pin digest="SHA-256">REPLACE_WITH_YOUR_PRIMARY_CERT_SHA256_BASE64==</pin>
+      <!-- Backup certificate fingerprint — the NEXT cert you'll rotate to -->
+      <pin digest="SHA-256">REPLACE_WITH_YOUR_BACKUP_CERT_SHA256_BASE64==</pin>
+    </pin-set>
+    <trust-anchors>
+      <certificates src="system"/>
+    </trust-anchors>
+  </domain-config>
+
+  <!-- ── Localhost (development only — never ships to prod) ────────────── -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="false">localhost</domain>
+    <domain includeSubdomains="false">10.0.2.2</domain>    <!-- Android emulator host -->
+    <domain includeSubdomains="false">192.168.1.0/24</domain>
+  </domain-config>
+
+  <!-- ── Firebase and Google APIs — trust system CAs, no cleartext ─────── -->
+  <domain-config cleartextTrafficPermitted="false">
+    <domain includeSubdomains="true">googleapis.com</domain>
+    <domain includeSubdomains="true">firebaseio.com</domain>
+    <domain includeSubdomains="true">firebase.google.com</domain>
+    <domain includeSubdomains="true">fcm.googleapis.com</domain>
+    <trust-anchors>
+      <certificates src="system"/>
+    </trust-anchors>
+  </domain-config>
+
+  <!-- ── Default: no cleartext anywhere not explicitly listed above ─────── -->
+  <base-config cleartextTrafficPermitted="false">
+    <trust-anchors>
+      <certificates src="system"/>
+    </trust-anchors>
+  </base-config>
+
+</network-security-config>

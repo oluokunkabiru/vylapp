@@ -1,0 +1,80 @@
+version: "3.9"
+
+# ════════════════════════════════════════════════════════════════════════════
+#  VYLAPP — LOCAL DEVELOPMENT DOCKER COMPOSE
+#
+#  Brings up:
+#    postgres  — PostgreSQL 16 with the Vylapp schema applied automatically
+#    backend   — Node.js/Express API on port 4000
+#    frontend  — React/Vite dev server on port 5173
+#
+#  The Flutter mobile app (mobile/) is run natively via `flutter run`.
+#  It connects to the backend at the host machine IP (see mobile/README).
+#
+#  USAGE:
+#    cp .env.example backend/.env         # fill in your secrets
+#    docker compose up --build
+#
+#  To apply RBAC schema separately after initial setup:
+#    docker compose exec backend node src/db/migrate.js
+# ════════════════════════════════════════════════════════════════════════════
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       vylapp_dev
+      POSTGRES_USER:     vylapp
+      POSTGRES_PASSWORD: vylappdev
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vylapp -d vylapp_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Backend ────────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    restart: unless-stopped
+    env_file: ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://vylapp:vylappdev@postgres:5432/vylapp_dev
+      NODE_ENV:     development
+      PORT:         4000
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend/src:/app/src:ro    # hot-reload in dev; remove :ro in production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "node src/db/migrate.js && node src/server.js"
+
+  # ── Frontend ───────────────────────────────────────────────────────────────
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_PORT=5173
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  frontend_node_modules:
