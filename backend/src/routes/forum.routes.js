@@ -13,7 +13,7 @@ const router           = express.Router();
 const asyncHandler     = require("../middleware/asyncHandler");
 const { authenticate } = require("../middleware/auth");
 const ModerationEngine = require("../services/moderationEngine");
-const db               = require("../db");
+const db               = require("../config/db");
 
 function requireFields(body, fields) {
   const missing = fields.filter(f => body[f] === undefined || body[f] === null || body[f] === "");

@@ -11,7 +11,7 @@ const router           = express.Router();
 const asyncHandler     = require("../middleware/asyncHandler");
 const { authenticate } = require("../middleware/auth");
 const ModerationEngine = require("../services/moderationEngine");
-const db               = require("../db");
+const db               = require("../config/db");
 const crypto           = require("crypto");
 
 // ── Validation helpers ────────────────────────────────────────────────────────

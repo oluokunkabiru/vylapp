@@ -68,12 +68,24 @@ services:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
     ports:
-      - "5173:5173"
+      - "5180:5173"
     environment:
       - VITE_PORT=5173
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     depends_on:
       - backend
+
+  # ── DB UI (pgweb) ───────────────────────────────────────────────────────────
+  db-ui:
+    image: sosedoff/pgweb:latest
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - DATABASE_URL=postgres://vylapp:vylappdev@postgres:5432/vylapp_dev?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   pgdata:

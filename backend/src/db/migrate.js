@@ -28,6 +28,22 @@ async function migrate() {
     ssl: env.pgSsl ? { rejectUnauthorized: false } : false,
   });
 
+  console.log("[migrate] Checking if database is already initialized...");
+  const clientCheck = await pool.connect();
+  try {
+    const { rows } = await clientCheck.query(
+      "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users')"
+    );
+    if (rows[0].exists) {
+      console.log("[migrate] Database already initialized. Skipping migrations.");
+      process.exit(0);
+    }
+  } catch (err) {
+    console.warn("[migrate] Warning checking database state:", err.message);
+  } finally {
+    clientCheck.release();
+  }
+
   console.log("[migrate] Starting migration sequence...");
   let hasError = false;
 
