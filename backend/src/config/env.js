@@ -15,4 +15,10 @@ module.exports = {
   refreshSecret: get("REFRESH_SECRET", "dev_insecure_refresh_secret_change_me"),
   clientOrigin: process.env.CLIENT_ORIGIN || "*",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
+  mailHost: process.env.MAIL_HOST || "127.0.0.1",
+  mailPort: parseInt(process.env.MAIL_PORT || "1025", 10),
+  mailUsername: process.env.MAIL_USERNAME === "null" || !process.env.MAIL_USERNAME ? null : process.env.MAIL_USERNAME,
+  mailPassword: process.env.MAIL_PASSWORD === "null" || !process.env.MAIL_PASSWORD ? null : process.env.MAIL_PASSWORD,
+  mailFromAddress: process.env.MAIL_FROM_ADDRESS || "hello@example.com",
+  mailFromName: process.env.MAIL_FROM_NAME && !process.env.MAIL_FROM_NAME.includes("APP_NAME") ? process.env.MAIL_FROM_NAME : "Vylapp",
 };

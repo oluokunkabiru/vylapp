@@ -4,20 +4,20 @@ import { Ic, ic } from "../ui/index.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const PRIMARY_NAV = [
-  { to:"/",        icon:ic.home,   label:"Home"   },
-  { to:"/explore", icon:ic.search, label:"Search" },
-  { to:"__create",                 label:"Share"  },
-  { to:"/spaces",  icon:ic.spaces, label:"Spaces" },
-  { to:"__more",                   label:"More"   },
+  { to:"/dashboard", icon:ic.chart,  label:"Dash" },
+  { to:"/",          icon:ic.home,   label:"Feed" },
+  { to:"__create",                   label:"Share" },
+  { to:"/spaces",    icon:ic.spaces, label:"Spaces" },
+  { to:"__more",                     label:"More" },
 ];
 
 const MORE_ITEMS = [
-  { to:"/autopilot", icon:ic.zap,    label:"Autopilot", color:"var(--violet-lt)",  auth:true  },
-  { to:"/creator",   icon:ic.dollar, label:"Earnings",  color:"var(--green)",      auth:true  },
-  { to:"/raven",     icon:ic.trophy, label:"Raven",     color:"var(--amber)",      auth:false },
-  { to:"/notifications", icon:ic.bell, label:"Activity", color:"var(--sky)",       auth:true  },
-  { to:"/messages",  icon:ic.send,   label:"Messages",  color:"var(--purple)",     auth:true  },
-  { to:"/profile",   icon:ic.user,   label:"Profile",   color:"var(--coral)",      auth:true  },
+  { to:"/explore",       icon:ic.search, label:"Search",    color:"var(--sky)",        auth:false },
+  { to:"/autopilot",     icon:ic.zap,    label:"Autopilot", color:"var(--violet-lt)",  auth:true  },
+  { to:"/creator",       icon:ic.dollar, label:"Earnings",  color:"var(--green)",      auth:true  },
+  { to:"/notifications", icon:ic.bell,   label:"Activity",  color:"var(--purple)",     auth:true  },
+  { to:"/messages",      icon:ic.send,   label:"Messages",  color:"var(--teal)",       auth:true  },
+  { to:"/profile",       icon:ic.user,   label:"Profile",   color:"var(--coral)",      auth:true  },
 ];
 
 export default function BottomNav({ onCreateClick, notifCount }) {

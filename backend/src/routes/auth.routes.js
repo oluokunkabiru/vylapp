@@ -2,6 +2,7 @@ const express = require("express");
 const db = require("../config/db");
 const env = require("../config/env");
 const crypto = require("../utils/crypto");
+const mailer = require("../utils/mailer");
 const { ok, fail } = require("../utils/respond");
 const asyncHandler = require("../middleware/asyncHandler");
 const { requireAuth } = require("../middleware/auth");
@@ -141,6 +142,54 @@ router.post("/2fa/verify", requireAuth, asyncHandler(async (req, res) => {
   if (!valid) return fail(res, 401, "Invalid code");
   await db.query(`UPDATE users SET two_factor_enabled = TRUE WHERE id = $1`, [req.user.id]);
   return ok(res, { enabled: true });
+}));
+
+// ── Forgot Password ──────────────────────────────────────────────────────────
+router.post("/forgot-password", asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) return fail(res, 400, "Email is required");
+
+  const { rows } = await db.query(`SELECT id, display_name, email FROM users WHERE email = $1`, [email]);
+  if (rows.length) {
+    const user = rows[0];
+    const token = crypto.generatePasswordResetToken();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiration
+
+    await db.query(
+      `INSERT INTO password_resets (user_id, token, expires_at) VALUES ($1, $2, $3)`,
+      [user.id, token, expiresAt]
+    );
+
+    try {
+      await mailer.sendPasswordResetEmail(user.email, token, user.display_name);
+    } catch (err) {
+      console.error("[forgot-password] failed to send email:", err);
+      // Still return success to prevent enumeration and keep user flow consistent
+    }
+  }
+
+  return ok(res, { message: "If the email is registered, a password reset link has been sent." });
+}));
+
+// ── Reset Password ───────────────────────────────────────────────────────────
+router.post("/reset-password", asyncHandler(async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) return fail(res, 400, "Token and newPassword are required");
+  if (newPassword.length < 8) return fail(res, 400, "Password must be at least 8 characters");
+
+  const { rows: resets } = await db.query(
+    `SELECT * FROM password_resets WHERE token = $1 AND used_at IS NULL AND expires_at > NOW()`,
+    [token]
+  );
+  if (!resets.length) return fail(res, 400, "Invalid or expired reset token");
+  const resetRecord = resets[0];
+
+  const hashed = crypto.hashPassword(newPassword);
+  await db.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [hashed, resetRecord.user_id]);
+  await db.query(`UPDATE password_resets SET used_at = NOW() WHERE id = $1`, [resetRecord.id]);
+  await db.query(`UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL`, [resetRecord.user_id]);
+
+  return ok(res, { message: "Password has been reset successfully." });
 }));
 
 module.exports = { router, publicUser };

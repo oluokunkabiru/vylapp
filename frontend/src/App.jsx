@@ -9,6 +9,10 @@ import Sidebar from "./components/layout/Sidebar.jsx";
 import CreateModal from "./components/feed/CreateModal.jsx";
 
 import Login from "./pages/Login.jsx";
+import Register from "./pages/Register.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
+import Dashboard from "./pages/Dashboard.jsx";
 import Home from "./pages/Home.jsx";
 import Explore from "./pages/Explore.jsx";
 import SpacesPage from "./pages/SpacesPage.jsx";
@@ -63,7 +67,11 @@ export default function App() {
 
   const mainContent = (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Register />} />
+      <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} />
+      <Route path="/reset-password" element={user ? <Navigate to="/dashboard" replace /> : <ResetPassword />} />
+      <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
       <Route path="/" element={<RequireAuth><Home {...commonProps} /></RequireAuth>} />
       <Route path="/explore" element={<RequireAuth><Explore /></RequireAuth>} />
       <Route path="/spaces" element={<RequireAuth><SpacesPage /></RequireAuth>} />

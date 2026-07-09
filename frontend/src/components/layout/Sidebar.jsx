@@ -3,7 +3,8 @@ import { Ic, ic, Avatar, VylappWordmark } from "../ui/index.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const NAV = [
-  { to:"/",              icon:ic.home,    label:"Home"      },
+  { to:"/dashboard",     icon:ic.chart,   label:"Dashboard" },
+  { to:"/",              icon:ic.home,    label:"Feed"      },
   { to:"/explore",       icon:ic.search,  label:"Search"    },
   { to:"/spaces",        icon:ic.spaces,  label:"Spaces"    },
   { to:"/notifications", icon:ic.bell,    label:"Activity"  },
