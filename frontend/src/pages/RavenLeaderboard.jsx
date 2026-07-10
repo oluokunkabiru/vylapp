@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { Spinner, Empty, numFmt } from "../components/ui/index.jsx";
+import { Ic, ic, Spinner, Empty, numFmt } from "../components/ui/index.jsx";
 
 // ── Tier definitions (mirrors backend RavenEngine) ─────────────────────────
+// Icons instead of emoji badges — these represent standing on the platform,
+// not achievement-unlocked stickers.
 const TIERS = {
-  new_user:    { label: "New User",    badge: "🌱", color: "#4A4870", min: 0,    next: 100  },
-  contributor: { label: "Contributor", badge: "⚡", color: "#FFB830", min: 100,  next: 500  },
-  raven:       { label: "Raven",       badge: "🪶", color: "#8B5CF6", min: 500,  next: 2000 },
-  verified:    { label: "Verified",    badge: "✦",  color: "#10F5A0", min: 2000, next: null },
+  new_user:    { label: "New User",    icon: "sparkle", color: "#4A4870", min: 0,    next: 100  },
+  contributor: { label: "Contributor", icon: "zap",     color: "#FFB830", min: 100,  next: 500  },
+  raven:       { label: "Raven",       icon: "raven",   color: "#8B5CF6", min: 500,  next: 2000 },
+  verified:    { label: "Verified",    icon: "check",   color: "#10F5A0", min: 2000, next: null },
 };
 
 const TIER_ORDER = ["new_user", "contributor", "raven", "verified"];
@@ -76,7 +78,7 @@ function MyTierCard({ tier, loading }) {
           position: "absolute", inset: 0, display: "flex", flexDirection: "column",
           alignItems: "center", justifyContent: "center",
         }}>
-          <span style={{ fontSize: 32 }}>{def.badge}</span>
+          <Ic d={ic[def.icon]} s={34} c={def.color} />
         </div>
       </div>
 
@@ -127,8 +129,8 @@ function TierRoadmap({ currentKey }) {
                 background: isPast || isCurrent ? `${t.color}20` : "var(--bg4)",
                 border: `2px solid ${isPast || isCurrent ? t.color : "var(--border2)"}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 18, transition: "all 0.3s", flexShrink: 0,
-              }}>{t.badge}</div>
+                transition: "all 0.3s", flexShrink: 0,
+              }}><Ic d={ic[t.icon]} s={16} c={isPast || isCurrent ? t.color : "var(--text3)"} /></div>
               {i < 3 && <div style={{ width: 2, height: 18, background: isPast ? t.color : "var(--border2)", marginTop: 4 }} />}
             </div>
 
@@ -198,7 +200,7 @@ function LeaderboardRow({ entry, rank, isMe }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontWeight: 800, fontSize: 14 }}>{entry.displayName || entry.handle}</span>
-          <span title={entry.tier} style={{ fontSize: 14 }}>{entry.badge || t.badge}</span>
+          <span title={entry.tier} style={{ display: "inline-flex" }}><Ic d={ic[t.icon]} s={13} c={t.color} /></span>
           {isMe && <span style={{ fontSize: 11, color: "var(--violet-lt)", fontWeight: 700 }}>· You</span>}
         </div>
         <div style={{ color: "var(--text2)", fontSize: 12, fontFamily: "var(--mono)", marginTop: 2 }}>@{entry.handle}</div>
@@ -270,8 +272,8 @@ export default function RavenLeaderboard() {
     <div style={{ padding: "20px 16px 48px" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#A78BFA,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
-          🪶
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#A78BFA,#7C3AED)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Ic d={ic.raven} s={19} c="#fff" />
         </div>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0 }}>Raven</h1>
@@ -340,14 +342,32 @@ export default function RavenLeaderboard() {
             Every action on Vylapp earns points toward your Raven tier. Keep showing up and your rank will climb.
           </p>
           <HowToEarn />
+          {user?.isFoundingMember && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 12, background: "var(--amber-dim)",
+              border: "1px solid var(--amber)", borderRadius: 14, padding: "12px 16px", marginBottom: 14,
+            }}>
+              <Ic d={ic.raven} s={22} c="var(--amber)" />
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 14 }}>You're Founding Raven #{user.foundingRank}</div>
+                <div style={{ color: "var(--text2)", fontSize: 12.5 }}>Your 85% revenue share rate is already active — see Creator Earnings.</div>
+              </div>
+            </div>
+          )}
           <div style={{
             background: "linear-gradient(135deg,rgba(167,139,250,0.12),rgba(124,58,237,0.06))",
             border: "1px solid rgba(167,139,250,0.3)", borderRadius: 16, padding: "16px 18px",
           }}>
-            <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 6 }}>🪶 Founding Raven</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, fontWeight: 800, fontSize: 15, marginBottom: 6 }}>
+              <Ic d={ic.raven} s={15} c="var(--purple)" /> Founding Raven
+            </div>
             <div style={{ color: "var(--text2)", fontSize: 13.5, lineHeight: 1.6 }}>
-              The first 1,000 members to join Vylapp earn <strong style={{ color: "var(--amber)" }}>Founding Raven</strong> status —
-              including an 85% revenue share rate, a lifetime price lock on Pro, and VIP access to the annual Raven Summit.
+              {user?.isFoundingMember ? (
+                <>You were one of the first 1,000 to join Vylapp — that's a permanent status, not a subscription. It comes with an 85% revenue share rate, a lifetime price lock on Pro, and VIP access to the annual Raven Summit.</>
+              ) : (
+                <>The first 1,000 members to join Vylapp earn <strong style={{ color: "var(--amber)" }}>Founding Raven</strong> status —
+                including an 85% revenue share rate, a lifetime price lock on Pro, and VIP access to the annual Raven Summit.</>
+              )}
             </div>
           </div>
         </>

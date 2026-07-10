@@ -33,9 +33,14 @@ function CourseCard({ course }) {
       <div style={{ background:"var(--bg3)", border:"1px solid var(--border2)", borderRadius:18, overflow:"hidden", marginBottom:14 }}>
         <div style={{
           height:110, background: course.cover_image_url ? `url(${course.cover_image_url}) center/cover` : grad,
-          display:"flex", alignItems:"flex-end", padding:12,
+          display:"flex", alignItems:"flex-end", justifyContent:"space-between", padding:12,
         }}>
           <CategoryPill category={course.category} />
+          <span style={{
+            display:"inline-flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:6,
+            fontSize:10.5, fontWeight:800, letterSpacing:0.5, fontFamily:"var(--mono)",
+            background:"rgba(0,0,0,0.4)", backdropFilter:"blur(4px)", color:"var(--teal)",
+          }}><Ic d={ic.book} s={10} c="var(--teal)" /> COURSE</span>
         </div>
         <div style={{ padding:14 }}>
           <div style={{ fontWeight:800, fontSize:15.5, lineHeight:1.35, marginBottom:6 }}>{course.title}</div>
@@ -68,14 +73,14 @@ function EnrolmentCard({ enrolment }) {
       <div style={{ background:"var(--bg3)", border:"1px solid var(--border2)", borderRadius:16, padding:16, marginBottom:12 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
           <div style={{ fontWeight:800, fontSize:15, lineHeight:1.35, flex:1, paddingRight:10 }}>{enrolment.title}</div>
-          <span style={{ fontSize:12.5, fontWeight:800, color: enrolment.status === "completed" ? "var(--green)" : "var(--violet-lt)" }}>
+          <span style={{ fontSize:12.5, fontWeight:800, color: enrolment.status === "completed" ? "var(--green)" : "var(--teal)" }}>
             {enrolment.progress_pct}%
           </span>
         </div>
         <div style={{ height:6, borderRadius:3, background:"var(--bg4)", overflow:"hidden" }}>
           <div style={{
             height:"100%", width:`${enrolment.progress_pct}%`,
-            background: enrolment.status === "completed" ? "var(--green)" : "var(--grad)",
+            background: enrolment.status === "completed" ? "var(--green)" : "var(--teal)",
           }} />
         </div>
         <div style={{ color:"var(--text3)", fontSize:12, marginTop:8 }}>
@@ -162,7 +167,7 @@ export default function LearnHome() {
             flex:1, padding:"11px 0", background:"none", border:"none", cursor:"pointer",
             fontWeight:800, fontSize:13.5,
             color: tab===k ? "var(--text)" : "var(--text3)",
-            borderBottom: tab===k ? "2px solid var(--violet)" : "2px solid transparent",
+            borderBottom: tab===k ? "2px solid var(--teal)" : "2px solid transparent",
           }}>{l}</button>
         ))}
       </div>
@@ -191,9 +196,9 @@ export default function LearnHome() {
             {DIFFICULTIES.map(d => (
               <button key={d.key} onClick={()=>setDifficulty(d.key)} style={{
                 flexShrink:0, padding:"6px 12px", borderRadius:"var(--radius-pill)",
-                border:`1px solid ${difficulty===d.key ? "var(--sky)" : "var(--border2)"}`,
-                background: difficulty===d.key ? "var(--sky-dim)" : "transparent",
-                color: difficulty===d.key ? "var(--sky)" : "var(--text3)",
+                border:`1px solid ${difficulty===d.key ? "var(--teal)" : "var(--border2)"}`,
+                background: difficulty===d.key ? "var(--teal-dim)" : "transparent",
+                color: difficulty===d.key ? "var(--teal)" : "var(--text3)",
                 fontSize:12.5, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap",
               }}>{d.label}</button>
             ))}
@@ -229,9 +234,24 @@ export default function LearnHome() {
               <>
                 <div style={{ fontWeight:800, fontSize:13, color:"var(--text2)", letterSpacing:0.5, margin:"20px 0 12px" }}>CERTIFICATES</div>
                 {certificates.map(c => (
-                  <div key={c.id} style={{ display:"flex", alignItems:"center", gap:12, background:"var(--amber-dim)", border:"1px solid var(--amber)", borderRadius:14, padding:14, marginBottom:10 }}>
-                    <Ic d={ic.trophy} s={22} c="var(--amber)" />
+                  <div key={c.id} style={{
+                    position:"relative", display:"flex", alignItems:"center", gap:14,
+                    background:"var(--amber-dim)", border:"1px solid var(--amber)", borderRadius:14,
+                    padding:"14px 16px", marginBottom:10, overflow:"hidden",
+                  }}>
+                    <div style={{
+                      position:"absolute", inset:4, border:"1px dashed rgba(255,184,48,0.35)",
+                      borderRadius:10, pointerEvents:"none",
+                    }} />
+                    <div style={{
+                      width:42, height:42, borderRadius:"50%", flexShrink:0,
+                      background:"var(--bg3)", border:"2px solid var(--amber)",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                    }}>
+                      <Ic d={ic.trophy} s={19} c="var(--amber)" />
+                    </div>
                     <div style={{ flex:1 }}>
+                      <div style={{ fontSize:10, fontWeight:800, letterSpacing:0.6, color:"var(--amber)", marginBottom:2 }}>CERTIFIED</div>
                       <div style={{ fontWeight:800, fontSize:14 }}>{c.course_title}</div>
                       <div style={{ color:"var(--text3)", fontSize:12 }}>Issued {new Date(c.issued_at).toLocaleDateString()}</div>
                     </div>

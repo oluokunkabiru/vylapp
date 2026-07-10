@@ -24,6 +24,17 @@ async function computePoints(userId) {
   );
 }
 
+// Whether a user currently qualifies for the revenue-share boost (see
+// creatorEconomyEngine.js): permanent founding-member status, or having
+// reached the Verified tier through points — either is sufficient.
+async function isBoosted(userId) {
+  const { rows } = await db.query(`SELECT is_founding_member FROM users WHERE id = $1`, [userId]);
+  if (rows[0]?.is_founding_member) return { boosted: true, reason: "founding" };
+  const points = await computePoints(userId);
+  if (RavenEngine.getTier(points).key === "verified") return { boosted: true, reason: "verified" };
+  return { boosted: false, reason: null };
+}
+
 // ── GET /raven/me ─────────────────────────────────────────────────────────
 router.get("/me", asyncHandler(async (req, res) => {
   const points = await computePoints(req.user.id);
@@ -45,3 +56,5 @@ router.get("/leaderboard", asyncHandler(async (req, res) => {
 }));
 
 module.exports = router;
+module.exports.computePoints = computePoints;
+module.exports.isBoosted = isBoosted;

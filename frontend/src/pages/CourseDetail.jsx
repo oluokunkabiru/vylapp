@@ -14,27 +14,34 @@ const CAT_GRADS = {
 };
 const TYPE_ICON = { video: ic.play, article: ic.book, quiz: ic.sparkle, live_session: ic.mic, interactive: ic.zap };
 
-function LessonRow({ lesson, index, locked, done, onClick }) {
+// A connected step timeline, not a flat feed list — Learn is about sequence
+// and progression, which a stack of identical rows (the Vibe/Spaces pattern)
+// doesn't communicate. Teal is Learn's own accent throughout this pillar,
+// distinct from violet (Vibe), sky (translation), and amber (achievement).
+function LessonRow({ lesson, index, locked, done, isLast, onClick }) {
   return (
-    <button onClick={() => !locked && onClick(lesson)} style={{
-      display:"flex", alignItems:"center", gap:12, width:"100%", padding:"13px 14px",
-      borderRadius:14, background:"var(--bg3)", border:"1px solid var(--border2)",
-      marginBottom:8, cursor: locked ? "default" : "pointer", opacity: locked ? 0.55 : 1, textAlign:"left",
-    }}>
-      <div style={{
-        width:32, height:32, borderRadius:10, flexShrink:0,
-        background: done ? "var(--green-dim)" : "var(--bg4)",
-        display:"flex", alignItems:"center", justifyContent:"center",
-      }}>
-        <Ic d={locked ? ic.lock : done ? ic.check : (TYPE_ICON[lesson.type] || ic.book)} s={15} c={done ? "var(--green)" : "var(--text2)"} />
+    <div style={{ display:"flex", gap:14 }}>
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", flexShrink:0 }}>
+        <div style={{
+          width:32, height:32, borderRadius:"50%", flexShrink:0,
+          background: done ? "var(--teal)" : locked ? "var(--bg4)" : "var(--bg3)",
+          border: `1.5px solid ${done ? "var(--teal)" : locked ? "var(--border2)" : "var(--teal)"}`,
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>
+          <Ic d={locked ? ic.lock : done ? ic.check : (TYPE_ICON[lesson.type] || ic.book)} s={14} c={done ? "var(--bg)" : locked ? "var(--text3)" : "var(--teal)"} />
+        </div>
+        {!isLast && <div style={{ width:2, flex:1, minHeight:20, background: done ? "var(--teal)" : "var(--border2)" }} />}
       </div>
-      <div style={{ flex:1, minWidth:0 }}>
+      <button onClick={() => !locked && onClick(lesson)} style={{
+        flex:1, minWidth:0, textAlign:"left", background:"none", border:"none",
+        cursor: locked ? "default" : "pointer", opacity: locked ? 0.55 : 1, paddingBottom:22,
+      }}>
         <div style={{ fontWeight:700, fontSize:14 }}>{index + 1}. {lesson.title}</div>
         <div style={{ color:"var(--text3)", fontSize:12, textTransform:"capitalize" }}>
           {lesson.type.replace("_"," ")}{lesson.duration_minutes ? ` · ${lesson.duration_minutes} min` : ""}{lesson.is_free_preview ? " · free preview" : ""}
         </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -101,9 +108,14 @@ export default function CourseDetail() {
     <div style={{ paddingBottom:40 }}>
       <div style={{
         height:150, background: course.cover_image_url ? `url(${course.cover_image_url}) center/cover` : grad,
-        display:"flex", alignItems:"flex-end", padding:16,
+        display:"flex", alignItems:"flex-end", justifyContent:"space-between", padding:16,
       }}>
         <CategoryPill category={course.category} />
+        <span style={{
+          display:"inline-flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:6,
+          fontSize:11, fontWeight:800, letterSpacing:0.5, fontFamily:"var(--mono)",
+          background:"rgba(0,0,0,0.4)", backdropFilter:"blur(4px)", color:"var(--teal)",
+        }}><Ic d={ic.book} s={11} c="var(--teal)" /> COURSE</span>
       </div>
 
       <div style={{ padding:"18px 16px" }}>
@@ -134,10 +146,10 @@ export default function CourseDetail() {
           <div style={{ marginBottom:22 }}>
             <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
               <span style={{ fontSize:13, color:"var(--text2)" }}>Your progress</span>
-              <span style={{ fontSize:13, fontWeight:800, color: enrolment.status === "completed" ? "var(--green)" : "var(--violet-lt)" }}>{enrolment.progress_pct}%</span>
+              <span style={{ fontSize:13, fontWeight:800, color: enrolment.status === "completed" ? "var(--green)" : "var(--teal)" }}>{enrolment.progress_pct}%</span>
             </div>
             <div style={{ height:6, borderRadius:3, background:"var(--bg4)", overflow:"hidden", marginBottom:14 }}>
-              <div style={{ height:"100%", width:`${enrolment.progress_pct}%`, background: enrolment.status === "completed" ? "var(--green)" : "var(--grad)" }} />
+              <div style={{ height:"100%", width:`${enrolment.progress_pct}%`, background: enrolment.status === "completed" ? "var(--green)" : "var(--teal)" }} />
             </div>
             <PrimaryButton full onClick={() => lessons[0] && openLesson(lessons[0])}>
               {enrolment.status === "completed" ? "Review course" : "Continue learning"}
@@ -155,7 +167,7 @@ export default function CourseDetail() {
         {/* Per-lesson completion isn't available at the list level (only aggregate
             progress_pct is) — each lesson shows its own done state once opened. */}
         {lessons.map((l, i) => (
-          <LessonRow key={l.id} lesson={l} index={i} locked={!isEnrolled && !l.is_free_preview} done={false} onClick={openLesson} />
+          <LessonRow key={l.id} lesson={l} index={i} locked={!isEnrolled && !l.is_free_preview} done={false} isLast={i === lessons.length - 1} onClick={openLesson} />
         ))}
 
         {enrolment?.status === "completed" && (

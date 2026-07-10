@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -232,8 +233,18 @@ export default function CreatorEarnings() {
         Earn from Super Vibes, subscription tiers, digital products, and paid Spaces. You keep 80%.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 320 }}>
-        {["💰 Keep 80% of all earnings", "⚡ Super Vibes on every post", "🎯 Subscription tiers for fans", "🎙️ Sell tickets to your Spaces"].map(f => (
-          <div key={f} style={{ background: "var(--bg3)", borderRadius: 12, padding: "11px 16px", textAlign: "left", fontSize: 14, color: "var(--text)" }}>{f}</div>
+        {[
+          { icon: "dollar", color: "var(--green)", text: "Keep 80% of all earnings" },
+          { icon: "zap", color: "var(--amber)", text: "Super Vibes on every post" },
+          { icon: "coins", color: "var(--violet-lt)", text: "Subscription tiers for fans" },
+          { icon: "mic", color: "var(--coral)", text: "Sell tickets to your Spaces" },
+        ].map(f => (
+          <div key={f.text} style={{ display: "flex", alignItems: "center", gap: 12, background: "var(--bg3)", borderRadius: 12, padding: "11px 16px", textAlign: "left" }}>
+            <div style={{ width: 30, height: 30, borderRadius: 9, flexShrink: 0, background: `${f.color}18`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Ic d={ic[f.icon]} s={15} c={f.color} />
+            </div>
+            <span style={{ fontSize: 14, color: "var(--text)" }}>{f.text}</span>
+          </div>
         ))}
       </div>
       <PrimaryButton onClick={becomeCreator} loading={becomingCreator} sx={{ width: "100%", maxWidth: 320 }}>
@@ -301,12 +312,26 @@ export default function CreatorEarnings() {
 
           {/* Take-rate explanation */}
           <div style={{ background: "var(--violet-dim)", border: "1px solid var(--violet-border)", borderRadius: 14, padding: "14px 16px" }}>
-            <div style={{ fontWeight: 800, fontSize: 13.5, marginBottom: 6 }}>💡 Vylapp's creator split</div>
-            <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6 }}>
-              You keep <strong style={{ color: "var(--green)" }}>80%</strong> of Super Vibes and subscription revenue.
-              Space ticket sales: <strong style={{ color: "var(--green)" }}>85%</strong>.
-              Founding creators: <strong style={{ color: "var(--amber)" }}>85%</strong> on all revenue.
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 24, height: 24, borderRadius: 7, background: "var(--green-dim)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Ic d={ic.dollar} s={13} c="var(--green)" />
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 13.5 }}>Your creator split</div>
             </div>
+            {earnings?.revenueShare?.boosted ? (
+              <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6 }}>
+                You keep <strong style={{ color: "var(--green)" }}>85%</strong> of Super Vibes and subscription revenue, and{" "}
+                <strong style={{ color: "var(--green)" }}>90%</strong> of Space ticket sales — the boosted rate for{" "}
+                {earnings.revenueShare.reason === "founding" ? "founding members (first 1,000 accounts)" : "Verified-tier creators"}.
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: "var(--text2)", lineHeight: 1.6 }}>
+                You keep <strong style={{ color: "var(--green)" }}>80%</strong> of Super Vibes and subscription revenue, and{" "}
+                <strong style={{ color: "var(--green)" }}>85%</strong> of Space ticket sales.
+                Founding members and Verified-tier creators keep an extra 5% —{" "}
+                <Link to="/raven" style={{ color: "var(--violet-lt)", fontWeight: 700 }}>see Raven</Link>.
+              </div>
+            )}
           </div>
         </>
       )}

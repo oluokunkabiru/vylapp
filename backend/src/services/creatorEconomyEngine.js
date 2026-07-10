@@ -10,7 +10,6 @@
 //  writes the ledger; wiring a live processor is a deliberate later step.
 // ════════════════════════════════════════════════════════════════════════════
 const TAKE_RATES = {
-  founding_cohort: 0.15,
   standard: 0.20,
   spaces_ticket: 0.15,
   super_vibe: 0.20,
@@ -18,32 +17,46 @@ const TAKE_RATES = {
   digital_product: 0.15,
 };
 
-const CreatorEconomyEngine = {
-  TAKE_RATES,
+// Revenue-share boost: founding members (first 1000 accounts, permanent) and
+// creators who've reached Raven's Verified tier both get 5 percentage points
+// off the platform's cut, floored at MIN_RATE. One mechanic, two ways to earn
+// it — see raven.routes.js's isBoosted().
+const BOOST_DELTA = 0.05;
+const MIN_RATE = 0.10;
 
-  splitSuperVibe(amount, creatorTier = "standard") {
-    const rate = creatorTier === "founding" ? TAKE_RATES.founding_cohort : TAKE_RATES.super_vibe;
+function boostedRate(base, boosted) {
+  return boosted ? Math.max(MIN_RATE, parseFloat((base - BOOST_DELTA).toFixed(3))) : base;
+}
+
+const CreatorEconomyEngine = {
+  TAKE_RATES, BOOST_DELTA, MIN_RATE,
+
+  splitSuperVibe(amount, boosted = false) {
+    const rate = boostedRate(TAKE_RATES.super_vibe, boosted);
     const platform_cut = parseFloat((amount * rate).toFixed(2));
     const creator_net = parseFloat((amount - platform_cut).toFixed(2));
-    return { gross: amount, platform_cut, creator_net, rate };
+    return { gross: amount, platform_cut, creator_net, rate, boosted };
   },
 
-  splitSubscription(monthlyAmount) {
-    const platform_cut = parseFloat((monthlyAmount * TAKE_RATES.standard).toFixed(2));
+  splitSubscription(monthlyAmount, boosted = false) {
+    const rate = boostedRate(TAKE_RATES.standard, boosted);
+    const platform_cut = parseFloat((monthlyAmount * rate).toFixed(2));
     const creator_net = parseFloat((monthlyAmount - platform_cut).toFixed(2));
-    return { gross: monthlyAmount, platform_cut, creator_net, annual_est: parseFloat((creator_net * 12).toFixed(2)) };
+    return { gross: monthlyAmount, platform_cut, creator_net, rate, boosted, annual_est: parseFloat((creator_net * 12).toFixed(2)) };
   },
 
-  splitSpaceTicket(price) {
-    const platform_cut = parseFloat((price * TAKE_RATES.spaces_ticket).toFixed(2));
+  splitSpaceTicket(price, boosted = false) {
+    const rate = boostedRate(TAKE_RATES.spaces_ticket, boosted);
+    const platform_cut = parseFloat((price * rate).toFixed(2));
     const creator_net = parseFloat((price - platform_cut).toFixed(2));
-    return { gross: price, platform_cut, creator_net };
+    return { gross: price, platform_cut, creator_net, rate, boosted };
   },
 
-  splitDigitalProduct(price) {
-    const platform_cut = parseFloat((price * TAKE_RATES.digital_product).toFixed(2));
+  splitDigitalProduct(price, boosted = false) {
+    const rate = boostedRate(TAKE_RATES.digital_product, boosted);
+    const platform_cut = parseFloat((price * rate).toFixed(2));
     const creator_net = parseFloat((price - platform_cut).toFixed(2));
-    return { gross: price, platform_cut, creator_net };
+    return { gross: price, platform_cut, creator_net, rate, boosted };
   },
 
   calculatePayout(ledgerEntries, minThreshold = 10) {

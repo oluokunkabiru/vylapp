@@ -37,6 +37,7 @@ function publicUser(row) {
     vibesCount: row.vibes_count, connectionsCount: row.connections_count, followingCount: row.following_count,
     contentLanguages: row.content_language, location: row.location,
     currentCountry: row.current_country, currentCity: row.current_city, heritageCountries: row.heritage_countries,
+    isFoundingMember: row.is_founding_member, foundingRank: row.founding_rank,
   };
 }
 
@@ -54,10 +55,18 @@ router.post("/register", asyncHandler(async (req, res) => {
   const password_hash = crypto.hashPassword(password);
   const initials = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 
+  // Founding member status: permanent, set once, first 1000 accounts ever.
+  // Accepted race condition at the exact boundary under concurrent signups —
+  // irrelevant at this app's scale, not worth row-locking the users table for.
+  const { rows: countRows } = await db.query(`SELECT COUNT(*) FROM users`);
+  const existingCount = parseInt(countRows[0].count, 10);
+  const isFounding = existingCount < 1000;
+  const foundingRank = isFounding ? existingCount + 1 : null;
+
   const { rows } = await db.query(
-    `INSERT INTO users (email, handle, display_name, password_hash, avatar_initials)
-     VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-    [email, handle, displayName, password_hash, initials || "VY"]
+    `INSERT INTO users (email, handle, display_name, password_hash, avatar_initials, is_founding_member, founding_rank)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [email, handle, displayName, password_hash, initials || "VY", isFounding, foundingRank]
   );
   const user = rows[0];
 

@@ -118,16 +118,18 @@ router.post("/:id/tip", requireAuth, asyncHandler(async (req, res) => {
   const space = await db.query(`SELECT host_id FROM spaces WHERE id = $1`, [req.params.id]);
   if (!space.rows.length) return fail(res, 404, "Space not found");
   const CreatorEconomyEngine = require("../services/creatorEconomyEngine");
-  const split = CreatorEconomyEngine.splitSuperVibe(amountUsd);
+  const { isBoosted } = require("./raven.routes");
+  const { boosted, reason: boostReason } = await isBoosted(space.rows[0].host_id);
+  const split = CreatorEconomyEngine.splitSuperVibe(amountUsd, boosted);
   const tip = await db.query(
     `INSERT INTO space_tips (space_id, tipper_id, recipient_id, amount_usd, message) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
     [req.params.id, req.user.id, space.rows[0].host_id, amountUsd, message || null]
   );
   await db.query(`UPDATE spaces SET total_tips_usd = total_tips_usd + $1 WHERE id = $2`, [amountUsd, req.params.id]);
   await db.query(
-    `INSERT INTO transactions (user_id, counterparty_id, type, direction, amount_usd, platform_fee_usd, net_usd, description)
-     VALUES ($1,$2,'tip','debit',$3,$4,$3,'Space tip')`,
-    [req.user.id, space.rows[0].host_id, amountUsd, split.platform_cut]
+    `INSERT INTO transactions (user_id, counterparty_id, type, direction, amount_usd, platform_fee_usd, net_usd, description, metadata)
+     VALUES ($1,$2,'tip','debit',$3,$4,$3,'Space tip',$5)`,
+    [req.user.id, space.rows[0].host_id, amountUsd, split.platform_cut, JSON.stringify({ rate: split.rate, boosted, boostReason })]
   );
   return ok(res, { tip: tip.rows[0], split }, 201);
 }));

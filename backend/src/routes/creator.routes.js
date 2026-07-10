@@ -5,6 +5,7 @@ const asyncHandler = require("../middleware/asyncHandler");
 const { requireAuth, optionalAuth } = require("../middleware/auth");
 const CreatorEconomyEngine = require("../services/creatorEconomyEngine");
 const NotificationEngine = require("../services/notificationEngine");
+const { isBoosted } = require("./raven.routes");
 
 const router = express.Router();
 
@@ -52,7 +53,8 @@ router.post("/:creatorId/subscribe", requireAuth, asyncHandler(async (req, res) 
   const tier = await db.query(`SELECT * FROM creator_subscription_tiers WHERE id = $1 AND creator_id = $2`, [tierId, req.params.creatorId]);
   if (!tier.rows.length) return fail(res, 404, "Tier not found");
 
-  const split = CreatorEconomyEngine.splitSubscription(parseFloat(tier.rows[0].price_usd));
+  const { boosted, reason: boostReason } = await isBoosted(req.params.creatorId);
+  const split = CreatorEconomyEngine.splitSubscription(parseFloat(tier.rows[0].price_usd), boosted);
   const periodEnd = new Date();
   periodEnd.setDate(periodEnd.getDate() + (tier.rows[0].billing_period === "annual" ? 365 : 30));
 
@@ -65,9 +67,9 @@ router.post("/:creatorId/subscribe", requireAuth, asyncHandler(async (req, res) 
     [req.user.id, req.params.creatorId, tierId, tier.rows[0].price_usd, periodEnd]
   );
   await db.query(
-    `INSERT INTO transactions (user_id, counterparty_id, type, direction, amount_usd, platform_fee_usd, net_usd, description)
-     VALUES ($1,$2,'creator_subscription','debit',$3,$4,$3,'Creator subscription')`,
-    [req.user.id, req.params.creatorId, tier.rows[0].price_usd, split.platform_cut]
+    `INSERT INTO transactions (user_id, counterparty_id, type, direction, amount_usd, platform_fee_usd, net_usd, description, metadata)
+     VALUES ($1,$2,'creator_subscription','debit',$3,$4,$3,'Creator subscription',$5)`,
+    [req.user.id, req.params.creatorId, tier.rows[0].price_usd, split.platform_cut, JSON.stringify({ rate: split.rate, boosted, boostReason })]
   );
   await db.query(
     `UPDATE creator_profiles SET subscriber_count = subscriber_count + 1, total_earned_usd = total_earned_usd + $1, pending_balance_usd = pending_balance_usd + $1 WHERE user_id = $2`,
@@ -83,7 +85,8 @@ router.post("/:creatorId/subscribe", requireAuth, asyncHandler(async (req, res) 
 router.post("/:creatorId/super-vibe", requireAuth, asyncHandler(async (req, res) => {
   const { amountUsd, vibeId, emoji, message } = req.body;
   if (!amountUsd || amountUsd <= 0) return fail(res, 400, "amountUsd must be positive");
-  const split = CreatorEconomyEngine.splitSuperVibe(amountUsd);
+  const { boosted, reason: boostReason } = await isBoosted(req.params.creatorId);
+  const split = CreatorEconomyEngine.splitSuperVibe(amountUsd, boosted);
 
   const { rows } = await db.query(
     `INSERT INTO super_vibes (sender_id, recipient_id, vibe_id, amount_usd, emoji, message, platform_fee_usd, creator_net_usd)
@@ -91,9 +94,9 @@ router.post("/:creatorId/super-vibe", requireAuth, asyncHandler(async (req, res)
     [req.user.id, req.params.creatorId, vibeId || null, amountUsd, emoji || "⚡", message || null, split.platform_cut, split.creator_net]
   );
   await db.query(
-    `INSERT INTO transactions (user_id, counterparty_id, type, direction, amount_usd, platform_fee_usd, net_usd, description)
-     VALUES ($1,$2,'super_vibe','debit',$3,$4,$3,'Super Vibe tip')`,
-    [req.user.id, req.params.creatorId, amountUsd, split.platform_cut]
+    `INSERT INTO transactions (user_id, counterparty_id, type, direction, amount_usd, platform_fee_usd, net_usd, description, metadata)
+     VALUES ($1,$2,'super_vibe','debit',$3,$4,$3,'Super Vibe tip',$5)`,
+    [req.user.id, req.params.creatorId, amountUsd, split.platform_cut, JSON.stringify({ rate: split.rate, boosted, boostReason })]
   );
   await db.query(
     `INSERT INTO creator_profiles (user_id, total_earned_usd, pending_balance_usd) VALUES ($1,$2,$2)
@@ -115,7 +118,8 @@ router.get("/me/earnings", requireAuth, asyncHandler(async (req, res) => {
     [req.user.id]
   );
   const payout = CreatorEconomyEngine.calculatePayout(ledger.rows);
-  return ok(res, { profile: profile.rows[0] || null, recentLedger: ledger.rows, nextPayout: payout });
+  const boost = await isBoosted(req.user.id);
+  return ok(res, { profile: profile.rows[0] || null, recentLedger: ledger.rows, nextPayout: payout, revenueShare: boost });
 }));
 
 // ── POST /creator/me/payout-request ───────────────────────────────────────

@@ -19,6 +19,8 @@
   --purple:        #A78BFA;
   --purple-dim:    rgba(167,139,250,0.12);
   --teal:          #2DD4BF;
+  --teal-dim:      rgba(45,212,191,0.12);
+  --teal-border:   rgba(45,212,191,0.28);
 
   /* Canvas */
   --bg:     #08070F;

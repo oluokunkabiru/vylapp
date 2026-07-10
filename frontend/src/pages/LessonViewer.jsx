@@ -31,8 +31,8 @@ function Checkpoint({ checkpoint, onAnswered }) {
           const isSelected = selected === opt.id;
           const isRight = result && opt.id === result.correct_option;
           const isWrongPick = result && isSelected && !result.is_correct;
-          const bg = isRight ? "var(--green-dim)" : isWrongPick ? "var(--coral-dim)" : isSelected ? "var(--violet-dim)" : "var(--bg)";
-          const border = isRight ? "var(--green)" : isWrongPick ? "var(--coral)" : isSelected ? "var(--violet)" : "var(--border2)";
+          const bg = isRight ? "var(--green-dim)" : isWrongPick ? "var(--coral-dim)" : isSelected ? "var(--teal-dim)" : "var(--bg)";
+          const border = isRight ? "var(--green)" : isWrongPick ? "var(--coral)" : isSelected ? "var(--teal)" : "var(--border2)";
           return (
             <button key={opt.id} disabled={busy} onClick={() => answer(opt.id)} style={{
               textAlign:"left", padding:"11px 14px", borderRadius:10, background:bg,

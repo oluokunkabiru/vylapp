@@ -5,9 +5,10 @@
 //   1. schema.sql             — core tables (users, vibes, spaces, etc.)
 //   2. schema_translation.sql — translation cache/usage (depends on users, vibes)
 //   3. schema_location.sql    — structured current/heritage location (depends on users)
-//   4. schema_learn.sql       — Learn pillar (depends on users, courses)
-//   5. schema_forum.sql       — Forum (depends on users)
-//   6. schema_rbac.sql        — RBAC (depends on users, forum_categories)
+//   4. schema_founding.sql    — founding-member flag (depends on users)
+//   5. schema_learn.sql       — Learn pillar (depends on users, courses)
+//   6. schema_forum.sql       — Forum (depends on users)
+//   7. schema_rbac.sql        — RBAC (depends on users, forum_categories)
 //
 // Each file is applied in a single transaction. If a file fails, it rolls
 // back that file only — previously applied files are committed.
@@ -21,6 +22,7 @@ const MIGRATIONS = [
   "schema.sql",
   "schema_translation.sql",
   "schema_location.sql",
+  "schema_founding.sql",
   "schema_learn.sql",
   "schema_forum.sql",
   "schema_rbac.sql",
