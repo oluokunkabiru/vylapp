@@ -53,6 +53,13 @@
   /* Shadows */
   --shadow-violet: 0 6px 24px rgba(124,58,237,0.35);
   --shadow-card:   0 4px 20px rgba(0,0,0,0.4);
+
+  /* Auth flow accent — enterprise blue, scoped to Login/Register/Forgot/Reset only */
+  --auth-accent:       #2F6FED;
+  --auth-accent-hover: #2558C4;
+  --auth-accent-dim:   rgba(47,111,237,0.16);
+  --auth-danger:       #E5484D;
+  --auth-danger-dim:   rgba(229,72,77,0.14);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -93,3 +100,11 @@ textarea:focus-visible {
 @keyframes slideUp { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
 @keyframes storyProgress { from { width:0%; } to { width:100%; } }
+
+/* Auth layout — split panel on wide screens, single column on narrow ones */
+.auth-brand-panel { display: none; }
+.auth-mobile-mark { display: flex; }
+@media (min-width: 900px) {
+  .auth-brand-panel { display: flex; }
+  .auth-mobile-mark { display: none; }
+}

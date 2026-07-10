@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
 import { getSocket } from "./lib/socket.js";
 
@@ -25,16 +25,30 @@ import RavenLeaderboard from "./pages/RavenLeaderboard.jsx";
 
 import { Spinner } from "./components/ui/index.jsx";
 
-function RequireAuth({ children }) {
-  const { user, loading } = useAuth();
-  const loc = useLocation();
-  if (loading) return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh" }}><Spinner size={36} /></div>;
-  if (!user) return <Navigate to="/login" state={{ from: loc }} replace />;
-  return children;
+function FullscreenSpinner() {
+  return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh" }}><Spinner size={36} /></div>;
 }
 
-export default function App() {
-  const { user, loading } = useAuth();
+// ── Outer gate: unauthenticated visitors never reach the inner (vibes) app ──
+function AuthGate() {
+  return (
+    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
+      <main style={{ flex: 1 }}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </main>
+    </div>
+  );
+}
+
+// ── Inner app: only ever rendered once a user is authenticated ─────────────
+function InnerApp() {
+  const { user } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 860);
   const [createOpen, setCreateOpen] = useState(false);
   const [lang, setLang] = useState(() => localStorage.getItem("vyl_lang") || "en");
@@ -51,7 +65,6 @@ export default function App() {
 
   // Real-time notification/message badges
   useEffect(() => {
-    if (!user) return;
     const socket = getSocket();
     if (!socket) return;
     const onNotif = () => setNotifCount(n => n + 1);
@@ -59,54 +72,30 @@ export default function App() {
     socket.on("notification:new", onNotif);
     socket.on("message:new", onMsg);
     return () => { socket.off("notification:new", onNotif); socket.off("message:new", onMsg); };
-  }, [user]);
-
-  if (loading) return <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"100vh" }}><Spinner size={36} /></div>;
+  }, []);
 
   const commonProps = { lang };
 
   const mainContent = (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Register />} />
-      <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} />
-      <Route path="/reset-password" element={user ? <Navigate to="/dashboard" replace /> : <ResetPassword />} />
-      <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
-      <Route path="/" element={<RequireAuth><Home {...commonProps} /></RequireAuth>} />
-      <Route path="/explore" element={<RequireAuth><Explore /></RequireAuth>} />
-      <Route path="/spaces" element={<RequireAuth><SpacesPage /></RequireAuth>} />
-      <Route path="/notifications" element={
-        <RequireAuth><Notifications onClearBadge={()=>setNotifCount(0)} /></RequireAuth>
-      } />
-      <Route path="/messages" element={
-        <RequireAuth><Messages onClearBadge={()=>setMsgCount(0)} /></RequireAuth>
-      } />
-      <Route path="/profile" element={
-        <RequireAuth><Profile /></RequireAuth>
-      } />
-      <Route path="/profile/:handle" element={<RequireAuth><Profile /></RequireAuth>} />
-      <Route path="/autopilot" element={
-        <RequireAuth><Autopilot /></RequireAuth>
-      } />
-      <Route path="/creator" element={
-        <RequireAuth><CreatorEarnings /></RequireAuth>
-      } />
-      <Route path="/raven" element={<RequireAuth><RavenLeaderboard /></RequireAuth>} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/" element={<Home {...commonProps} />} />
+      <Route path="/explore" element={<Explore />} />
+      <Route path="/spaces" element={<SpacesPage />} />
+      <Route path="/notifications" element={<Notifications onClearBadge={()=>setNotifCount(0)} />} />
+      <Route path="/messages" element={<Messages onClearBadge={()=>setMsgCount(0)} />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/profile/:handle" element={<Profile />} />
+      <Route path="/autopilot" element={<Autopilot />} />
+      <Route path="/creator" element={<CreatorEarnings />} />
+      <Route path="/raven" element={<RavenLeaderboard />} />
+      <Route path="/login" element={<Navigate to="/" replace />} />
+      <Route path="/register" element={<Navigate to="/" replace />} />
+      <Route path="/forgot-password" element={<Navigate to="/" replace />} />
+      <Route path="/reset-password" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
-
-  // Auth-required pages show login prompt if not signed in
-  const loc = useLocation();
-  const isAuthPage = ["/login", "/register", "/forgot-password", "/reset-password"].includes(loc.pathname);
-
-  if (isAuthPage) {
-    return (
-      <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
-        <main style={{ flex: 1 }}>{mainContent}</main>
-      </div>
-    );
-  }
 
   return (
     <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
@@ -115,13 +104,13 @@ export default function App() {
         <>
           <TopBar notifCount={notifCount} msgCount={msgCount} lang={lang} setLang={setLang} />
           <main style={{ flex:1, overflowY:"auto" }}>{mainContent}</main>
-          <BottomNav onCreateClick={() => user ? setCreateOpen(true) : null} notifCount={notifCount} />
+          <BottomNav onCreateClick={() => setCreateOpen(true)} notifCount={notifCount} />
         </>
       ) : (
         /* DESKTOP LAYOUT */
         <div style={{ display:"flex", width:"100%", maxWidth:1100, margin:"0 auto" }}>
           <Sidebar
-            onCreateClick={() => user ? setCreateOpen(true) : null}
+            onCreateClick={() => setCreateOpen(true)}
             notifCount={notifCount} msgCount={msgCount}
             lang={lang} setLang={setLang}
           />
@@ -140,6 +129,12 @@ export default function App() {
       )}
     </div>
   );
+}
+
+export default function App() {
+  const { user, loading } = useAuth();
+  if (loading) return <FullscreenSpinner />;
+  return user ? <InnerApp /> : <AuthGate />;
 }
 
 // ── Desktop right rail ─────────────────────────────────────────────────────
