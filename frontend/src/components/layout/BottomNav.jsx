@@ -13,6 +13,7 @@ const PRIMARY_NAV = [
 
 const MORE_ITEMS = [
   { to:"/explore",       icon:ic.search, label:"Search",    color:"var(--sky)",        auth:false },
+  { to:"/learn",         icon:ic.book,   label:"Learn",     color:"var(--amber)",      auth:false },
   { to:"/autopilot",     icon:ic.zap,    label:"Autopilot", color:"var(--violet-lt)",  auth:true  },
   { to:"/creator",       icon:ic.dollar, label:"Earnings",  color:"var(--green)",      auth:true  },
   { to:"/notifications", icon:ic.bell,   label:"Activity",  color:"var(--purple)",     auth:true  },

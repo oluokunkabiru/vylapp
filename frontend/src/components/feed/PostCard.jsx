@@ -38,9 +38,15 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
   const [draft, setDraft] = useState("");
   const [replies, setReplies] = useState([]);
   const [showReplies, setShowReplies] = useState(false);
-  const [translated, setTranslated] = useState(false);
-  const [translatedText, setTranslatedText] = useState(null);
+  // Auto-translation arrives already attached to the vibe (see GET /vibes/feed)
+  // for the main feed — it's on by default, this just lets the viewer flip
+  // back to the original. `manualTranslatedText` is a fallback for contexts
+  // (replies, single-vibe view) that don't go through that endpoint yet.
+  const [showOriginal, setShowOriginal] = useState(false);
+  const [manualTranslatedText, setManualTranslatedText] = useState(null);
   const [translating, setTranslating] = useState(false);
+  const hasAutoTranslation = !!vibe.translation;
+  const isTranslationAvailable = hasAutoTranslation || !!manualTranslatedText;
   const burstTimer = useRef(null);
 
   const toggleLike = async () => {
@@ -94,13 +100,12 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
   };
 
   const doTranslate = async () => {
-    if (translated) { setTranslated(false); return; }
-    if (translatedText) { setTranslated(true); return; }
+    if (isTranslationAvailable) { setShowOriginal(s => !s); return; }
     setTranslating(true);
     try {
       const { text } = await api.post(`/translate/vibes/${vibe.id}`, { toLang: lang });
-      setTranslatedText(text);
-      setTranslated(true);
+      setManualTranslatedText(text);
+      setShowOriginal(false);
     } catch (e) { toast("Translation unavailable", "error"); }
     finally { setTranslating(false); }
   };
@@ -112,7 +117,8 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
 
   const grad = CAT_GRADS[vibe.category] || CAT_GRADS.GENERAL;
   const emoji = CAT_EMOJI[vibe.category] || "✦";
-  const caption = translated && translatedText ? translatedText : vibe.content;
+  const translatedText = hasAutoTranslation ? vibe.translation.text : manualTranslatedText;
+  const caption = (isTranslationAvailable && !showOriginal) ? translatedText : vibe.content;
   const timeAgo = vibe.createdAt ? timeString(vibe.createdAt) : "";
 
   return (
@@ -136,10 +142,18 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
       {/* Media */}
       <div onDoubleClick={onDoubleTap} style={{
         position:"relative", width:"100%", aspectRatio:"4/5",
-        background:grad, display:"flex", alignItems:"center", justifyContent:"center",
+        background:`radial-gradient(circle at 50% 38%, rgba(255,255,255,0.10), transparent 55%), ${grad}`,
+        display:"flex", alignItems:"center", justifyContent:"center",
         cursor:"pointer", userSelect:"none",
       }}>
-        <span style={{ fontSize:82, filter:"drop-shadow(0 6px 18px rgba(0,0,0,0.25))" }}>{emoji}</span>
+        <div style={{
+          width:88, height:88, borderRadius:"50%",
+          background:"rgba(255,255,255,0.14)", backdropFilter:"blur(6px)",
+          border:"1px solid rgba(255,255,255,0.22)",
+          display:"flex", alignItems:"center", justifyContent:"center",
+        }}>
+          <span style={{ fontSize:36 }}>{emoji}</span>
+        </div>
         <HeartBurst show={burst} />
         {vibe.impactBadge && (
           <div style={{
@@ -181,18 +195,23 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
           </div>
         )}
 
-        {/* Translation button */}
+        {/* Translation toggle — shown translated by default when the feed already
+            auto-translated this vibe; otherwise behaves as an on-demand fetch. */}
         {lang && lang !== (vibe.language || "en") && (
           <button onClick={doTranslate} disabled={translating} style={{
             display:"inline-flex", alignItems:"center", gap:6, marginTop:8, padding:"6px 12px",
             borderRadius:"var(--radius-pill)",
-            border:`1px solid ${translated ? "var(--violet)" : "var(--border)"}`,
-            background: translated ? "var(--violet-dim)" : "transparent",
-            color: translated ? "var(--violet-lt)" : "var(--text2)",
+            border:`1px solid ${isTranslationAvailable && !showOriginal ? "var(--violet)" : "var(--border)"}`,
+            background: isTranslationAvailable && !showOriginal ? "var(--violet-dim)" : "transparent",
+            color: isTranslationAvailable && !showOriginal ? "var(--violet-lt)" : "var(--text2)",
             fontSize:12.5, fontWeight:700, cursor:"pointer",
           }}>
-            <Ic d={ic.globe} s={14} c={translated ? "var(--violet-lt)" : "var(--text2)"} />
-            {translating ? "Translating…" : translated ? `${LANG_NAMES[lang]} · tap to undo` : `See in ${LANG_NAMES[lang] || lang}`}
+            <Ic d={ic.globe} s={14} c={isTranslationAvailable && !showOriginal ? "var(--violet-lt)" : "var(--text2)"} />
+            {translating
+              ? "Translating…"
+              : isTranslationAvailable && !showOriginal
+                ? `${LANG_NAMES[lang] || lang} · tap to see original`
+                : `See in ${LANG_NAMES[lang] || lang}`}
           </button>
         )}
 

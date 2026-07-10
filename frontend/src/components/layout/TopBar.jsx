@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 const TITLES = {
   "/explore":       "Search",
   "/spaces":        "Spaces",
+  "/learn":         "Learn",
   "/profile":       "Profile",
   "/notifications": "Activity",
   "/messages":      "Messages",

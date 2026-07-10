@@ -52,7 +52,7 @@ router.get("/courses", asyncHandler(async (req, res) => {
   let sql = `SELECT c.id, c.title, c.description, c.category, c.language, c.difficulty,
     c.is_free, c.price_usd, c.cover_image_url, c.estimated_hours,
     c.enrolment_count, c.avg_rating, c.total_lessons, c.published_at,
-    u.handle AS educator_handle, u."displayName" AS educator_name,
+    u.handle AS educator_handle, u.display_name AS educator_name,
     ep.status AS educator_status
     FROM courses c
     JOIN educator_profiles ep ON ep.id = c.educator_id
@@ -74,7 +74,7 @@ router.get("/courses", asyncHandler(async (req, res) => {
 // ── GET /learn/courses/:id ─────────────────────────────────────────────────────
 router.get("/courses/:id", asyncHandler(async (req, res) => {
   const { rows } = await db.query(`
-    SELECT c.*, u.handle AS educator_handle, u."displayName" AS educator_name,
+    SELECT c.*, u.handle AS educator_handle, u.display_name AS educator_name,
       ep.bio AS educator_bio, ep.subjects, ep.languages_taught, ep.avg_rating AS educator_rating
     FROM courses c
     JOIN educator_profiles ep ON ep.id = c.educator_id
@@ -87,6 +87,77 @@ router.get("/courses/:id", asyncHandler(async (req, res) => {
     [rows[0].id]);
 
   res.json({ ok: true, data: { course: rows[0], lessons } });
+}));
+
+// ── GET /learn/lessons/:id ────────────────────────────────────────────────────
+// Requires enrolment in the parent course, unless the lesson is a free preview.
+// Quiz checkpoints are returned with correct_option/explanation stripped —
+// those only come back from POST /learn/checkpoints/:id/answer, after scoring.
+router.get("/lessons/:id", authenticate, asyncHandler(async (req, res) => {
+  const { rows: lessonRows } = await db.query(
+    "SELECT * FROM lessons WHERE id = $1", [req.params.id]);
+  if (!lessonRows.length) return res.status(404).json({ ok: false, error: { message: "Lesson not found" } });
+  const lesson = lessonRows[0];
+
+  if (!lesson.is_free_preview) {
+    const enrolCheck = await db.query(
+      "SELECT id FROM course_enrolments WHERE user_id=$1 AND course_id=$2 AND status IN ('active','completed')",
+      [req.user.id, lesson.course_id]);
+    if (!enrolCheck.rows.length) return res.status(403).json({ ok: false, error: { message: "Enrol in this course to view the lesson" } });
+  }
+
+  const { rows: completion } = await db.query(
+    "SELECT * FROM lesson_completions WHERE user_id=$1 AND lesson_id=$2", [req.user.id, req.params.id]);
+
+  let checkpoints = [];
+  if (lesson.type === "quiz") {
+    const { rows: cps } = await db.query(
+      "SELECT id, question, options, points, sort_order FROM knowledge_checkpoints WHERE lesson_id=$1 ORDER BY sort_order",
+      [req.params.id]);
+    const { rows: responses } = await db.query(
+      `SELECT cr.checkpoint_id, cr.selected_option, cr.is_correct, cr.points_earned
+       FROM checkpoint_responses cr JOIN knowledge_checkpoints kc ON kc.id = cr.checkpoint_id
+       WHERE cr.user_id = $1 AND kc.lesson_id = $2`,
+      [req.user.id, req.params.id]);
+    const responseMap = new Map(responses.map(r => [r.checkpoint_id, r]));
+    checkpoints = cps.map(c => ({ ...c, response: responseMap.get(c.id) || null }));
+  }
+
+  res.json({ ok: true, data: { lesson, checkpoints, completion: completion[0] || null } });
+}));
+
+// ── POST /learn/checkpoints/:id/answer ────────────────────────────────────────
+router.post("/checkpoints/:id/answer", authenticate, asyncHandler(async (req, res) => {
+  const { selected_option } = req.body;
+  requireFields(req.body, ["selected_option"]);
+
+  const { rows } = await db.query(
+    `SELECT kc.id, kc.correct_option, kc.explanation, kc.points, l.course_id
+     FROM knowledge_checkpoints kc JOIN lessons l ON l.id = kc.lesson_id
+     WHERE kc.id = $1`, [req.params.id]);
+  if (!rows.length) return res.status(404).json({ ok: false, error: { message: "Checkpoint not found" } });
+  const checkpoint = rows[0];
+
+  const enrolCheck = await db.query(
+    "SELECT id FROM course_enrolments WHERE user_id=$1 AND course_id=$2 AND status IN ('active','completed')",
+    [req.user.id, checkpoint.course_id]);
+  if (!enrolCheck.rows.length) return res.status(403).json({ ok: false, error: { message: "Enrol in this course to answer" } });
+
+  const isCorrect = selected_option === checkpoint.correct_option;
+  const pointsEarned = isCorrect ? checkpoint.points : 0;
+
+  await db.query(
+    `INSERT INTO checkpoint_responses (user_id, checkpoint_id, selected_option, is_correct, points_earned)
+     VALUES ($1,$2,$3,$4,$5)
+     ON CONFLICT (user_id, checkpoint_id) DO UPDATE
+       SET selected_option = EXCLUDED.selected_option, is_correct = EXCLUDED.is_correct,
+           points_earned = EXCLUDED.points_earned, responded_at = NOW()`,
+    [req.user.id, req.params.id, selected_option, isCorrect, pointsEarned]);
+
+  res.json({ ok: true, data: {
+    is_correct: isCorrect, correct_option: checkpoint.correct_option,
+    explanation: checkpoint.explanation, points_earned: pointsEarned,
+  } });
 }));
 
 // ── POST /learn/educator/apply ─────────────────────────────────────────────────
@@ -261,7 +332,7 @@ router.post("/courses/:id/rate", authenticate, asyncHandler(async (req, res) => 
 // ── Internal: certificate issuance ────────────────────────────────────────────
 async function issueCertificate(userId, courseId) {
   const { rows: cRows } = await db.query(
-    "SELECT c.title, u.\"displayName\" FROM courses c JOIN educator_profiles ep ON ep.id = c.educator_id JOIN users u ON u.id = ep.user_id WHERE c.id=$1",
+    "SELECT c.title, u.display_name AS \"displayName\" FROM courses c JOIN educator_profiles ep ON ep.id = c.educator_id JOIN users u ON u.id = ep.user_id WHERE c.id=$1",
     [courseId]);
   if (!cRows.length) return null;
 

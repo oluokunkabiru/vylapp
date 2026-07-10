@@ -6,6 +6,7 @@ const mailer = require("../utils/mailer");
 const { ok, fail } = require("../utils/respond");
 const asyncHandler = require("../middleware/asyncHandler");
 const { requireAuth } = require("../middleware/auth");
+const rbac = require("../rbac");
 
 const router = express.Router();
 
@@ -57,6 +58,10 @@ router.post("/register", asyncHandler(async (req, res) => {
     [email, handle, displayName, password_hash, initials || "VY"]
   );
   const user = rows[0];
+
+  // Every authenticated user needs the base 'user' role — it's what grants
+  // vibes.create and the other everyday permissions (see schema_rbac.sql).
+  await rbac.assignRole(user.id, "user");
 
   const { accessToken, refreshToken } = issueTokens(user);
   await storeRefreshToken(user.id, refreshToken, { ip: req.ip, ua: req.headers["user-agent"] });

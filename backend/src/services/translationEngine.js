@@ -98,9 +98,9 @@ const TranslationEngine = {
   LANGUAGES,
   getLang(code) { return LANGUAGES.find(l => l.code === code) || null; },
 
-  async translate(text, fromLang, toLang, context = "post") {
+  async translate(text, fromLang, toLang, context = "post", { allowAI = true } = {}) {
     if (fromLang === toLang) return { text, method: "passthrough" };
-    if (env.anthropicApiKey) {
+    if (allowAI && env.anthropicApiKey) {
       try {
         const fromName = this.getLang(fromLang)?.name || fromLang;
         const toName = this.getLang(toLang)?.name || toLang;

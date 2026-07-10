@@ -16,6 +16,9 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Home from "./pages/Home.jsx";
 import Explore from "./pages/Explore.jsx";
 import SpacesPage from "./pages/SpacesPage.jsx";
+import LearnHome from "./pages/LearnHome.jsx";
+import CourseDetail from "./pages/CourseDetail.jsx";
+import LessonViewer from "./pages/LessonViewer.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Messages from "./pages/Messages.jsx";
 import Profile from "./pages/Profile.jsx";
@@ -82,6 +85,9 @@ function InnerApp() {
       <Route path="/" element={<Home {...commonProps} />} />
       <Route path="/explore" element={<Explore />} />
       <Route path="/spaces" element={<SpacesPage />} />
+      <Route path="/learn" element={<LearnHome />} />
+      <Route path="/learn/courses/:id" element={<CourseDetail />} />
+      <Route path="/learn/courses/:id/lessons/:lessonId" element={<LessonViewer />} />
       <Route path="/notifications" element={<Notifications onClearBadge={()=>setNotifCount(0)} />} />
       <Route path="/messages" element={<Messages onClearBadge={()=>setMsgCount(0)} />} />
       <Route path="/profile" element={<Profile />} />

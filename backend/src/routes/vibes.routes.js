@@ -7,8 +7,13 @@ const { requirePermission, requireAnyPermission } = require("../middleware/rbac"
 const FeedEngine = require("../services/feedEngine");
 const ModerationEngine = require("../services/moderationEngine");
 const NotificationEngine = require("../services/notificationEngine");
+const TranslationEngine = require("../services/translationEngine");
+const LanguageDetector = require("../services/languageDetector");
 
 const router = express.Router();
+
+const FREE_DAILY_AI_TRANSLATIONS = 30;
+const PRO_DAILY_AI_TRANSLATIONS = 500;
 
 const VIBE_FIELDS = `
   v.id, v.user_id, v.content, v.category, v.tags, v.language,
@@ -58,6 +63,65 @@ async function attachViewerState(rows, userId) {
   return rows.map(r => ({ row: r, state: { liked: likedSet.has(r.id), reposted: repostedSet.has(r.id), saved: savedSet.has(r.id) } }));
 }
 
+// Auto-translates a page of already-shaped vibes into `targetLang`, in place.
+// Free-for-everyone by default: results are cached per (vibe, lang) so the
+// AI-quality path only runs once per popular post, not once per viewer.
+// Signed-in users get a daily AI-translation allowance (higher for Pro);
+// once spent, remaining misses fall back to the offline dictionary rather
+// than failing the request.
+async function translateVibesForViewer(vibes, targetLang, userId) {
+  if (!targetLang) return vibes;
+  const candidates = vibes.filter(v => v.language && v.language !== targetLang && v.content);
+  if (!candidates.length) return vibes;
+
+  const { rows: cached } = await db.query(
+    `SELECT vibe_id, content, method FROM vibe_translations WHERE target_lang = $1 AND vibe_id = ANY($2)`,
+    [targetLang, candidates.map(v => v.id)]
+  );
+  const cacheMap = new Map(cached.map(r => [r.vibe_id, r]));
+
+  let remainingAI = 0;
+  if (userId) {
+    const { rows } = await db.query(
+      `SELECT COALESCE((SELECT subscription_plan FROM users WHERE id = $1), 'free') AS plan,
+              COALESCE((SELECT count FROM translation_usage WHERE user_id = $1 AND day = CURRENT_DATE), 0) AS used`,
+      [userId]
+    );
+    const cap = rows[0].plan !== "free" ? PRO_DAILY_AI_TRANSLATIONS : FREE_DAILY_AI_TRANSLATIONS;
+    remainingAI = Math.max(0, cap - rows[0].used);
+  }
+
+  let aiCallsMade = 0;
+  for (const v of candidates) {
+    const hit = cacheMap.get(v.id);
+    if (hit) {
+      v.translation = { text: hit.content, method: hit.method, fromLang: v.language, toLang: targetLang };
+      continue;
+    }
+    const result = await TranslationEngine.translate(v.content, v.language, targetLang, "post", {
+      allowAI: aiCallsMade < remainingAI,
+    });
+    if (result.method === "untranslated" || result.method === "passthrough") continue;
+    await db.query(
+      `INSERT INTO vibe_translations (vibe_id, target_lang, content, method) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (vibe_id, target_lang) DO UPDATE SET content = EXCLUDED.content, method = EXCLUDED.method`,
+      [v.id, targetLang, result.text, result.method]
+    ).catch(() => {});
+    if (result.method === "claude") aiCallsMade++;
+    v.translation = { text: result.text, method: result.method, fromLang: v.language, toLang: targetLang };
+  }
+
+  if (userId && aiCallsMade > 0) {
+    await db.query(
+      `INSERT INTO translation_usage (user_id, day, count) VALUES ($1, CURRENT_DATE, $2)
+       ON CONFLICT (user_id, day) DO UPDATE SET count = translation_usage.count + EXCLUDED.count`,
+      [userId, aiCallsMade]
+    ).catch(() => {});
+  }
+
+  return vibes;
+}
+
 // ── GET /vibes/feed — personalized home feed ─────────────────────────────
 router.get("/feed", optionalAuth, asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page || "0", 10);
@@ -83,7 +147,9 @@ router.get("/feed", optionalAuth, asyncHandler(async (req, res) => {
 
   const ranked = FeedEngine.rankFeed(rows, userProfile, { page, pageSize });
   const withState = await attachViewerState(ranked, req.user?.id);
-  return ok(res, { vibes: withState.map(({ row, state }) => shapeVibe(row, state)), page, pageSize });
+  const shaped = withState.map(({ row, state }) => shapeVibe(row, state));
+  await translateVibesForViewer(shaped, req.query.lang, req.user?.id);
+  return ok(res, { vibes: shaped, page, pageSize });
 }));
 
 // ── GET /vibes/category/:category — category feed (Explore filter chips) ─
@@ -95,7 +161,9 @@ router.get("/category/:category", optionalAuth, asyncHandler(async (req, res) =>
     [req.params.category]
   );
   const withState = await attachViewerState(rows, req.user?.id);
-  return ok(res, { vibes: withState.map(({ row, state }) => shapeVibe(row, state)) });
+  const shaped = withState.map(({ row, state }) => shapeVibe(row, state));
+  await translateVibesForViewer(shaped, req.query.lang, req.user?.id);
+  return ok(res, { vibes: shaped });
 }));
 
 // ── GET /vibes/:id — single vibe + its replies (comments) ───────────────
@@ -127,11 +195,13 @@ router.post("/", requireAuth, requirePermission("vibes.create"), asyncHandler(as
     return fail(res, 422, `Post blocked: ${moderation.label}`, { moderation });
   }
 
+  const language = await LanguageDetector.detect(content, "en");
+
   const { rows } = await db.query(
-    `INSERT INTO vibes (user_id, content, category, tags, reply_to, quote_of, event_title, event_time, is_sensitive)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    `INSERT INTO vibes (user_id, content, category, tags, reply_to, quote_of, event_title, event_time, is_sensitive, language)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
     [req.user.id, content.trim(), category || "GENERAL", tags || [], replyTo || null, quoteOf || null,
-     eventTitle || null, eventTime || null, moderation.action === "flag_for_review"]
+     eventTitle || null, eventTime || null, moderation.action === "flag_for_review", language]
   );
   const vibe = rows[0];
 

@@ -58,6 +58,9 @@ async function seed() {
     );
   }
 
+  console.log("[seed] inserting demo Learn courses ...");
+  await seedLearn(pool);
+
   console.log("[seed] marking Jade as a creator with a subscription tier ...");
   await pool.query(`UPDATE users SET is_creator = TRUE WHERE id = $1`, [USERS.jade]);
   await pool.query(
@@ -74,6 +77,102 @@ async function seed() {
   console.log(`[seed] done. Demo login password for any seed user: ${DEMO_PASSWORD}`);
   console.log("[seed] e.g. POST /auth/login { emailOrHandle: 'aisha.k', password: '" + DEMO_PASSWORD + "' }");
   await pool.end();
+}
+
+// Seeds two demo courses so the Learn catalog isn't empty on first load.
+// Skipped entirely if any course already exists — safe to re-run.
+async function seedLearn(pool) {
+  const { rows: existing } = await pool.query("SELECT COUNT(*) FROM courses");
+  if (parseInt(existing[0].count, 10) > 0) {
+    console.log("[seed] courses already exist, skipping Learn seed");
+    return;
+  }
+
+  async function makeEducator(userId, bio, subjects, status) {
+    const { rows } = await pool.query(
+      `INSERT INTO educator_profiles (user_id, bio, subjects, languages_taught, status)
+       VALUES ($1,$2,$3,$4,$5)
+       ON CONFLICT (user_id) DO UPDATE SET bio = EXCLUDED.bio
+       RETURNING id`,
+      [userId, bio, subjects, ["en"], status]
+    );
+    return rows[0].id;
+  }
+
+  async function makeCourse(educatorId, title, description, category, tags) {
+    const { rows } = await pool.query(
+      `INSERT INTO courses (educator_id, title, description, category, language, difficulty, is_free, tags, status, published_at, estimated_hours)
+       VALUES ($1,$2,$3,$4,'en','beginner',TRUE,$5,'published',NOW(),1.5) RETURNING id`,
+      [educatorId, title, description, category, tags]
+    );
+    return rows[0].id;
+  }
+
+  async function makeLesson(courseId, title, type, content, sortOrder, isFreePreview, durationMinutes) {
+    const { rows } = await pool.query(
+      `INSERT INTO lessons (course_id, title, type, content, sort_order, is_free_preview, duration_minutes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [courseId, title, type, JSON.stringify(content), sortOrder, isFreePreview, durationMinutes]
+    );
+    return rows[0].id;
+  }
+
+  async function makeCheckpoint(lessonId, question, options, correctOption, explanation, sortOrder) {
+    await pool.query(
+      `INSERT INTO knowledge_checkpoints (lesson_id, question, options, correct_option, explanation, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [lessonId, question, JSON.stringify(options), correctOption, explanation, sortOrder]
+    );
+  }
+
+  // ── Course 1: Remi (AgriTech) — verified educator ──────────────────────────
+  const remiEducator = await makeEducator(
+    USERS.remi,
+    "Building AI crop advisory tools for smallholder farmers across West Africa. 10,000+ farmers and counting.",
+    ["agriculture", "agritech"], "verified"
+  );
+  const soilCourse = await makeCourse(
+    remiEducator,
+    "Soil Science Fundamentals for West African Farmers",
+    "A practical introduction to soil health, testing, and crop rotation, built from five years of fieldwork with smallholder farmers across five African nations. No lab equipment required.",
+    "GLOBAL_CONNECT", ["agritech", "africa", "soil"]
+  );
+  await makeLesson(soilCourse, "Why soil health determines your yield", "video",
+    { video_url: "https://example.com/videos/soil-intro.mp4", duration_seconds: 480 }, 0, true, 8);
+  await makeLesson(soilCourse, "Reading your soil without a lab", "article",
+    { body_html: "<p>You can learn most of what you need about your soil with a spade, a jar, and water. This lesson walks through the jar test, texture-by-feel, and the signs healthy soil gives off before you ever plant.</p>", read_time_minutes: 6 }, 1, false, 6);
+  const soilQuiz = await makeLesson(soilCourse, "Check your understanding", "quiz",
+    { instructions: "Two quick questions on what you just read." }, 2, false, 4);
+  await makeCheckpoint(soilQuiz, "What does the jar test primarily reveal?",
+    [{ id: "a", text: "Soil pH" }, { id: "b", text: "Soil texture (sand/silt/clay ratio)" }, { id: "c", text: "Nitrogen content" }],
+    "b", "The jar test separates particles by weight as they settle, showing your sand/silt/clay ratio.", 0);
+  await makeCheckpoint(soilQuiz, "Which is a visible sign of healthy soil?",
+    [{ id: "a", text: "Earthworms present" }, { id: "b", text: "Bright red color" }, { id: "c", text: "Completely dry surface" }],
+    "a", "Earthworm activity is a strong indicator of good soil structure and organic matter.", 1);
+
+  // ── Course 2: Tanvi (Human Potential) — community educator ─────────────────
+  const tanviEducator = await makeEducator(
+    USERS.tanvi,
+    "I write and teach about the systems that actually make learning stick — accountability over willpower.",
+    ["learning", "habits"], "community"
+  );
+  const habitsCourse = await makeCourse(
+    tanviEducator,
+    "Building Learning Habits That Actually Stick",
+    "Most learning apps have single-digit completion rates because they rely on willpower alone. This short course teaches the accountability structures that actually get people to finish what they start.",
+    "HUMAN_POTENTIAL", ["learning", "accountability"]
+  );
+  await makeLesson(habitsCourse, "Why willpower-based learning fails", "video",
+    { video_url: "https://example.com/videos/willpower.mp4", duration_seconds: 360 }, 0, true, 6);
+  await makeLesson(habitsCourse, "Designing your accountability loop", "article",
+    { body_html: "<p>A weekly public check-in, even to an audience of three people, outperforms almost every app-based streak mechanic. This lesson walks through how to set one up.</p>", read_time_minutes: 5 }, 1, false, 5);
+  const habitsQuiz = await makeLesson(habitsCourse, "Check your understanding", "quiz",
+    { instructions: "One question on what you just read." }, 2, false, 3);
+  await makeCheckpoint(habitsQuiz, "What outperforms app-based streaks, per this lesson?",
+    [{ id: "a", text: "A longer streak counter" }, { id: "b", text: "A weekly public check-in" }, { id: "c", text: "More notifications" }],
+    "b", "Social accountability, even to a small audience, is the mechanism that actually works.", 0);
+
+  await pool.query("UPDATE courses SET total_lessons = 3");
 }
 
 seed().catch(err => { console.error("[seed] failed:", err); process.exit(1); });

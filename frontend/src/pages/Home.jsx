@@ -16,15 +16,17 @@ export default function Home({ lang }) {
   const loadVibes = useCallback(async (p = 0) => {
     if (p === 0) setLoading(true); else setLoadingMore(true);
     try {
-      const { vibes: newVibes } = await api.get(`/vibes/feed?page=${p}&pageSize=10`);
+      const { vibes: newVibes } = await api.get(`/vibes/feed?page=${p}&pageSize=10&lang=${lang}`);
       if (p === 0) setVibes(newVibes || []);
       else setVibes(v => [...v, ...(newVibes || [])]);
       setHasMore((newVibes || []).length === 10);
     } catch {}
     finally { setLoading(false); setLoadingMore(false); }
-  }, []);
+  }, [lang]);
 
-  useEffect(() => { loadVibes(0); }, [loadVibes]);
+  // Re-fetch page 0 whenever the reading language changes, instead of
+  // continuing pagination with a stale page number.
+  useEffect(() => { setPage(0); setHasMore(true); loadVibes(0); }, [loadVibes]);
 
   // Infinite scroll
   useEffect(() => {

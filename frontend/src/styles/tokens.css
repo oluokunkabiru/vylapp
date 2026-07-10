@@ -51,7 +51,7 @@
   --radius-pill: 9999px;
 
   /* Shadows */
-  --shadow-violet: 0 6px 24px rgba(124,58,237,0.35);
+  --shadow-violet: 0 4px 14px rgba(124,58,237,0.28);
   --shadow-card:   0 4px 20px rgba(0,0,0,0.4);
 
   /* Auth flow accent — enterprise blue, scoped to Login/Register/Forgot/Reset only */
