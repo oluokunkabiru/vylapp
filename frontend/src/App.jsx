@@ -98,7 +98,15 @@ export default function App() {
 
   // Auth-required pages show login prompt if not signed in
   const loc = useLocation();
-  const hiddenForGuest = ["/notifications", "/messages", "/profile"].some(p => loc.pathname.startsWith(p));
+  const isAuthPage = ["/login", "/register", "/forgot-password", "/reset-password"].includes(loc.pathname);
+
+  if (isAuthPage) {
+    return (
+      <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
+        <main style={{ flex: 1 }}>{mainContent}</main>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
