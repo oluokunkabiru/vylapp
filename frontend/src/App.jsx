@@ -55,7 +55,10 @@ function InnerApp() {
   const { user } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 860);
   const [createOpen, setCreateOpen] = useState(false);
-  const [lang, setLang] = useState(() => localStorage.getItem("vyl_lang") || "en");
+  // A manual in-session choice (localStorage) wins if one exists; otherwise
+  // honor what onboarding actually captured instead of silently defaulting
+  // to English.
+  const [lang, setLang] = useState(() => localStorage.getItem("vyl_lang") || user?.contentLanguages?.[0] || "en");
   const [notifCount, setNotifCount] = useState(0);
   const [msgCount, setMsgCount] = useState(0);
 

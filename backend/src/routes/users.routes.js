@@ -10,6 +10,7 @@ function publicUser(row, viewerFollows) {
   return {
     id: row.id, handle: row.handle, displayName: row.display_name, bio: row.bio,
     location: row.location, website: row.website,
+    currentCountry: row.current_country, currentCity: row.current_city, heritageCountries: row.heritage_countries,
     avatarColor: row.avatar_color, avatarInitials: row.avatar_initials, avatarUrl: row.avatar_url,
     bannerUrl: row.banner_url, roleTag: row.role_tag, verified: row.verified,
     verificationTier: row.verification_tier, isCreator: row.is_creator,
@@ -18,6 +19,22 @@ function publicUser(row, viewerFollows) {
     viewerFollows: viewerFollows ?? undefined,
   };
 }
+
+// ── GET /users/discover — diaspora discovery by current/heritage country ─
+// Registered before /:handle so "discover" isn't swallowed as a handle lookup.
+router.get("/discover", requireAuth, asyncHandler(async (req, res) => {
+  const country = (req.query.country || "").toUpperCase();
+  if (!/^[A-Z]{2}$/.test(country)) return fail(res, 400, "country must be a 2-letter country code");
+
+  const { rows } = await db.query(
+    `SELECT * FROM users
+     WHERE deleted_at IS NULL AND id != $1
+       AND (current_country = $2 OR $2 = ANY(heritage_countries))
+     ORDER BY connections_count DESC LIMIT 20`,
+    [req.user.id, country]
+  );
+  return ok(res, { users: rows.map(r => publicUser(r)) });
+}));
 
 // ── GET /users/:handle ───────────────────────────────────────────────────
 router.get("/:handle", optionalAuth, asyncHandler(async (req, res) => {

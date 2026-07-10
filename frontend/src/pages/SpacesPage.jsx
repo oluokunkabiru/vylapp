@@ -3,6 +3,7 @@ import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { Avatar, Ic, ic, PrimaryButton, GhostButton, Spinner, Empty } from "../components/ui/index.jsx";
+import { flagEmoji, countryName } from "../data/countries.js";
 
 const CAT_COLORS = { TECH_VIBES:"var(--sky)", GLOBAL_CONNECT:"var(--green)", CREATIVE_LEARN:"var(--amber)", HUMAN_POTENTIAL:"var(--purple)", SPACES_INVITE:"var(--coral)", GENERAL:"var(--violet-lt)" };
 
@@ -60,6 +61,75 @@ function SpaceCard({ space, onAction }) {
   );
 }
 
+// ── Diaspora discovery — visually distinct from the space cards below on
+// purpose: warm amber/coral accent instead of the violet used for Spaces,
+// flag badges, horizontal scroll. This is Connect's own visual language,
+// not a reskin of the audio-room pattern. ──────────────────────────────────
+function DiasporaSection() {
+  const { user } = useAuth();
+  const toast = useToast();
+  const [people, setPeople] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [followed, setFollowed] = useState(new Set());
+  const country = user?.currentCountry || user?.heritageCountries?.[0];
+
+  useEffect(() => {
+    if (!country) { setLoading(false); return; }
+    api.get(`/users/discover?country=${country}`)
+      .then(({ users }) => setPeople(users || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [country]);
+
+  const connect = async u => {
+    try {
+      await api.post(`/users/${u.id}/connect`);
+      setFollowed(s => new Set([...s, u.id]));
+      toast(`Connected with @${u.handle} ✓`);
+    } catch (e) { toast(e.message, "error"); }
+  };
+
+  if (!country || loading || people.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom:24 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+        <span style={{ fontSize:18 }}>{flagEmoji(country)}</span>
+        <span style={{ fontWeight:800, fontSize:14 }}>People from {countryName(country)}</span>
+      </div>
+      <div style={{ display:"flex", gap:12, overflowX:"auto", paddingBottom:6 }}>
+        {people.map(u => (
+          <div key={u.id} style={{
+            flexShrink:0, width:104, display:"flex", flexDirection:"column", alignItems:"center",
+            background:"var(--bg3)", border:"1px solid var(--amber)", borderColor:"rgba(255,184,48,0.25)",
+            borderRadius:16, padding:"14px 10px",
+          }}>
+            <div style={{ position:"relative", marginBottom:8 }}>
+              <Avatar user={u} size={52} />
+              <span style={{
+                position:"absolute", bottom:-2, right:-4, fontSize:15,
+                background:"var(--bg3)", borderRadius:"50%", padding:1,
+              }}>{flagEmoji(u.currentCountry || country)}</span>
+            </div>
+            <div style={{ fontWeight:700, fontSize:12.5, textAlign:"center", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", width:"100%" }}>
+              {u.displayName}
+            </div>
+            <div style={{ color:"var(--text3)", fontSize:11, marginBottom:8 }}>@{u.handle}</div>
+            {followed.has(u.id) ? (
+              <span style={{ color:"var(--green)", fontSize:11, fontWeight:700 }}>Connected ✓</span>
+            ) : (
+              <button onClick={() => connect(u)} style={{
+                background:"none", border:"1px solid var(--amber)", color:"var(--amber)",
+                borderRadius:"var(--radius-pill)", padding:"4px 12px", fontSize:11, fontWeight:700, cursor:"pointer",
+              }}>Connect</button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SpacesPage() {
   const { user } = useAuth();
   const toast = useToast();
@@ -108,6 +178,8 @@ export default function SpacesPage() {
       <p style={{ color:"var(--text2)", fontSize:14, marginBottom:16, lineHeight:1.5 }}>
         Live voice rooms and scheduled conversations. Tap to listen in.
       </p>
+
+      {user && <DiasporaSection />}
 
       {user && (
         <div style={{ marginBottom:20 }}>

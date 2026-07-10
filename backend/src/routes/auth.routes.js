@@ -35,6 +35,8 @@ function publicUser(row) {
     isCreator: row.is_creator, onboardingStep: row.onboarding_step, onboardingDone: row.onboarding_done,
     interests: row.interests, subscriptionPlan: row.subscription_plan,
     vibesCount: row.vibes_count, connectionsCount: row.connections_count, followingCount: row.following_count,
+    contentLanguages: row.content_language, location: row.location,
+    currentCountry: row.current_country, currentCity: row.current_city, heritageCountries: row.heritage_countries,
   };
 }
 

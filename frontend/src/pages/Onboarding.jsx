@@ -3,8 +3,17 @@ import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { Ic, ic, Avatar, VylappWordmark, PrimaryButton, GhostButton, Spinner } from "../components/ui/index.jsx";
+import { COUNTRIES, flagEmoji, countryName } from "../data/countries.js";
 
-const STEP_ORDER = ["welcome", "interests", "handle", "avatar", "follow_suggestions", "complete"];
+const STEP_ORDER = ["welcome", "interests", "handle", "avatar", "location", "follow_suggestions", "complete"];
+
+// Best-effort, non-authoritative guess from the browser's own locale — no
+// network call, no IP lookup, nothing leaves the device. Always shown to
+// the user as an editable default, never applied silently.
+function guessCountry() {
+  const region = navigator.language?.split("-")[1];
+  return region && /^[A-Za-z]{2}$/.test(region) ? region.toUpperCase() : "";
+}
 const AVATAR_SWATCHES = ["#7C3AED", "#10F5A0", "#FF6B6B", "#FFB830", "#38BDF8", "#A78BFA", "#2DD4BF"];
 const INTEREST_LABELS = { tech: "Tech Vibes", global: "Global Connect", human: "Human Potential", creative: "Creative Learn", spaces: "Spaces & Live Audio" };
 
@@ -48,6 +57,11 @@ export default function Onboarding() {
   const [handle, setHandle] = useState(user?.handle || "");
   const [avatarColor, setAvatarColor] = useState(user?.avatarColor || "#7C3AED");
 
+  const [currentCountry, setCurrentCountry] = useState(() => user?.currentCountry || guessCountry());
+  const [currentCity, setCurrentCity] = useState(user?.currentCity || "");
+  const [heritageCountries, setHeritageCountries] = useState(user?.heritageCountries || []);
+  const [heritagePick, setHeritagePick] = useState("");
+
   const [suggestedCreators, setSuggestedCreators] = useState([]);
   const [firstVibePrompt, setFirstVibePrompt] = useState("");
   const [selectedFollows, setSelectedFollows] = useState(new Set());
@@ -77,7 +91,7 @@ export default function Onboarding() {
       setSuggestedCreators(sc || []);
       setFirstVibePrompt(fp || "");
       setFirstVibeText(fp || "");
-      updateUser({ onboardingStep: "handle" });
+      updateUser({ onboardingStep: "handle", contentLanguages: selectedLangs });
       setStep("handle");
     } catch (e) { toast(e.message, "error"); }
     finally { setBusy(false); }
@@ -98,7 +112,25 @@ export default function Onboarding() {
     setBusy(true);
     try {
       await api.post("/onboarding/avatar", { avatarColor });
-      updateUser({ avatarColor, onboardingStep: "follow_suggestions" });
+      updateUser({ avatarColor, onboardingStep: "location" });
+      setStep("location");
+    } catch (e) { toast(e.message, "error"); }
+    finally { setBusy(false); }
+  };
+
+  const addHeritage = () => {
+    if (!heritagePick || heritageCountries.includes(heritagePick)) return;
+    setHeritageCountries(h => [...h, heritagePick]);
+    setHeritagePick("");
+  };
+  const removeHeritage = code => setHeritageCountries(h => h.filter(c => c !== code));
+
+  const submitLocation = async () => {
+    if (!currentCountry) { toast("Pick where you live now", "error"); return; }
+    setBusy(true);
+    try {
+      await api.post("/onboarding/location", { currentCountry, currentCity, heritageCountries });
+      updateUser({ currentCountry, currentCity, heritageCountries, onboardingStep: "follow_suggestions" });
       setStep("follow_suggestions");
     } catch (e) { toast(e.message, "error"); }
     finally { setBusy(false); }
@@ -226,6 +258,57 @@ export default function Onboarding() {
               ))}
             </div>
             <PrimaryButton full loading={busy} onClick={submitAvatar}>Continue</PrimaryButton>
+          </StepShell>
+        )}
+
+        {step === "location" && (
+          <StepShell title="Where are you vibing from?" subtitle="Helps us surface people and Spaces from your community — heritage is optional.">
+            <div style={{ marginBottom:16 }}>
+              <label style={{ fontSize:12.5, fontWeight:700, color:"var(--text2)", display:"block", marginBottom:6 }}>WHERE DO YOU LIVE NOW?</label>
+              <select value={currentCountry} onChange={e => setCurrentCountry(e.target.value)} style={{
+                width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid var(--border)",
+                background:"var(--bg3)", color:"var(--text)", fontSize:14.5, outline:"none", cursor:"pointer",
+              }}>
+                <option value="" style={{background:"var(--bg2)"}}>Select a country…</option>
+                {COUNTRIES.map(c => (
+                  <option key={c.code} value={c.code} style={{background:"var(--bg2)"}}>{flagEmoji(c.code)} {c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom:24 }}>
+              <label style={{ fontSize:12.5, fontWeight:700, color:"var(--text2)", display:"block", marginBottom:6 }}>CITY (OPTIONAL)</label>
+              <input value={currentCity} onChange={e => setCurrentCity(e.target.value)} placeholder="e.g. Houston"
+                style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid var(--border)", background:"var(--bg3)", color:"var(--text)", fontSize:14.5, outline:"none" }}
+              />
+            </div>
+
+            <label style={{ fontSize:12.5, fontWeight:700, color:"var(--text2)", display:"block", marginBottom:6 }}>HERITAGE OR CULTURAL BACKGROUND (OPTIONAL)</label>
+            <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+              <select value={heritagePick} onChange={e => setHeritagePick(e.target.value)} style={{
+                flex:1, padding:"11px 14px", borderRadius:12, border:"1.5px solid var(--border)",
+                background:"var(--bg3)", color:"var(--text)", fontSize:14, outline:"none", cursor:"pointer",
+              }}>
+                <option value="" style={{background:"var(--bg2)"}}>Add a country…</option>
+                {COUNTRIES.filter(c => !heritageCountries.includes(c.code)).map(c => (
+                  <option key={c.code} value={c.code} style={{background:"var(--bg2)"}}>{flagEmoji(c.code)} {c.name}</option>
+                ))}
+              </select>
+              <GhostButton onClick={addHeritage}>Add</GhostButton>
+            </div>
+            {heritageCountries.length > 0 && (
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:20 }}>
+                {heritageCountries.map(code => (
+                  <span key={code} onClick={() => removeHeritage(code)} style={{
+                    display:"inline-flex", alignItems:"center", gap:6, padding:"6px 12px",
+                    borderRadius:"var(--radius-pill)", background:"var(--violet-dim)", color:"var(--violet-lt)",
+                    fontSize:13, fontWeight:700, cursor:"pointer",
+                  }}>{flagEmoji(code)} {countryName(code)} ✕</span>
+                ))}
+              </div>
+            )}
+
+            <PrimaryButton full loading={busy} onClick={submitLocation} sx={{ marginTop: heritageCountries.length ? 0 : 20 }}>Continue</PrimaryButton>
           </StepShell>
         )}
 

@@ -59,6 +59,28 @@ router.post("/avatar", asyncHandler(async (req, res) => {
   return ok(res, { avatarColor, nextStep: OnboardingEngine.nextStep("avatar") });
 }));
 
+// ── POST /onboarding/location (current country/city + optional heritage) ─
+router.post("/location", asyncHandler(async (req, res) => {
+  const { currentCountry, currentCity, heritageCountries } = req.body;
+  if (!currentCountry || !/^[A-Za-z]{2}$/.test(currentCountry)) return fail(res, 400, "currentCountry must be a 2-letter country code");
+
+  let heritage = [];
+  if (heritageCountries !== undefined) {
+    if (!Array.isArray(heritageCountries)) return fail(res, 400, "heritageCountries must be an array");
+    heritage = heritageCountries.filter(c => /^[A-Za-z]{2}$/.test(c)).map(c => c.toUpperCase());
+  }
+
+  const cc = currentCountry.toUpperCase();
+  const city = currentCity?.trim() || null;
+  const locationLabel = city ? `${city}, ${cc}` : cc;
+
+  await db.query(
+    `UPDATE users SET current_country = $1, current_city = $2, heritage_countries = $3, location = $4, onboarding_step = $5 WHERE id = $6`,
+    [cc, city, heritage, locationLabel, OnboardingEngine.nextStep("location"), req.user.id]
+  );
+  return ok(res, { currentCountry: cc, currentCity: city, heritageCountries: heritage, nextStep: OnboardingEngine.nextStep("location") });
+}));
+
 // ── POST /onboarding/follow-suggestions ──────────────────────────────────
 router.post("/follow-suggestions", asyncHandler(async (req, res) => {
   const { userIds } = req.body; // array of user ids to follow
