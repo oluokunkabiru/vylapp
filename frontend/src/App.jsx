@@ -25,6 +25,7 @@ import Profile from "./pages/Profile.jsx";
 import Autopilot from "./pages/Autopilot.jsx";
 import CreatorEarnings from "./pages/CreatorEarnings.jsx";
 import RavenLeaderboard from "./pages/RavenLeaderboard.jsx";
+import Onboarding from "./pages/Onboarding.jsx";
 
 import { Spinner } from "./components/ui/index.jsx";
 
@@ -146,7 +147,9 @@ function InnerApp() {
 export default function App() {
   const { user, loading } = useAuth();
   if (loading) return <FullscreenSpinner />;
-  return user ? <InnerApp /> : <AuthGate />;
+  if (!user) return <AuthGate />;
+  if (!user.onboardingDone) return <Onboarding />;
+  return <InnerApp />;
 }
 
 // ── Desktop right rail ─────────────────────────────────────────────────────

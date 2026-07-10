@@ -2,7 +2,7 @@
 //  ONBOARDING ENGINE — ported from vylapp-organic-api.jsx
 //  60-second onboarding: step flow, interest matching, first-vibe prompts
 // ════════════════════════════════════════════════════════════════════════════
-const STEPS = ["welcome", "interests", "handle", "avatar", "follow_suggestions", "complete"];
+const STEPS = ["welcome", "interests", "handle", "avatar", "location", "follow_suggestions", "complete"];
 
 const INTEREST_MAP = {
   tech: ["#DAOs", "#BuildInPublic", "#AI", "#Web3", "#OpenSource"],
@@ -46,7 +46,7 @@ const OnboardingEngine = {
   },
 
   completionScore(events) {
-    const weights = { welcome: 10, interests: 25, handle: 15, avatar: 10, follow_suggestions: 20, complete: 20 };
+    const weights = { welcome: 10, interests: 20, handle: 15, avatar: 10, location: 15, follow_suggestions: 15, complete: 15 };
     const total = events.reduce((s, e) => s + (weights[e.step] || 0), 0);
     return { score: total, max: 100, pct: total + "%", missing: Object.keys(weights).filter(s => !events.find(e => e.step === s)) };
   },
