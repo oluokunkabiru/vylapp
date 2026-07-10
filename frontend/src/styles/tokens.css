@@ -40,8 +40,12 @@
   --grad-warm:   linear-gradient(135deg, #FFB830, #FF6B6B);
   --grad-story:  linear-gradient(135deg, #FFB830 0%, #FF6B6B 35%, #7C3AED 70%, #38BDF8 100%);
 
-  /* Typography */
-  --font:  "Sora", "Inter", system-ui, sans-serif;
+  /* Typography — Sora is Latin/Cyrillic-only. The script-specific families
+     are fallbacks: the browser picks glyphs per-character from whichever
+     font in the stack actually covers that script, so Arabic/Hindi/Chinese/
+     Amharic content renders correctly instead of silently hitting the OS
+     default font (see index.html for the matching font loads). */
+  --font:  "Sora", "Noto Sans", "Noto Sans Arabic", "Noto Sans Devanagari", "Noto Sans SC", "Noto Sans Ethiopic", "Inter", system-ui, sans-serif;
   --mono:  "Space Mono", "JetBrains Mono", monospace;
 
   /* Radius */

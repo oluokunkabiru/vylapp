@@ -7,7 +7,13 @@
     <meta name="description" content="Vylapp — The global social platform for multicultural communities." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    <!-- Sora covers Latin/Cyrillic only. The script-specific families below are
+         fallbacks in the --font stack (tokens.css) so translated/native content
+         in Arabic, Hindi, Chinese, and Amharic renders with a real, tested
+         typeface instead of silently falling back to the OS default. Noto Sans
+         (plain) also backstops Yoruba/Hausa Latin Extended diacritics that
+         Sora's glyph set doesn't guarantee. -->
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&family=Noto+Sans:wght@400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700;800&family=Noto+Sans+SC:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>

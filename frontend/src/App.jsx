@@ -60,6 +60,12 @@ function InnerApp() {
 
   useEffect(() => { localStorage.setItem("vyl_lang", lang); }, [lang]);
 
+  // Keep <html lang> in sync so screen readers and the browser's own
+  // language handling (spellcheck, translate prompts, font shaping) match
+  // what's actually on screen. Not flipping `dir` yet — see App.jsx notes
+  // near the language selector for why RTL needs its own pass.
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 860);
     window.addEventListener("resize", check);

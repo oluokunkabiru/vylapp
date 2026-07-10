@@ -25,7 +25,7 @@ function HeartBurst({ show }) {
   );
 }
 
-const LANG_NAMES = { es:"Spanish", sw:"Swahili", fr:"French", yo:"Yoruba", ha:"Hausa", ar:"Arabic", zh:"Chinese", hi:"Hindi" };
+const LANG_NAMES = { en:"English", es:"Spanish", sw:"Swahili", fr:"French", pt:"Portuguese", yo:"Yoruba", ha:"Hausa", ar:"Arabic", am:"Amharic", zh:"Chinese", hi:"Hindi" };
 
 export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
   const { user } = useAuth();
@@ -187,6 +187,18 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
           <span style={{ color:"var(--text)" }}>{caption}</span>
         </div>
 
+        {/* Provenance — makes translation visible as it happens, not just
+            available behind a button. This is the one place in the feed
+            that shows the "translation is architecture" claim in the UI. */}
+        {isTranslationAvailable && !showOriginal && (
+          <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:5 }}>
+            <Ic d={ic.globe} s={11} c="var(--sky)" />
+            <span style={{ fontSize:11.5, color:"var(--sky)", fontWeight:600 }}>
+              Translated from {LANG_NAMES[vibe.language] || vibe.language}
+            </span>
+          </div>
+        )}
+
         {vibe.tags?.length > 0 && (
           <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:5 }}>
             {vibe.tags.map(t => (
@@ -201,12 +213,12 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
           <button onClick={doTranslate} disabled={translating} style={{
             display:"inline-flex", alignItems:"center", gap:6, marginTop:8, padding:"6px 12px",
             borderRadius:"var(--radius-pill)",
-            border:`1px solid ${isTranslationAvailable && !showOriginal ? "var(--violet)" : "var(--border)"}`,
-            background: isTranslationAvailable && !showOriginal ? "var(--violet-dim)" : "transparent",
-            color: isTranslationAvailable && !showOriginal ? "var(--violet-lt)" : "var(--text2)",
+            border:`1px solid ${isTranslationAvailable && !showOriginal ? "var(--sky)" : "var(--border)"}`,
+            background: isTranslationAvailable && !showOriginal ? "var(--sky-dim)" : "transparent",
+            color: isTranslationAvailable && !showOriginal ? "var(--sky)" : "var(--text2)",
             fontSize:12.5, fontWeight:700, cursor:"pointer",
           }}>
-            <Ic d={ic.globe} s={14} c={isTranslationAvailable && !showOriginal ? "var(--violet-lt)" : "var(--text2)"} />
+            <Ic d={ic.globe} s={14} c={isTranslationAvailable && !showOriginal ? "var(--sky)" : "var(--text2)"} />
             {translating
               ? "Translating…"
               : isTranslationAvailable && !showOriginal
