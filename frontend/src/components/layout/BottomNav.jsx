@@ -24,7 +24,7 @@ const MORE_ITEMS = [
 export default function BottomNav({ onCreateClick, notifCount }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
 
   // Check if we're on one of the "more" routes so the More button lights up
@@ -77,6 +77,17 @@ export default function BottomNav({ onCreateClick, notifCount }) {
             );
           })}
         </div>
+
+        {user && (
+          <button onClick={() => { setMoreOpen(false); logout(); }} style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 14,
+            background: "none", border: "1px solid var(--border2)", cursor: "pointer",
+          }}>
+            <Ic d={ic.logout} s={17} c="var(--coral)" />
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--coral)" }}>Log out</span>
+          </button>
+        )}
       </div>
 
       {/* Sticky bottom bar */}

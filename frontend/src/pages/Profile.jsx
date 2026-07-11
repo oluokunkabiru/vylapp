@@ -10,7 +10,7 @@ const CAT_EMOJI = { TECH_VIBES:"⚡", GLOBAL_CONNECT:"🌍", CREATIVE_LEARN:"�
 
 export default function Profile() {
   const { handle } = useParams();
-  const { user: me } = useAuth();
+  const { user: me, logout } = useAuth();
   const toast = useToast();
   const isMe = !handle || handle === me?.handle;
   const [profile, setProfile] = useState(isMe ? me : null);
@@ -96,7 +96,10 @@ export default function Profile() {
           </div>
           <div style={{ display:"flex", gap:8, flexShrink:0 }}>
             {isMe ? (
-              <GhostButton onClick={()=>setEditMode(e=>!e)}>{editMode?"Cancel":"Edit"}</GhostButton>
+              <>
+                <GhostButton onClick={()=>setEditMode(e=>!e)}>{editMode?"Cancel":"Edit"}</GhostButton>
+                <GhostButton onClick={logout}>Log out</GhostButton>
+              </>
             ) : (
               <>
                 <PrimaryButton onClick={toggleFollow} sx={{ padding:"10px 18px" }}>
