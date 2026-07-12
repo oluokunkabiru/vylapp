@@ -22,6 +22,7 @@ const ravenRoutes = require("./routes/raven.routes");
 const learnRoutes = require("./routes/learn.routes");
 const forumRoutes = require("./routes/forum.routes");
 const rbacRoutes  = require("./routes/rbac.routes");
+const devRoutes   = require("./routes/dev.routes");
 
 function createApp() {
   const app = express();
@@ -64,6 +65,12 @@ function createApp() {
 
   // ── RBAC management API (super_admin / platform_admin only) ───────────────
   app.use("/rbac",  rbacRoutes);
+
+  // ── Dev-only utilities (never exposed in production) ─────────────────────
+  if (env.nodeEnv !== "production") {
+    app.use("/dev", devRoutes);
+    console.log("[app] DEV routes mounted at /dev — disable in production");
+  }
 
   app.use(notFound);
   app.use(errorHandler);
