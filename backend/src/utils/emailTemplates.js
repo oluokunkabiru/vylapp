@@ -54,8 +54,19 @@ function layout(headerEmoji, headerTitle, bodyHtml) {
 
           <!-- FOOTER -->
           <tr>
-            <td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:20px 36px;border-top:1px solid #e5e7eb;text-align:center;font-size:12px;color:#9ca3af;">
-              <p style="margin:0 0 6px;">© ${BRAND_YEAR} ${BRAND_NAME}. All rights reserved.</p>
+            <td style="background:#f9fafb;border-radius:0 0 16px 16px;padding:24px 36px 20px;border-top:1px solid #e5e7eb;text-align:center;font-size:12px;color:#9ca3af;">
+              <!-- AI badge -->
+              <div style="display:inline-block;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);border-radius:9999px;padding:5px 14px;margin-bottom:14px;">
+                <span style="color:#a5b4fc;font-size:11px;font-weight:700;letter-spacing:0.5px;">✦ AI-POWERED PLATFORM</span>
+              </div>
+              <p style="margin:0 0 6px;font-size:11px;color:#c4b5fd;">
+                Vylapp is built with AI at its core — smarter content, personalised learning &amp; intelligent connections.
+              </p>
+              <p style="margin:0 0 10px;font-size:11px;color:#d1d5db;font-style:italic;">
+                As the world moves, we move with it. 🌍
+              </p>
+              <hr style="border:0;border-top:1px solid #e5e7eb;margin:12px 0;">
+              <p style="margin:0 0 4px;">© ${BRAND_YEAR} ${BRAND_NAME}. All rights reserved.</p>
               <p style="margin:0;">You received this email because you have an account on Vylapp.<br>If you didn't request this, you can safely ignore it.</p>
             </td>
           </tr>

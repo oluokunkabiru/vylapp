@@ -8,6 +8,7 @@ import BottomNav from "./components/layout/BottomNav.jsx";
 import Sidebar from "./components/layout/Sidebar.jsx";
 import CreateModal from "./components/feed/CreateModal.jsx";
 
+import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
@@ -39,11 +40,12 @@ function AuthGate() {
     <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
       <main style={{ flex: 1 }}>
         <Routes>
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>
