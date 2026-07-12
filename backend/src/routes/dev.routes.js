@@ -18,12 +18,12 @@ const env = require("../config/env");
 const router = express.Router();
 
 // ── POST /dev/test-email ───────────────────────────────────────────────────────
-router.post("/test-email", async (req, res) => {
+router.get("/test-email", async (req, res) => {
   const {
     to      = "test@vylapp.dev",
     subject = "📬 Vylapp — SMTP Test",
     message = "If you can read this, your Mailpit + nodemailer setup is working perfectly! 🎉",
-  } = req.body;
+  } = req.query;
 
   try {
     // 1. Verify the SMTP connection first

@@ -2,7 +2,9 @@ const express = require("express");
 const cors = require("cors");
 const env = require("./config/env");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
-const rateLimiter = require("./middleware/rateLimiter");
+const rateLimiter  = require("./middleware/rateLimiter");
+const httpLogger   = require("./middleware/httpLogger");
+const logger       = require("./utils/logger");
 
 const { router: authRoutes } = require("./routes/auth.routes");
 const { router: userRoutes } = require("./routes/users.routes");
@@ -35,6 +37,7 @@ function createApp() {
   // This is the authoritative rate limit. Client-side limits in Flutter/React
   // are UX-only and provide zero security value.
   app.use(rateLimiter());
+  app.use(httpLogger);
 
   app.get("/health", (req, res) => res.json({
     ok: true, service: "vylapp-backend", time: new Date().toISOString(),
@@ -69,7 +72,7 @@ function createApp() {
   // ── Dev-only utilities (never exposed in production) ─────────────────────
   if (env.nodeEnv !== "production") {
     app.use("/dev", devRoutes);
-    console.log("[app] DEV routes mounted at /dev — disable in production");
+    logger.info("DEV routes mounted at /dev — disable in production");
   }
 
   app.use(notFound);

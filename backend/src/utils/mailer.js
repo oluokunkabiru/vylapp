@@ -1,5 +1,6 @@
 const nodemailer = require("nodemailer");
-const env = require("../config/env");
+const env    = require("../config/env");
+const logger = require("./logger");
 
 let transporter;
 
@@ -34,10 +35,10 @@ function getTransporter() {
 async function verifyMailConfig() {
   try {
     await getTransporter().verify();
-    console.log(`[mailer] SMTP OK — sending as ${env.mailFromAddress} via ${env.mailHost}:${env.mailPort}`);
+    logger.info(`SMTP OK — sending as ${env.mailFromAddress}`, { host: env.mailHost, port: env.mailPort });
     return true;
   } catch (err) {
-    console.error(`[mailer] SMTP verification failed for ${env.mailHost}:${env.mailPort} — emails will not be delivered:`, err.message);
+    logger.error(`SMTP verification failed — emails will not be delivered`, { host: env.mailHost, port: env.mailPort, error: err.message });
     return false;
   }
 }

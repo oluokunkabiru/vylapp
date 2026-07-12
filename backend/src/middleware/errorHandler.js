@@ -1,4 +1,5 @@
 const { fail } = require("../utils/respond");
+const logger    = require("../utils/logger");
 
 class ApiError extends Error {
   constructor(status, message, details) {
@@ -14,7 +15,13 @@ function notFound(req, res) {
 
 function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
   const status = err.status || 500;
-  if (status >= 500) console.error("[error]", err);
+  if (status >= 500) {
+    logger.error(`${req.method} ${req.originalUrl} — ${err.message}`, {
+      status,
+      stack: err.stack,
+      body:  req.body,
+    });
+  }
   return fail(res, status, err.message || "Internal server error", err.details);
 }
 
