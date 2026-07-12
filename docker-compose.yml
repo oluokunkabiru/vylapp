@@ -50,6 +50,11 @@ services:
       DATABASE_URL: postgresql://vylapp:vylappdev@postgres:5432/vylapp_dev
       NODE_ENV:     development
       PORT:         4000
+      MAIL_HOST:    mailpit
+      MAIL_PORT:    1025
+      MAIL_SCHEME:  ""
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
     ports:
       - "4000:4000"
     volumes:
@@ -57,8 +62,21 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     command: >
       sh -c "node src/db/migrate.js && node src/server.js"
+
+  # ── Mailpit (local SMTP catcher — dev only) ─────────────────────────────────
+  # Host already runs a native Mailpit on 1025/8025, so this one is mapped to
+  # different host ports to avoid clashing. The backend talks to it over the
+  # compose network via the container name "mailpit", not these host ports.
+  mailpit:
+    image: axllent/mailpit
+    restart: unless-stopped
+    ports:
+      - "1026:1025"   # SMTP
+      - "8026:8025"   # Web UI
 
   # ── Frontend ───────────────────────────────────────────────────────────────
   frontend:

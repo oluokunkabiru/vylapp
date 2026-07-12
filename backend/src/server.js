@@ -3,6 +3,7 @@ const { Server } = require("socket.io");
 const createApp = require("./app");
 const env = require("./config/env");
 const { attachSockets } = require("./sockets");
+const { verifyMailConfig } = require("./utils/mailer");
 
 const app = createApp();
 const server = http.createServer(app);
@@ -13,6 +14,7 @@ app.set("io", io); // lets routes emit real-time events, e.g. req.app.get("io")
 
 server.listen(env.port, () => {
   console.log(`[vylapp-backend] listening on port ${env.port} (${env.nodeEnv})`);
+  verifyMailConfig();
 });
 
 process.on("SIGTERM", () => server.close(() => process.exit(0)));

@@ -1,5 +1,12 @@
-// Applies all schema files in order. Safe to re-run — all CREATE statements
-// use IF NOT EXISTS; INSERT statements use ON CONFLICT DO NOTHING.
+// Applies schema files in order, tracking which ones have already run in a
+// schema_migrations table so it's safe to run on every container start.
+//
+// NOTE: this does NOT mean every individual file is idempotent on its own —
+// schema.sql in particular uses bare `CREATE TYPE`, which errors if re-run
+// against a database that already has it. Tracking applied filenames (rather
+// than blindly re-running everything, or skipping everything once `users`
+// exists) is what lets new files added later — like schema_founding.sql —
+// actually get picked up without re-executing ones that already succeeded.
 //
 // Migration order matters:
 //   1. schema.sql             — core tables (users, vibes, spaces, etc.)
@@ -34,26 +41,25 @@ async function migrate() {
     ssl: env.pgSsl ? { rejectUnauthorized: false } : false,
   });
 
-  console.log("[migrate] Checking if database is already initialized...");
-  const clientCheck = await pool.connect();
-  try {
-    const { rows } = await clientCheck.query(
-      "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users')"
-    );
-    if (rows[0].exists) {
-      console.log("[migrate] Database already initialized. Skipping migrations.");
-      process.exit(0);
-    }
-  } catch (err) {
-    console.warn("[migrate] Warning checking database state:", err.message);
-  } finally {
-    clientCheck.release();
-  }
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      filename    TEXT PRIMARY KEY,
+      applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 
   console.log("[migrate] Starting migration sequence...");
   let hasError = false;
 
   for (const filename of MIGRATIONS) {
+    const { rows: already } = await pool.query(
+      "SELECT 1 FROM schema_migrations WHERE filename = $1", [filename]
+    );
+    if (already.length) {
+      console.log(`[migrate] Skipping ${filename} — already applied`);
+      continue;
+    }
+
     const filepath = path.join(__dirname, filename);
     if (!fs.existsSync(filepath)) {
       console.warn(`[migrate] Skipping ${filename} — file not found`);
@@ -65,6 +71,7 @@ async function migrate() {
     try {
       await client.query("BEGIN");
       await client.query(sql);
+      await client.query("INSERT INTO schema_migrations (filename) VALUES ($1)", [filename]);
       await client.query("COMMIT");
       console.log(`[migrate] ✓ ${filename}`);
     } catch (err) {

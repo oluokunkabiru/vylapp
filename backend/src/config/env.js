@@ -17,6 +17,10 @@ module.exports = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
   mailHost: process.env.MAIL_HOST || "127.0.0.1",
   mailPort: parseInt(process.env.MAIL_PORT || "1025", 10),
+  // "ssl" -> implicit TLS on connect (typically port 465)
+  // "tls" -> STARTTLS negotiated after connect (typically port 587)
+  // null/unset -> inferred from port below
+  mailScheme: process.env.MAIL_SCHEME === "null" || !process.env.MAIL_SCHEME ? null : process.env.MAIL_SCHEME.toLowerCase(),
   mailUsername: process.env.MAIL_USERNAME === "null" || !process.env.MAIL_USERNAME ? null : process.env.MAIL_USERNAME,
   mailPassword: process.env.MAIL_PASSWORD === "null" || !process.env.MAIL_PASSWORD ? null : process.env.MAIL_PASSWORD,
   mailFromAddress: process.env.MAIL_FROM_ADDRESS || "hello@example.com",

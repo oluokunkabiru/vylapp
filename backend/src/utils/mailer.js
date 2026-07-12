@@ -8,8 +8,11 @@ function getTransporter() {
     const config = {
       host: env.mailHost,
       port: env.mailPort,
-      secure: env.mailPort === 465, // true for 465, false for other ports
+      // "ssl" forces implicit TLS; "tls" forces STARTTLS; unset falls back
+      // to the port-465-is-implicit-TLS convention most providers follow.
+      secure: env.mailScheme === "ssl" ? true : env.mailScheme === "tls" ? false : env.mailPort === 465,
     };
+    if (env.mailScheme === "tls") config.requireTLS = true;
 
     if (env.mailUsername && env.mailPassword) {
       config.auth = {
@@ -21,6 +24,22 @@ function getTransporter() {
     transporter = nodemailer.createTransport(config);
   }
   return transporter;
+}
+
+/**
+ * Verifies the configured SMTP connection actually works, so mail
+ * misconfiguration shows up in the logs at boot instead of being discovered
+ * only when a real forgot-password/reset-email attempt silently fails.
+ */
+async function verifyMailConfig() {
+  try {
+    await getTransporter().verify();
+    console.log(`[mailer] SMTP OK — sending as ${env.mailFromAddress} via ${env.mailHost}:${env.mailPort}`);
+    return true;
+  } catch (err) {
+    console.error(`[mailer] SMTP verification failed for ${env.mailHost}:${env.mailPort} — emails will not be delivered:`, err.message);
+    return false;
+  }
 }
 
 /**
@@ -75,4 +94,5 @@ async function sendPasswordResetEmail(email, token, displayName) {
 
 module.exports = {
   sendPasswordResetEmail,
+  verifyMailConfig,
 };
