@@ -8,29 +8,29 @@
 //  security, so this version uses scrypt (password hashing) and HMAC-SHA256
 //  (token signing) — both native to Node, both cryptographically sound.
 // ════════════════════════════════════════════════════════════════════════════
-const crypto = require("crypto");
+import crypto from "crypto";
 
 const SCRYPT_KEYLEN = 64;
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 }; // ~16MB memory cost, interactive-login tuned
 
-function randomHex(n) {
+function randomHex(n: number): string {
   return crypto.randomBytes(n).toString("hex");
 }
 
-function randomBase32(n) {
+function randomBase32(n: number): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   const bytes = crypto.randomBytes(n);
   return Array.from(bytes).map(b => chars[b % 32]).join("");
 }
 
 // ── Password hashing (scrypt, salted) ─────────────────────────────────────
-function hashPassword(plain) {
+function hashPassword(plain: string): string {
   const salt = randomHex(16);
   const hash = crypto.scryptSync(plain, salt, SCRYPT_KEYLEN, SCRYPT_PARAMS).toString("hex");
   return `$vyl$scrypt$${salt}$${hash}`;
 }
 
-function verifyPassword(plain, stored) {
+function verifyPassword(plain: string, stored: string | null | undefined): boolean {
   if (!stored) return false;
   const parts = stored.split("$");
   if (parts[1] !== "vyl" || parts[2] !== "scrypt") return false;
@@ -45,15 +45,15 @@ function verifyPassword(plain, stored) {
 }
 
 // ── Base64url helpers ──────────────────────────────────────────────────────
-function b64url(input) {
+function b64url(input: string): string {
   return Buffer.from(input).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
-function fromB64url(input) {
+function fromB64url(input: string): string {
   return Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
 }
 
 // ── JWT (HMAC-SHA256, hand-rolled, RFC 7519-shaped) ───────────────────────
-function signJWT(payload, secret, expiresInSec = 86400) {
+function signJWT(payload: Record<string, unknown>, secret: string, expiresInSec = 86400): string {
   const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const now = Math.floor(Date.now() / 1000);
   const body = b64url(JSON.stringify({ ...payload, iat: now, exp: now + expiresInSec }));
@@ -62,7 +62,11 @@ function signJWT(payload, secret, expiresInSec = 86400) {
   return `${header}.${body}.${sig}`;
 }
 
-function verifyJWT(token, secret) {
+type JWTResult =
+  | { valid: true; payload: { sub: string; [key: string]: unknown; iat: number; exp: number } }
+  | { valid: false; error: string };
+
+function verifyJWT(token: string, secret: string): JWTResult {
   try {
     const [h, b, sig] = token.split(".");
     if (!h || !b || !sig) return { valid: false, error: "Malformed token" };
@@ -91,7 +95,7 @@ const generateEmailVerificationToken = () => "evt_" + randomHex(32);
 const generateOAuthState = () => randomHex(32);
 
 // ── TOTP 2FA (RFC 6238, HMAC-SHA1 based) ──────────────────────────────────
-function base32Decode(b32) {
+function base32Decode(b32: string): Buffer {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   let bits = "";
   for (const c of b32.toUpperCase().replace(/=+$/, "")) {
@@ -99,14 +103,14 @@ function base32Decode(b32) {
     if (idx === -1) continue;
     bits += idx.toString(2).padStart(5, "0");
   }
-  const bytes = [];
+  const bytes: number[] = [];
   for (let i = 0; i + 8 <= bits.length; i += 8) bytes.push(parseInt(bits.slice(i, i + 8), 2));
   return Buffer.from(bytes);
 }
 
-function generateTOTPSecret() { return randomBase32(20); }
+function generateTOTPSecret(): string { return randomBase32(20); }
 
-function totpAt(secret, timeStep) {
+function totpAt(secret: string, timeStep: number): string {
   const key = base32Decode(secret);
   const buf = Buffer.alloc(8);
   buf.writeBigInt64BE(BigInt(timeStep));
@@ -116,11 +120,11 @@ function totpAt(secret, timeStep) {
   return String(code).padStart(6, "0");
 }
 
-function generateTOTPCode(secret) {
+function generateTOTPCode(secret: string): string {
   return totpAt(secret, Math.floor(Date.now() / 30000));
 }
 
-function verifyTOTP(code, secret, window = 1) {
+function verifyTOTP(code: string, secret: string, window = 1): boolean {
   const step = Math.floor(Date.now() / 30000);
   for (let t = step - window; t <= step + window; t++) {
     if (totpAt(secret, t) === code) return true;
@@ -128,13 +132,13 @@ function verifyTOTP(code, secret, window = 1) {
   return false;
 }
 
-function generateRecoveryCodes(count = 8) {
+function generateRecoveryCodes(count = 8): string[] {
   return Array.from({ length: count }, () =>
     `${randomHex(4)}-${randomHex(4)}-${randomHex(4)}`
   );
 }
 
-module.exports = {
+export = {
   randomHex, randomBase32,
   hashPassword, verifyPassword,
   signJWT, verifyJWT,
