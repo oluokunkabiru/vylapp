@@ -1,5 +1,5 @@
 /**
- * httpLogger.js — Express middleware that logs every HTTP request in
+ * httpLogger.ts — Express middleware that logs every HTTP request in
  * Laravel's style:
  *
  *   [2026-07-12 19:48:41] vylapp.INFO: POST /auth/login → 200 (34ms)
@@ -10,42 +10,38 @@
  * see exactly what payload triggered the error — without logging every
  * body on every successful request (which would flood the logs).
  *
- * Usage in app.js:
- *   const httpLogger = require("./middleware/httpLogger");
+ * Usage in app.ts:
+ *   import httpLogger from "./middleware/httpLogger";
  *   app.use(httpLogger);
  */
 
-const logger = require("../utils/logger");
+import { Request, Response, NextFunction } from "express";
+import logger from "../utils/logger";
 
 // Paths to skip logging entirely (health checks, etc.)
 const SKIP_PATHS = new Set(["/health", "/favicon.ico"]);
 
-/**
- * @param {import("express").Request}  req
- * @param {import("express").Response} res
- * @param {Function} next
- */
-function httpLogger(req, res, next) {
+function httpLogger(req: Request, res: Response, next: NextFunction) {
   if (SKIP_PATHS.has(req.path)) return next();
 
   const start = Date.now();
 
   // Capture the original json() method so we can intercept the response body
   const originalJson = res.json.bind(res);
-  let responseBody;
+  let responseBody: unknown;
 
-  res.json = function (body) {
+  res.json = function (body?: unknown) {
     responseBody = body;
     return originalJson(body);
   };
 
   res.on("finish", () => {
-    const ms     = Date.now() - start;
+    const ms = Date.now() - start;
     const status = res.statusCode;
     const method = req.method;
-    const url    = req.originalUrl || req.url;
+    const url = req.originalUrl || req.url;
 
-    const context = {};
+    const context: { request?: unknown; response?: unknown } = {};
 
     // Always log request body on errors so you can see what caused it
     if (status >= 400 && req.body && Object.keys(req.body).length > 0) {
@@ -62,7 +58,7 @@ function httpLogger(req, res, next) {
       url,
       status,
       ms,
-      body:     context.request,
+      body: context.request,
       response: context.response,
     });
   });
@@ -70,4 +66,4 @@ function httpLogger(req, res, next) {
   next();
 }
 
-module.exports = httpLogger;
+export = httpLogger;

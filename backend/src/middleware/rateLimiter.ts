@@ -28,15 +28,17 @@
 //  unauthenticated routes (login, register).
 // ════════════════════════════════════════════════════════════════════════════
 
-const WINDOW_MS   = 60_000;   // Default window: 1 minute
-const HOUR_MS     = 3_600_000;
+import { Request, Response, NextFunction, RequestHandler } from "express";
+
+const WINDOW_MS = 60_000; // Default window: 1 minute
+const HOUR_MS = 3_600_000;
 
 // In-memory sliding window store. Each entry: array of timestamp integers.
-const store = new Map();
+const store = new Map<string, number[]>();
 
 // Prune entries older than the window to keep memory bounded.
 // Called lazily on each check — no background timer needed.
-function prune(key, windowMs) {
+function prune(key: string, windowMs: number): number[] {
   const now = Date.now();
   const entries = store.get(key) || [];
   const fresh = entries.filter(ts => now - ts < windowMs);
@@ -45,40 +47,48 @@ function prune(key, windowMs) {
   return fresh;
 }
 
-function count(key, windowMs) {
+function count(key: string, windowMs: number): number {
   return prune(key, windowMs).length;
 }
 
-function record(key, windowMs) {
+function record(key: string, windowMs: number) {
   const fresh = prune(key, windowMs);
   fresh.push(Date.now());
   store.set(key, fresh);
 }
 
-function resetAfterMs(key, windowMs) {
+function resetAfterMs(key: string, windowMs: number): number {
   const entries = store.get(key) || [];
   if (!entries.length) return 0;
   return Math.max(0, windowMs - (Date.now() - entries[0]));
 }
 
+interface RouteLimit {
+  prefix: string;
+  method: string;
+  limit: number;
+  window: number;
+  desc: string;
+}
+
 // ── Rate limit configs per route pattern ──────────────────────────────────────
-const ROUTE_LIMITS = [
+const ROUTE_LIMITS: RouteLimit[] = [
   // path prefix, method ('*' = all), limit, windowMs, description
-  { prefix: "/auth/login",    method: "*", limit: 10,  window: WINDOW_MS,  desc: "Login brute-force guard"  },
-  { prefix: "/auth/register", method: "*", limit: 10,  window: WINDOW_MS,  desc: "Register spam guard"      },
-  { prefix: "/auth/2fa",      method: "*", limit: 10,  window: WINDOW_MS,  desc: "2FA brute-force guard"    },
-  { prefix: "/translate",     method: "*", limit: 30,  window: WINDOW_MS,  desc: "Translation AI cost"      },
-  { prefix: "/autopilot/run", method: "*", limit: 5,   window: WINDOW_MS,  desc: "Autopilot AI cost"        },
-  { prefix: "/vibes",         method: "POST", limit: 60, window: HOUR_MS,  desc: "Vibe creation spam"       },
-  { prefix: "/spaces",        method: "POST", limit: 10, window: HOUR_MS,  desc: "Space creation limit"     },
-  { prefix: "/moderation",    method: "*", limit: 20,  window: WINDOW_MS,  desc: "Report spam guard"        },
-  { prefix: "/creator",       method: "POST", limit: 30, window: HOUR_MS,  desc: "Creator action limit"     },
+  { prefix: "/auth/login", method: "*", limit: 10, window: WINDOW_MS, desc: "Login brute-force guard" },
+  { prefix: "/auth/register", method: "*", limit: 10, window: WINDOW_MS, desc: "Register spam guard" },
+  { prefix: "/auth/2fa", method: "*", limit: 10, window: WINDOW_MS, desc: "2FA brute-force guard" },
+  { prefix: "/translate", method: "*", limit: 30, window: WINDOW_MS, desc: "Translation AI cost" },
+  { prefix: "/autopilot/run", method: "*", limit: 5, window: WINDOW_MS, desc: "Autopilot AI cost" },
+  { prefix: "/vibes", method: "POST", limit: 60, window: HOUR_MS, desc: "Vibe creation spam" },
+  { prefix: "/spaces", method: "POST", limit: 10, window: HOUR_MS, desc: "Space creation limit" },
+  { prefix: "/moderation", method: "*", limit: 20, window: WINDOW_MS, desc: "Report spam guard" },
+  { prefix: "/creator", method: "POST", limit: 30, window: HOUR_MS, desc: "Creator action limit" },
 ];
 
-const DEFAULT_LIMIT  = 300;
+const DEFAULT_LIMIT = 300;
 const DEFAULT_WINDOW = WINDOW_MS;
 
-function resolveLimit(path, method) {
+function resolveLimit(path: string, method: string) {
   for (const rule of ROUTE_LIMITS) {
     if (path.startsWith(rule.prefix) &&
         (rule.method === "*" || rule.method === method.toUpperCase())) {
@@ -89,8 +99,8 @@ function resolveLimit(path, method) {
 }
 
 // ── Middleware factory ─────────────────────────────────────────────────────────
-function rateLimiter(options = {}) {
-  return function rateLimit(req, res, next) {
+function rateLimiter(options: Record<string, unknown> = {}): RequestHandler {
+  return function rateLimit(req: Request, res: Response, next: NextFunction) {
     // Identity: authenticated user ID preferred, IP fallback.
     // Never trust X-Forwarded-For without a reverse-proxy trust config.
     const identity = req.user?.id || req.ip || "unknown";
@@ -99,13 +109,13 @@ function rateLimiter(options = {}) {
 
     const current = count(key, windowMs);
     const remaining = Math.max(0, limit - current);
-    const resetMs   = resetAfterMs(key, windowMs);
+    const resetMs = resetAfterMs(key, windowMs);
 
     // Always set rate limit headers (follows RFC 6585 / draft-ietf-httpapi-ratelimit-headers)
     res.set({
-      "X-RateLimit-Limit":     String(limit),
+      "X-RateLimit-Limit": String(limit),
       "X-RateLimit-Remaining": String(remaining),
-      "X-RateLimit-Reset":     String(Math.ceil(resetMs / 1000)),
+      "X-RateLimit-Reset": String(Math.ceil(resetMs / 1000)),
     });
 
     if (current >= limit) {
@@ -138,4 +148,4 @@ if (typeof setInterval !== "undefined") {
   }, 5 * 60_000).unref(); // .unref() so it doesn't prevent process exit
 }
 
-module.exports = rateLimiter;
+export = rateLimiter;
