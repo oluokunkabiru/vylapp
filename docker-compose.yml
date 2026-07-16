@@ -65,7 +65,7 @@ services:
       mailpit:
         condition: service_started
     command: >
-      sh -c "node src/db/migrate.js && node src/server.js"
+      sh -c "node src/db/migrate.js && npx tsx watch src/server.js"
 
   # ── Mailpit (local SMTP catcher — dev only) ─────────────────────────────────
   # Host already runs a native Mailpit on 1025/8025, so this one is mapped to
