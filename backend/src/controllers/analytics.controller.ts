@@ -1,9 +1,13 @@
-const { ok } = require("../utils/respond");
-const AnalyticsEngine = require("../services/analyticsEngine");
-const prisma = require("../config/prisma");
+import { Response } from "express";
+import { AuthedRequest } from "../types/express";
+import respond from "../utils/respond";
+import AnalyticsEngine from "../services/analyticsEngine";
+import prisma from "../config/prisma";
+
+const { ok } = respond;
 
 // ── GET /analytics/creator/me — creator dashboard snapshot ──────────────
-async function creatorSnapshot(req, res) {
+async function creatorSnapshot(req: AuthedRequest, res: Response) {
   const [user, impressions, creatorProfile, tierAvg] = await Promise.all([
     prisma.users.findUnique({ where: { id: req.user.id }, select: { connectionsCount: true, vibesCount: true } }),
     prisma.vibes.aggregate({ _sum: { viewsCount: true, likesCount: true }, where: { userId: req.user.id } }),
@@ -23,7 +27,7 @@ async function creatorSnapshot(req, res) {
 }
 
 // ── GET /analytics/platform — admin-only platform metrics ────────────────
-async function platform(req, res) {
+async function platform(req: AuthedRequest, res: Response) {
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -46,4 +50,4 @@ async function platform(req, res) {
   });
 }
 
-module.exports = { creatorSnapshot, platform };
+export = { creatorSnapshot, platform };

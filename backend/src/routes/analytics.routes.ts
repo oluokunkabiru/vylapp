@@ -1,7 +1,9 @@
-const express = require("express");
-const asyncHandler = require("../middleware/asyncHandler");
-const { requireAuth, requireAdmin } = require("../middleware/auth");
-const analyticsController = require("../controllers/analytics.controller");
+import express from "express";
+import asyncHandler from "../middleware/asyncHandler";
+import authMiddleware from "../middleware/auth";
+import analyticsController from "../controllers/analytics.controller";
+
+const { requireAuth, requireAdmin } = authMiddleware;
 
 const router = express.Router();
 router.use(requireAuth);
@@ -12,4 +14,4 @@ router.get("/creator/me", asyncHandler(analyticsController.creatorSnapshot));
 // ── GET /analytics/platform — admin-only platform metrics ────────────────
 router.get("/platform", requireAdmin, asyncHandler(analyticsController.platform));
 
-module.exports = router;
+export = router;
