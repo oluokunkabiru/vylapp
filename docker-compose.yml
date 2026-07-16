@@ -16,7 +16,7 @@ version: "3.9"
 #    docker compose up --build
 #
 #  To apply RBAC schema separately after initial setup:
-#    docker compose exec backend npx tsx src/db/migrate.js
+#    docker compose exec backend npx tsx src/db/migrate.ts
 # ════════════════════════════════════════════════════════════════════════════
 
 services:
@@ -58,14 +58,14 @@ services:
     ports:
       - "4000:4000"
     volumes:
-      - ./backend/src:/app/src:ro    # hot-reload in dev; remove :ro in production
+      - ./backend/src:/app/src       # hot-reload in dev; remove :ro in production
     depends_on:
       postgres:
         condition: service_healthy
       mailpit:
         condition: service_started
     command: >
-      sh -c "npx tsx src/db/migrate.js && npx tsx watch src/server.ts"
+      sh -c "npx prisma generate && npx tsx src/db/migrate.ts && npx tsx watch src/server.ts"
 
   # ── Mailpit (local SMTP catcher — dev only) ─────────────────────────────────
   # Host already runs a native Mailpit on 1025/8025, so this one is mapped to

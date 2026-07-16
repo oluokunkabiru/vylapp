@@ -6,11 +6,12 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
-    "postbuild": "cp -r src/generated dist/generated",
+    "postbuild": "cp -r src/generated dist/generated && cp src/db/*.sql dist/db/",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "migrate": "tsx src/db/migrate.js",
-    "seed": "tsx src/db/seed.js",
+    "migrate": "tsx src/db/migrate.ts",
+    "seed": "tsx src/db/seed.ts",
+    "clear-demo-data": "tsx src/db/clear-demo-data.ts",
     "setup": "npm run migrate && npm run seed"
   },
   "engines": {

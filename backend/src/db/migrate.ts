@@ -20,10 +20,10 @@
 // Each file is applied in a single transaction. If a file fails, it rolls
 // back that file only — previously applied files are committed.
 
-const fs   = require("fs");
-const path = require("path");
-const { Pool } = require("pg");
-const env  = require("../config/env");
+import fs from "fs";
+import path from "path";
+import { Pool } from "pg";
+import env from "../config/env";
 
 const MIGRATIONS = [
   "schema.sql",
@@ -74,7 +74,7 @@ async function migrate() {
       await client.query("INSERT INTO schema_migrations (filename) VALUES ($1)", [filename]);
       await client.query("COMMIT");
       console.log(`[migrate] ✓ ${filename}`);
-    } catch (err) {
+    } catch (err: any) {
       await client.query("ROLLBACK");
       console.error(`[migrate] ✗ ${filename}:`, err.message);
       hasError = true;

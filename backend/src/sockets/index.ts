@@ -5,12 +5,19 @@
 //  Auth: client connects with { auth: { token } } using the same JWT
 //  issued by /auth/login — no separate session system needed.
 // ════════════════════════════════════════════════════════════════════════════
-const { verifyJWT } = require("../utils/crypto");
-const env = require("../config/env");
-const db = require("../config/db");
+import { Server, Socket } from "socket.io";
+import crypto from "../utils/crypto";
+import env from "../config/env";
+import db from "../config/db";
 
-function attachSockets(io) {
-  io.use((socket, next) => {
+const { verifyJWT } = crypto;
+
+interface AuthedSocket extends Socket {
+  userId?: string;
+}
+
+function attachSockets(io: Server) {
+  io.use((socket: AuthedSocket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error("Missing auth token"));
     const result = verifyJWT(token, env.jwtSecret);
@@ -19,30 +26,30 @@ function attachSockets(io) {
     next();
   });
 
-  io.on("connection", (socket) => {
+  io.on("connection", (socket: AuthedSocket) => {
     db.query(`UPDATE users SET online = TRUE, last_seen = NOW() WHERE id = $1`, [socket.userId]).catch(() => {});
 
     // ── Conversation rooms (DMs / group chat) ───────────────────────────
-    socket.on("conversation:join", (conversationId) => {
+    socket.on("conversation:join", (conversationId: string) => {
       socket.join(`conversation:${conversationId}`);
     });
-    socket.on("conversation:leave", (conversationId) => {
+    socket.on("conversation:leave", (conversationId: string) => {
       socket.leave(`conversation:${conversationId}`);
     });
-    socket.on("conversation:typing", ({ conversationId }) => {
+    socket.on("conversation:typing", ({ conversationId }: { conversationId: string }) => {
       socket.to(`conversation:${conversationId}`).emit("conversation:typing", { conversationId, userId: socket.userId });
     });
 
     // ── Space presence (live audio room) ────────────────────────────────
-    socket.on("space:join", async ({ spaceId }) => {
+    socket.on("space:join", async ({ spaceId }: { spaceId: string }) => {
       socket.join(`space:${spaceId}`);
       socket.to(`space:${spaceId}`).emit("space:participant_joined", { spaceId, userId: socket.userId });
     });
-    socket.on("space:leave", ({ spaceId }) => {
+    socket.on("space:leave", ({ spaceId }: { spaceId: string }) => {
       socket.leave(`space:${spaceId}`);
       socket.to(`space:${spaceId}`).emit("space:participant_left", { spaceId, userId: socket.userId });
     });
-    socket.on("space:hand_raise", ({ spaceId }) => {
+    socket.on("space:hand_raise", ({ spaceId }: { spaceId: string }) => {
       socket.to(`space:${spaceId}`).emit("space:hand_raised", { spaceId, userId: socket.userId });
     });
 
@@ -56,8 +63,8 @@ function attachSockets(io) {
 }
 
 // Helper other parts of the app can use to push a live notification
-function pushNotification(io, userId, notification) {
+function pushNotification(io: Server, userId: string, notification: unknown) {
   io.to(`user:${userId}`).emit("notification:new", notification);
 }
 
-module.exports = { attachSockets, pushNotification };
+export = { attachSockets, pushNotification };

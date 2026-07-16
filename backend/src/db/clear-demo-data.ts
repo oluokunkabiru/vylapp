@@ -8,8 +8,8 @@
 // CASCADE (courses -> educator_profiles, certificates, community_moderators
 // assigned_by), so those have to be cleared in dependency order before the
 // user rows themselves can be deleted.
-const { Pool } = require("pg");
-const env = require("../config/env");
+import { Pool } from "pg";
+import env from "../config/env";
 
 const PERSONA_IDS = [
   "00000000-0000-0000-0001-000000000001", // aisha

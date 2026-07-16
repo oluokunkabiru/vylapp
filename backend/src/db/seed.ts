@@ -2,9 +2,11 @@
 // (Aisha, Marcus, Jade, Remi, Tanvi, Leon, Sena) — vibes, Spaces, and a
 // known login password, so the backend is immediately demoable against
 // the vylapp-instagram.jsx frontend without any manual data entry.
-const { Pool } = require("pg");
-const env = require("../config/env");
-const { hashPassword } = require("../utils/crypto");
+import { Pool } from "pg";
+import env from "../config/env";
+import crypto from "../utils/crypto";
+
+const { hashPassword } = crypto;
 
 const DEMO_PASSWORD = "VylappDemo123!";
 
@@ -81,14 +83,14 @@ async function seed() {
 
 // Seeds two demo courses so the Learn catalog isn't empty on first load.
 // Skipped entirely if any course already exists — safe to re-run.
-async function seedLearn(pool) {
+async function seedLearn(pool: Pool) {
   const { rows: existing } = await pool.query("SELECT COUNT(*) FROM courses");
   if (parseInt(existing[0].count, 10) > 0) {
     console.log("[seed] courses already exist, skipping Learn seed");
     return;
   }
 
-  async function makeEducator(userId, bio, subjects, status) {
+  async function makeEducator(userId: string, bio: string, subjects: string[], status: string) {
     const { rows } = await pool.query(
       `INSERT INTO educator_profiles (user_id, bio, subjects, languages_taught, status)
        VALUES ($1,$2,$3,$4,$5)
@@ -99,7 +101,7 @@ async function seedLearn(pool) {
     return rows[0].id;
   }
 
-  async function makeCourse(educatorId, title, description, category, tags) {
+  async function makeCourse(educatorId: string, title: string, description: string, category: string, tags: string[]) {
     const { rows } = await pool.query(
       `INSERT INTO courses (educator_id, title, description, category, language, difficulty, is_free, tags, status, published_at, estimated_hours)
        VALUES ($1,$2,$3,$4,'en','beginner',TRUE,$5,'published',NOW(),1.5) RETURNING id`,
@@ -108,7 +110,7 @@ async function seedLearn(pool) {
     return rows[0].id;
   }
 
-  async function makeLesson(courseId, title, type, content, sortOrder, isFreePreview, durationMinutes) {
+  async function makeLesson(courseId: string, title: string, type: string, content: unknown, sortOrder: number, isFreePreview: boolean, durationMinutes: number) {
     const { rows } = await pool.query(
       `INSERT INTO lessons (course_id, title, type, content, sort_order, is_free_preview, duration_minutes)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
@@ -117,7 +119,7 @@ async function seedLearn(pool) {
     return rows[0].id;
   }
 
-  async function makeCheckpoint(lessonId, question, options, correctOption, explanation, sortOrder) {
+  async function makeCheckpoint(lessonId: string, question: string, options: unknown, correctOption: string, explanation: string, sortOrder: number) {
     await pool.query(
       `INSERT INTO knowledge_checkpoints (lesson_id, question, options, correct_option, explanation, sort_order)
        VALUES ($1,$2,$3,$4,$5,$6)`,

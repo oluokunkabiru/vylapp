@@ -8,25 +8,25 @@ import logger from "./utils/logger";
 
 const { notFound, errorHandler } = errorHandlerModule;
 
-const { router: authRoutes } = require("./routes/auth.routes");
-const { router: userRoutes } = require("./routes/users.routes");
-const onboardingRoutes = require("./routes/onboarding.routes");
-const { router: vibesRoutes } = require("./routes/vibes.routes");
-const { router: spacesRoutes } = require("./routes/spaces.routes");
-const messagingRoutes = require("./routes/messaging.routes");
-const notificationsRoutes = require("./routes/notifications.routes");
-const creatorRoutes = require("./routes/creator.routes");
-const subscriptionsRoutes = require("./routes/subscriptions.routes");
-const searchRoutes = require("./routes/search.routes");
-const moderationRoutes = require("./routes/moderation.routes");
-const autopilotRoutes = require("./routes/autopilot.routes");
-const analyticsRoutes = require("./routes/analytics.routes");
-const translateRoutes = require("./routes/translate.routes");
-const ravenRoutes = require("./routes/raven.routes");
-const learnRoutes = require("./routes/learn.routes");
-const forumRoutes = require("./routes/forum.routes");
-const rbacRoutes = require("./routes/rbac.routes");
-const devRoutes = require("./routes/dev.routes");
+import { router as authRoutes } from "./routes/auth.routes";
+import { router as userRoutes } from "./routes/users.routes";
+import onboardingRoutes from "./routes/onboarding.routes";
+import { router as vibesRoutes } from "./routes/vibes.routes";
+import { router as spacesRoutes } from "./routes/spaces.routes";
+import messagingRoutes from "./routes/messaging.routes";
+import notificationsRoutes from "./routes/notifications.routes";
+import creatorRoutes from "./routes/creator.routes";
+import subscriptionsRoutes from "./routes/subscriptions.routes";
+import searchRoutes from "./routes/search.routes";
+import moderationRoutes from "./routes/moderation.routes";
+import autopilotRoutes from "./routes/autopilot.routes";
+import analyticsRoutes from "./routes/analytics.routes";
+import translateRoutes from "./routes/translate.routes";
+import ravenRoutes from "./routes/raven.routes";
+import learnRoutes from "./routes/learn.routes";
+import forumRoutes from "./routes/forum.routes";
+import rbacRoutes from "./routes/rbac.routes";
+import devRoutes from "./routes/dev.routes";
 
 function createApp() {
   const app = express();
