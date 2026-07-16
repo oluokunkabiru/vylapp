@@ -1,5 +1,5 @@
 /**
- * mailer.js — Single SMTP transport for all Vylapp transactional emails.
+ * mailer.ts — Single SMTP transport for all Vylapp transactional emails.
  *
  * Exported send functions:
  *   sendWelcomeEmail(email, displayName, verifyToken)
@@ -10,27 +10,27 @@
  *   verifyMailConfig()
  */
 
-"use strict";
+import nodemailer, { Transporter } from "nodemailer";
+import env from "../config/env";
+import logger from "./logger";
+import emailTemplates from "./emailTemplates";
 
-const nodemailer = require("nodemailer");
-const env        = require("../config/env");
-const logger     = require("./logger");
 const {
   buildWelcomeEmail,
   buildEmailVerificationEmail,
   buildPasswordResetEmail,
   buildPasswordChangedEmail,
   build2FAOTPEmail,
-} = require("./emailTemplates");
+} = emailTemplates;
 
 // ── Singleton transporter ──────────────────────────────────────────────────────
-let _transporter;
+let _transporter: Transporter | undefined;
 
-function getTransporter() {
+function getTransporter(): Transporter {
   if (!_transporter) {
-    const config = {
-      host:   env.mailHost,
-      port:   env.mailPort,
+    const config: Record<string, unknown> = {
+      host: env.mailHost,
+      port: env.mailPort,
       secure: env.mailScheme === "ssl"
         ? true
         : env.mailScheme === "tls"
@@ -46,8 +46,14 @@ function getTransporter() {
   return _transporter;
 }
 
+interface SendArgs {
+  to: string;
+  subject: string;
+  html: string;
+}
+
 // ── Base send helper ───────────────────────────────────────────────────────────
-async function send({ to, subject, html }) {
+async function send({ to, subject, html }: SendArgs) {
   const info = await getTransporter().sendMail({
     from: `"${env.mailFromName}" <${env.mailFromAddress}>`,
     to,
@@ -59,12 +65,12 @@ async function send({ to, subject, html }) {
 }
 
 // ── SMTP health check ──────────────────────────────────────────────────────────
-async function verifyMailConfig() {
+async function verifyMailConfig(): Promise<boolean> {
   try {
     await getTransporter().verify();
     logger.info(`SMTP OK — sending as ${env.mailFromAddress}`, { host: env.mailHost, port: env.mailPort });
     return true;
-  } catch (err) {
+  } catch (err: any) {
     logger.error("SMTP verification failed — emails will not be delivered", {
       host: env.mailHost, port: env.mailPort, error: err.message,
     });
@@ -73,39 +79,39 @@ async function verifyMailConfig() {
 }
 
 // ── 1. Welcome (after registration) ───────────────────────────────────────────
-async function sendWelcomeEmail(email, displayName, verifyToken) {
+async function sendWelcomeEmail(email: string, displayName: string | null | undefined, verifyToken: string) {
   const verifyLink = `${env.clientOrigin}/verify-email?token=${verifyToken}`;
   const { subject, html } = buildWelcomeEmail(displayName, verifyLink);
   return send({ to: email, subject, html });
 }
 
 // ── 2. Standalone email verification (resend) ──────────────────────────────────
-async function sendEmailVerificationEmail(email, displayName, verifyToken) {
+async function sendEmailVerificationEmail(email: string, displayName: string | null | undefined, verifyToken: string) {
   const verifyLink = `${env.clientOrigin}/verify-email?token=${verifyToken}`;
   const { subject, html } = buildEmailVerificationEmail(displayName, verifyLink);
   return send({ to: email, subject, html });
 }
 
 // ── 3. Password reset ──────────────────────────────────────────────────────────
-async function sendPasswordResetEmail(email, displayName, resetToken) {
+async function sendPasswordResetEmail(email: string, displayName: string | null | undefined, resetToken: string) {
   const resetLink = `${env.clientOrigin}/reset-password?token=${resetToken}`;
   const { subject, html } = buildPasswordResetEmail(displayName, resetLink);
   return send({ to: email, subject, html });
 }
 
 // ── 4. Password changed confirmation ──────────────────────────────────────────
-async function sendPasswordChangedEmail(email, displayName) {
+async function sendPasswordChangedEmail(email: string, displayName: string | null | undefined) {
   const { subject, html } = buildPasswordChangedEmail(displayName);
   return send({ to: email, subject, html });
 }
 
 // ── 5. 2FA OTP ─────────────────────────────────────────────────────────────────
-async function send2FAOTPEmail(email, displayName, otp) {
+async function send2FAOTPEmail(email: string, displayName: string | null | undefined, otp: string) {
   const { subject, html } = build2FAOTPEmail(displayName, otp);
   return send({ to: email, subject, html });
 }
 
-module.exports = {
+export = {
   verifyMailConfig,
   sendWelcomeEmail,
   sendEmailVerificationEmail,

@@ -22,7 +22,7 @@ const BRAND_TAGLINE  = "Vibe. Learn. Connect.";
 const BRAND_YEAR     = new Date().getFullYear();
 
 // ── Base layout wrapper ────────────────────────────────────────────────────────
-function layout(headerEmoji, headerTitle, bodyHtml) {
+function layout(headerEmoji: string, headerTitle: string, bodyHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -80,7 +80,7 @@ function layout(headerEmoji, headerTitle, bodyHtml) {
 }
 
 // ── Shared sub-components ──────────────────────────────────────────────────────
-function ctaButton(label, href) {
+function ctaButton(label: string, href: string): string {
   return `
     <div style="text-align:center;margin:28px 0;">
       <a href="${href}"
@@ -92,7 +92,7 @@ function ctaButton(label, href) {
     </div>`;
 }
 
-function linkFallback(href) {
+function linkFallback(href: string): string {
   return `
     <p style="margin:0 0 6px;font-size:13px;color:#6b7280;">
       If the button doesn't work, copy and paste this URL into your browser:
@@ -100,15 +100,15 @@ function linkFallback(href) {
     <p style="margin:0 0 24px;font-size:13px;color:#7C3AED;word-break:break-all;">${href}</p>`;
 }
 
-function divider() {
+function divider(): string {
   return `<hr style="border:0;border-top:1px solid #f3f4f6;margin:24px 0;">`;
 }
 
-function highlight(text) {
+function highlight(text: string): string {
   return `<strong style="color:#7C3AED;">${text}</strong>`;
 }
 
-function infoBox(html) {
+function infoBox(html: string): string {
   return `
     <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:16px 20px;margin:20px 0;font-size:14px;color:#6b21a8;">
       ${html}
@@ -118,7 +118,7 @@ function infoBox(html) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  1. WELCOME EMAIL  (sent after registration, includes verify-email CTA)
 // ═══════════════════════════════════════════════════════════════════════════════
-function buildWelcomeEmail(displayName, verifyLink) {
+function buildWelcomeEmail(displayName: string | null | undefined, verifyLink: string) {
   const name = displayName || "Viber";
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#111827;">
@@ -158,7 +158,7 @@ function buildWelcomeEmail(displayName, verifyLink) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  2. EMAIL VERIFICATION  (re-send or standalone verify prompt)
 // ═══════════════════════════════════════════════════════════════════════════════
-function buildEmailVerificationEmail(displayName, verifyLink) {
+function buildEmailVerificationEmail(displayName: string | null | undefined, verifyLink: string) {
   const name = displayName || "Viber";
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#111827;">
@@ -183,7 +183,7 @@ function buildEmailVerificationEmail(displayName, verifyLink) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  3. PASSWORD RESET
 // ═══════════════════════════════════════════════════════════════════════════════
-function buildPasswordResetEmail(displayName, resetLink) {
+function buildPasswordResetEmail(displayName: string | null | undefined, resetLink: string) {
   const name = displayName || "Viber";
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#111827;">
@@ -213,7 +213,7 @@ function buildPasswordResetEmail(displayName, resetLink) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  4. PASSWORD CHANGED CONFIRMATION
 // ═══════════════════════════════════════════════════════════════════════════════
-function buildPasswordChangedEmail(displayName) {
+function buildPasswordChangedEmail(displayName: string | null | undefined) {
   const name = displayName || "Viber";
   const body = `
     <h2 style="margin:0 0 8px;font-size:22px;font-weight:800;color:#111827;">
@@ -247,7 +247,7 @@ function buildPasswordChangedEmail(displayName) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  5. 2FA OTP EMAIL  (when user enables 2FA — sends them their initial OTP)
 // ═══════════════════════════════════════════════════════════════════════════════
-function build2FAOTPEmail(displayName, otp) {
+function build2FAOTPEmail(displayName: string | null | undefined, otp: string) {
   const name = displayName || "Viber";
 
   // Render OTP digits as individual blocks for clarity
@@ -287,7 +287,7 @@ function build2FAOTPEmail(displayName, otp) {
   return { subject: `${otp} is your Vylapp verification code`, html: layout("🔢", "2FA Code", body) };
 }
 
-module.exports = {
+export = {
   buildWelcomeEmail,
   buildEmailVerificationEmail,
   buildPasswordResetEmail,
