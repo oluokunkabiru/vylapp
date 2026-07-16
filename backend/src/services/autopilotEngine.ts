@@ -7,9 +7,9 @@
 //  "self-contained AI posting system" framing from memory). If
 //  ANTHROPIC_API_KEY is set, posts get genuinely AI-written instead.
 // ════════════════════════════════════════════════════════════════════════════
-const env = require("../config/env");
+import env from "../config/env";
 
-const TOPIC_BANK = {
+const TOPIC_BANK: Record<string, string[]> = {
   TECH_VIBES: ["open-sourcing a governance toolkit", "shipping a DAO voting module", "a new AI pair-programming workflow", "decentralized identity standards", "the latest Web3 tooling release"],
   GLOBAL_CONNECT: ["10,000 farmers onboarded to AI crop advisory", "a diaspora mentorship circle launching", "climate-resilient farming techniques spreading", "a cross-border remittance pilot", "language access programs in rural schools"],
   CREATIVE_LEARN: ["a generative art collection reacting to climate data", "a collaborative mural project", "AI-assisted music composition", "a typography experiment", "a community photo-essay series"],
@@ -17,7 +17,7 @@ const TOPIC_BANK = {
   SPACES_INVITE: ["a live AMA on second brains", "a deep-dive on DAO governance", "a collector preview for generative art", "an AgriTech scale-up roundtable", "a Q&A on cross-border community building"],
 };
 
-const TEMPLATES = {
+const TEMPLATES: Record<string, (topic: string) => string> = {
   TECH_VIBES: (topic) => `Just made progress on ${topic}. Three months of building with the community kept me accountable. What are you building right now? #BuildInPublic #TechVibes`,
   GLOBAL_CONNECT: (topic) => `Update from the community: ${topic}. Technology plus community equals real change. What's a win you've seen lately? #GlobalConnect`,
   CREATIVE_LEARN: (topic) => `New work in progress: ${topic}. Art and ideas worth sharing. What are you creating this week? #CreativeLearn`,
@@ -25,7 +25,7 @@ const TEMPLATES = {
   SPACES_INVITE: (topic) => `Hosting ${topic} soon. Bring your questions, this one's worth your time. Set a reminder. #LiveSpace #Community`,
 };
 
-const HASHTAG_BANK = {
+const HASHTAG_BANK: Record<string, string[]> = {
   TECH_VIBES: ["#DAOs", "#Web3", "#AI", "#BuildInPublic", "#OpenSource"],
   GLOBAL_CONNECT: ["#AgriTech", "#Africa", "#Impact", "#Community"],
   CREATIVE_LEARN: ["#GenArt", "#ClimateArt", "#Design", "#Create"],
@@ -33,17 +33,17 @@ const HASHTAG_BANK = {
   SPACES_INVITE: ["#LiveSpace", "#AMA", "#DeepDive", "#Community"],
 };
 
-function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
 
-async function claudeGenerate(category, topic) {
+async function claudeGenerate(category: string, topic: string): Promise<string> {
   const prompt = `Write a short, authentic, high-engagement social media post (2-4 sentences, max 280 chars) for Vylapp's ${category.replace("_", " ")} feed about: "${topic}". Include a genuine hook and 2-3 relevant hashtags. End with a question. Output only the post text.`;
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": env.anthropicApiKey, "anthropic-version": "2023-06-01" },
+    headers: { "Content-Type": "application/json", "x-api-key": env.anthropicApiKey || "", "anthropic-version": "2023-06-01" },
     body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 300, messages: [{ role: "user", content: prompt }] }),
   });
-  const data = await res.json();
-  const text = data.content?.map(b => b.text || "").join("").trim();
+  const data: any = await res.json();
+  const text = data.content?.map((b: any) => b.text || "").join("").trim();
   if (!text) throw new Error("Autopilot generation returned no content");
   return text;
 }
@@ -51,11 +51,11 @@ async function claudeGenerate(category, topic) {
 const AutopilotEngine = {
   TOPIC_BANK, HASHTAG_BANK,
 
-  pickTopic(category) {
+  pickTopic(category: string): string {
     return pick(TOPIC_BANK[category] || TOPIC_BANK.TECH_VIBES);
   },
 
-  async generatePost(category, topic) {
+  async generatePost(category: string, topic?: string) {
     const t = topic || this.pickTopic(category);
     if (env.anthropicApiKey) {
       try {
@@ -69,11 +69,11 @@ const AutopilotEngine = {
     return { content: fn(t), topic: t, method: "template" };
   },
 
-  estimateEngagement(content, category) {
+  estimateEngagement(content: string, category: string) {
     const len = content.length;
     const hasQuestion = content.includes("?");
     const hashCount = (content.match(/#\w+/g) || []).length;
-    const catMultiplier = { TECH_VIBES: 1.1, GLOBAL_CONNECT: 1.4, CREATIVE_LEARN: 1.2, HUMAN_POTENTIAL: 1.3, SPACES_INVITE: 1.0 }[category] || 1;
+    const catMultiplier = ({ TECH_VIBES: 1.1, GLOBAL_CONNECT: 1.4, CREATIVE_LEARN: 1.2, HUMAN_POTENTIAL: 1.3, SPACES_INVITE: 1.0 } as Record<string, number>)[category] || 1;
     let base = 400 + Math.floor(Math.random() * 600);
     if (hasQuestion) base *= 1.3;
     if (hashCount >= 2) base *= 1.2;
@@ -84,4 +84,4 @@ const AutopilotEngine = {
   },
 };
 
-module.exports = AutopilotEngine;
+export = AutopilotEngine;

@@ -2,7 +2,7 @@
 //  SUBSCRIPTION ENGINE — ported from vylapp-organic-api.jsx (Vylapp Pro)
 //  Plan tiers, feature gates, churn prediction
 // ════════════════════════════════════════════════════════════════════════════
-const PLANS = {
+const PLANS: Record<string, { name: string; price: number; features: Record<string, number | boolean> }> = {
   free: { name: "Free", price: 0, features: { translation_langs: 1, space_duration_min: 60, analytics: false, badge: false, ad_free: false, pro_badge: false } },
   pro_monthly: { name: "Pro Monthly", price: 9, features: { translation_langs: 5, space_duration_min: 999, analytics: true, badge: true, ad_free: true, pro_badge: true } },
   pro_annual: { name: "Pro Annual", price: 84, features: { translation_langs: 5, space_duration_min: 999, analytics: true, badge: true, ad_free: true, pro_badge: true } },
@@ -13,23 +13,23 @@ const PLANS = {
 const SubscriptionEngine = {
   PLANS,
 
-  hasFeature(userPlan, featureKey) {
+  hasFeature(userPlan: string, featureKey: string): boolean {
     const plan = PLANS[userPlan];
     return !!plan?.features[featureKey];
   },
 
-  planDetails(planId) {
+  planDetails(planId: string) {
     return PLANS[planId] || null;
   },
 
-  billingPeriodEnd(planId, billingPeriod) {
+  billingPeriodEnd(planId: string, billingPeriod: string): Date {
     const now = new Date();
     const next = new Date(now);
     next.setDate(next.getDate() + (billingPeriod === "annual" || planId.includes("annual") ? 365 : 30));
     return next;
   },
 
-  churnScore(subscriber) {
+  churnScore(subscriber: any) {
     let risk = 30;
     const lastLogin = (Date.now() - new Date(subscriber.last_login || Date.now()).getTime()) / 86400000;
     if (lastLogin > 14) risk += 25;
@@ -50,7 +50,7 @@ const SubscriptionEngine = {
     };
   },
 
-  usageSummary(planId, usage = {}) {
+  usageSummary(planId: string, usage: Record<string, number> = {}) {
     const plan = PLANS[planId] || PLANS.free;
     return Object.entries(plan.features).map(([key, limit]) => {
       const used = usage[key] ?? 0;
@@ -60,4 +60,4 @@ const SubscriptionEngine = {
   },
 };
 
-module.exports = SubscriptionEngine;
+export = SubscriptionEngine;

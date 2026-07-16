@@ -2,7 +2,7 @@
 //  NOTIFICATION ENGINE — ported from vylapp-organic-api.jsx
 //  Priority ranking, batching, digest generation, delivery scheduling
 // ════════════════════════════════════════════════════════════════════════════
-const TYPE_WEIGHTS = {
+const TYPE_WEIGHTS: Record<string, number> = {
   space_invite: 8, space_live: 10, space_reminder: 6,
   reply: 7, mention: 8, dm: 9, group_message: 6,
   like: 5, repost: 4, follow: 4, connection_request: 5,
@@ -15,14 +15,14 @@ const TYPE_WEIGHTS = {
 const NotificationEngine = {
   TYPE_WEIGHTS,
 
-  rankNotifications(raw, userPrefs = {}) {
+  rankNotifications(raw: any[], userPrefs: any = {}) {
     return raw
       .map(n => ({ ...n, priority_score: this._priorityScore(n, userPrefs), should_push: this._shouldPush(n, userPrefs) }))
       .sort((a, b) => b.priority_score - a.priority_score);
   },
 
-  batchNotifications(notifications) {
-    const groups = {};
+  batchNotifications(notifications: any[]) {
+    const groups: Record<string, any[]> = {};
     for (const n of notifications) {
       const k = n.batch_key || n.type;
       if (!groups[k]) groups[k] = [];
@@ -33,7 +33,7 @@ const NotificationEngine = {
     }));
   },
 
-  generateDigest(userActivity, period = "weekly") {
+  generateDigest(userActivity: any, period = "weekly") {
     return {
       period,
       generated_at: new Date().toISOString(),
@@ -48,7 +48,7 @@ const NotificationEngine = {
     };
   },
 
-  optimalDeliveryWindow(userTimezone = "UTC", engagementHistory = []) {
+  optimalDeliveryWindow(userTimezone = "UTC", engagementHistory: { ts: string | Date }[] = []) {
     if (!engagementHistory.length) return { recommended_hours: [8, 12, 18, 20], timezone: userTimezone, confidence: "low" };
     const hourCounts = new Array(24).fill(0);
     engagementHistory.forEach(e => hourCounts[new Date(e.ts).getHours()]++);
@@ -57,8 +57,8 @@ const NotificationEngine = {
   },
 
   // ── Build the title/body text for a notification type ─────────────────
-  formatBody(type, actorName, extra = {}) {
-    const map = {
+  formatBody(type: string, actorName: string | null | undefined, extra: Record<string, any> = {}): string {
+    const map: Record<string, string> = {
       like: `${actorName} liked your vibe`,
       repost: `${actorName} reposted your vibe`,
       reply: `${actorName} replied to your vibe`,
@@ -84,24 +84,24 @@ const NotificationEngine = {
     return map[type] || "You have a new notification";
   },
 
-  _priorityScore(n, prefs) {
+  _priorityScore(n: any, prefs: any): number {
     const base = TYPE_WEIGHTS[n.type] ?? 3;
     const muteBonus = prefs.muted_types?.includes(n.type) ? -20 : 0;
     const socialBonus = n.from_followed ? 3 : 0;
     return base + muteBonus + socialBonus;
   },
-  _shouldPush(n, prefs) {
+  _shouldPush(n: any, prefs: any): boolean {
     return this._priorityScore(n, prefs) >= 7 && !prefs.quiet_mode;
   },
-  _batchSummary(items) {
+  _batchSummary(items: any[]): string {
     if (items.length === 1) return items[0].body;
     return `${items.length} new updates`;
   },
-  _digestCTA(activity) {
+  _digestCTA(activity: any): string {
     if ((activity.earnings || 0) > 0) return "Your earnings are growing! Check your creator dashboard.";
     if ((activity.new_followers || 0) > 10) return "Your audience is growing fast. Time to host a Space!";
     return "You have fresh content waiting in your communities.";
   },
 };
 
-module.exports = NotificationEngine;
+export = NotificationEngine;

@@ -3,14 +3,16 @@
 //  DAU/MAU, retention cohorts, LTV, funnel analysis, creator dashboards
 // ════════════════════════════════════════════════════════════════════════════
 const AnalyticsEngine = {
-  stickinessRatio(dau, mau) {
+  stickinessRatio(dau: number, mau: number) {
     const ratio = mau > 0 ? parseFloat((dau / mau).toFixed(3)) : 0;
-    return { dau, mau, ratio, pct: (ratio * 100).toFixed(1) + "%",
+    return {
+      dau, mau, ratio, pct: (ratio * 100).toFixed(1) + "%",
       grade: ratio >= 0.3 ? "A" : ratio >= 0.2 ? "B" : ratio >= 0.1 ? "C" : "D",
-      target: "30%+", on_track: ratio >= 0.3 };
+      target: "30%+", on_track: ratio >= 0.3,
+    };
   },
 
-  retentionCohort(cohort) {
+  retentionCohort(cohort: { cohort_size: number; week: number[] }) {
     return {
       cohort_size: cohort.cohort_size,
       day1: this._retRate(cohort.week[0], cohort.cohort_size),
@@ -21,13 +23,13 @@ const AnalyticsEngine = {
     };
   },
 
-  calculateLTV(arpu, churnRate, grossMargin = 0.72) {
+  calculateLTV(arpu: number, churnRate: number, grossMargin = 0.72) {
     const avgLifetimeMonths = churnRate > 0 ? 1 / churnRate : 60;
     const ltv = parseFloat((arpu * avgLifetimeMonths * grossMargin).toFixed(2));
     return { arpu, churn_rate: churnRate, avg_lifetime_months: parseFloat(avgLifetimeMonths.toFixed(1)), gross_margin: grossMargin, ltv };
   },
 
-  analyzeFunnel(steps) {
+  analyzeFunnel(steps: { name: string; count: number }[]) {
     return steps.map((s, i) => ({
       step: s.name, count: s.count,
       rate_from_top: i === 0 ? 1 : parseFloat((s.count / steps[0].count).toFixed(3)),
@@ -35,7 +37,7 @@ const AnalyticsEngine = {
     }));
   },
 
-  creatorSnapshot(data) {
+  creatorSnapshot(data: any) {
     const engRate = data.impressions > 0 ? parseFloat((data.engagements / data.impressions).toFixed(4)) : 0;
     return {
       ...data, engagement_rate: engRate,
@@ -45,7 +47,7 @@ const AnalyticsEngine = {
     };
   },
 
-  _retRate: (n, total) => total > 0 ? (n / total * 100).toFixed(1) + "%" : "0%",
+  _retRate: (n: number, total: number): string => total > 0 ? (n / total * 100).toFixed(1) + "%" : "0%",
 };
 
-module.exports = AnalyticsEngine;
+export = AnalyticsEngine;

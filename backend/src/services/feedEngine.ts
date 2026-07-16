@@ -3,7 +3,7 @@
 //  Cold-start algorithm, interest signals, dwell time weighting, diversity
 // ════════════════════════════════════════════════════════════════════════════
 const FeedEngine = {
-  scoreVibe(vibe, userProfile, config = {}) {
+  scoreVibe(vibe: any, userProfile: any, config: Record<string, number> = {}) {
     const w = {
       interest: config.interestWeight ?? 0.35,
       engagement: config.engagementWeight ?? 0.25,
@@ -34,40 +34,42 @@ const FeedEngine = {
     return { score: rawScore * boost, components: { interestScore, engageScore, recencyScore, socialScore, diversityScore }, boost };
   },
 
-  rankFeed(vibes, userProfile, options = {}) {
+  rankFeed(vibes: any[], userProfile: any, options: { page?: number; pageSize?: number } = {}) {
     const { page = 0, pageSize = 20 } = options;
     const scored = vibes.map(v => ({ ...v, _rank: this.scoreVibe(v, userProfile) }));
     scored.sort((a, b) => b._rank.score - a._rank.score);
     return scored.slice(page * pageSize, (page + 1) * pageSize);
   },
 
-  processEvent(event) {
-    const weights = { like: 5, repost: 8, comment: 6, reply: 7, share: 9, save: 10,
-      click: 2, dwell_3s: 1, dwell_10s: 2, dwell_30s: 4, scroll_50: 1, scroll_100: 2 };
+  processEvent(event: { type: string; dwell_ms?: number; explicit?: boolean }) {
+    const weights: Record<string, number> = {
+      like: 5, repost: 8, comment: 6, reply: 7, share: 9, save: 10,
+      click: 2, dwell_3s: 1, dwell_10s: 2, dwell_30s: 4, scroll_50: 1, scroll_100: 2,
+    };
     const score = weights[event.type] ?? 1;
-    const dwellBonus = event.dwell_ms > 30000 ? 3 : event.dwell_ms > 10000 ? 1 : 0;
+    const dwellBonus = (event.dwell_ms || 0) > 30000 ? 3 : (event.dwell_ms || 0) > 10000 ? 1 : 0;
     return { signal_weight: score + dwellBonus, update_interest_vector: event.explicit || score >= 5 };
   },
 
-  _interestScore(vibe, user) {
+  _interestScore(vibe: any, user: any): number {
     if (!user.interests?.length) return 0.3;
-    const overlap = (vibe.tags || []).filter(t => user.interests.includes(t.replace(/^#/, "").toLowerCase())).length;
+    const overlap = (vibe.tags || []).filter((t: string) => user.interests.includes(t.replace(/^#/, "").toLowerCase())).length;
     return Math.min(1, overlap / 3);
   },
-  _engagementScore(vibe) {
+  _engagementScore(vibe: any): number {
     const total = (vibe.likes_count || 0) + (vibe.replies_count || 0) * 2 + (vibe.reposts_count || 0) * 3;
     return Math.min(1, total / 500);
   },
-  _recencyScore(createdAt) {
+  _recencyScore(createdAt: string | Date | undefined): number {
     const ageHours = (Date.now() - new Date(createdAt || Date.now()).getTime()) / 3600000;
     return Math.max(0, 1 - ageHours / 72);
   },
-  _socialGraphScore(vibe, user) {
+  _socialGraphScore(vibe: any, user: any): number {
     return user.followingIds?.includes(vibe.user_id) ? 1 : 0.2;
   },
-  _diversityScore(vibe, user) {
+  _diversityScore(vibe: any, user: any): number {
     return user.recentAuthorIds?.includes(vibe.user_id) ? 0.2 : 1;
   },
 };
 
-module.exports = FeedEngine;
+export = FeedEngine;

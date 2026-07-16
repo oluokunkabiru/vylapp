@@ -14,7 +14,7 @@
 //  transparently upgrades to real AI translation for anything outside the
 //  dictionary. Both paths are exposed through the same function signature.
 // ════════════════════════════════════════════════════════════════════════════
-const env = require("../config/env");
+import env from "../config/env";
 
 const LANGUAGES = [
   { code: "en", name: "English", nativeName: "English" },
@@ -34,7 +34,7 @@ const LANGUAGES = [
 // UI-adjacent phrases. This is intentionally a starting seed, not a full
 // MT system — real coverage grows by adding rows here or plugging in the
 // optional Claude path below.
-const PHRASES = {
+const PHRASES: Record<string, Record<string, string>> = {
   "welcome to vylapp": { es: "bienvenido a vylapp", fr: "bienvenue sur vylapp", sw: "karibu vylapp", yo: "káàbọ̀ sí vylapp" },
   "just joined vylapp": { es: "me acabo de unir a vylapp", fr: "je viens de rejoindre vylapp", sw: "nimejiunga na vylapp", yo: "mo ṣẹ̀ṣẹ̀ dara pọ̀ mọ́ vylapp" },
   "thank you": { es: "gracias", fr: "merci", sw: "asante", yo: "ẹ ṣé", ha: "na gode", am: "አመሰግናለሁ" },
@@ -43,7 +43,7 @@ const PHRASES = {
   "see you soon": { es: "nos vemos pronto", fr: "à bientôt", sw: "tutaonana karibuni", yo: "a o tún rí ara wa láìpẹ́" },
 };
 
-function lookupPhrase(text, toLang) {
+function lookupPhrase(text: string, toLang: string): string | null {
   const key = text.trim().toLowerCase();
   const entry = PHRASES[key];
   return entry?.[toLang] || null;
@@ -51,13 +51,13 @@ function lookupPhrase(text, toLang) {
 
 // Lightweight "good enough" fallback for anything not in the dictionary:
 // tags the text so the UI can show it honestly rather than pretending.
-function organicFallback(text, fromLang, toLang) {
+function organicFallback(text: string, fromLang: string, toLang: string) {
   const dict = lookupPhrase(text, toLang);
   if (dict) return { text: dict, method: "dictionary" };
   return { text, method: "untranslated", note: "Not yet in the organic dictionary for this phrase" };
 }
 
-async function claudeTranslate(text, fromName, toName, context = "post") {
+async function claudeTranslate(text: string, fromName: string, toName: string, context = "post"): Promise<string> {
   // SECURITY: The system prompt establishes Claude as a pure translation machine.
   // User content is wrapped in <source_text> tags — treated as DATA, not INSTRUCTION.
   // The system explicitly instructs Claude to ignore any instructions in the content.
@@ -76,29 +76,29 @@ Rules:
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": env.anthropicApiKey, "anthropic-version": "2023-06-01" },
+    headers: { "Content-Type": "application/json", "x-api-key": env.anthropicApiKey || "", "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
-      model:      "claude-sonnet-4-6",
+      model: "claude-sonnet-4-6",
       max_tokens: Math.min(1000, Math.ceil(escapedText.length * 1.5)), // proportional limit
-      system:     systemPrompt,
+      system: systemPrompt,
       messages: [{
-        role:    "user",
+        role: "user",
         // Content clearly delimited as data, not instruction
         content: `Translate the following ${fromName} text to ${toName}:\n<source_text>\n${escapedText}\n</source_text>`,
       }],
     }),
   });
-  const data = await res.json();
-  const out  = data.content?.map(b => b.text || "").join("").trim();
+  const data: any = await res.json();
+  const out = data.content?.map((b: any) => b.text || "").join("").trim();
   if (!out) throw new Error("Translation API returned no content");
   return out;
 }
 
 const TranslationEngine = {
   LANGUAGES,
-  getLang(code) { return LANGUAGES.find(l => l.code === code) || null; },
+  getLang(code: string) { return LANGUAGES.find(l => l.code === code) || null; },
 
-  async translate(text, fromLang, toLang, context = "post", { allowAI = true } = {}) {
+  async translate(text: string, fromLang: string, toLang: string, context = "post", { allowAI = true }: { allowAI?: boolean } = {}) {
     if (fromLang === toLang) return { text, method: "passthrough" };
     if (allowAI && env.anthropicApiKey) {
       try {
@@ -114,4 +114,4 @@ const TranslationEngine = {
   },
 };
 
-module.exports = TranslationEngine;
+export = TranslationEngine;

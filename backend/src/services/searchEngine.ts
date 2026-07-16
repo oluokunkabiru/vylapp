@@ -5,7 +5,7 @@
 //  relevance scoring and fuzzy handle matching on top.
 // ════════════════════════════════════════════════════════════════════════════
 const SearchEngine = {
-  rank(query, items, fieldWeights) {
+  rank(query: string, items: any[], fieldWeights: Record<string, number>) {
     const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
     return items
       .map(item => ({ ...item, _score: this._score(item, tokens, fieldWeights) }))
@@ -14,7 +14,7 @@ const SearchEngine = {
       .map(({ _score, ...r }) => ({ ...r, relevance: parseFloat(_score.toFixed(3)) }));
   },
 
-  _score(item, tokens, fieldWeights) {
+  _score(item: any, tokens: string[], fieldWeights: Record<string, number>): number {
     let score = 0;
     for (const [field, weight] of Object.entries(fieldWeights)) {
       const v = item[field];
@@ -30,7 +30,7 @@ const SearchEngine = {
     return score;
   },
 
-  levenshtein(a, b) {
+  levenshtein(a: string, b: string): number {
     const m = a.length, n = b.length;
     const dp = Array.from({ length: m + 1 }, (_, i) => Array.from({ length: n + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0));
     for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
@@ -38,7 +38,7 @@ const SearchEngine = {
     return dp[m][n];
   },
 
-  fuzzyHandle(query, users) {
+  fuzzyHandle(query: string, users: any[]) {
     const q = query.toLowerCase().replace(/^@/, "");
     return users
       .map(u => ({ ...u, _dist: this.levenshtein(q, u.handle.toLowerCase()) }))
@@ -47,4 +47,4 @@ const SearchEngine = {
   },
 };
 
-module.exports = SearchEngine;
+export = SearchEngine;

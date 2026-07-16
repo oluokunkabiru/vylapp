@@ -24,43 +24,46 @@ const TAKE_RATES = {
 const BOOST_DELTA = 0.05;
 const MIN_RATE = 0.10;
 
-function boostedRate(base, boosted) {
+function boostedRate(base: number, boosted: boolean): number {
   return boosted ? Math.max(MIN_RATE, parseFloat((base - BOOST_DELTA).toFixed(3))) : base;
 }
 
 const CreatorEconomyEngine = {
   TAKE_RATES, BOOST_DELTA, MIN_RATE,
 
-  splitSuperVibe(amount, boosted = false) {
+  splitSuperVibe(amount: number, boosted = false) {
     const rate = boostedRate(TAKE_RATES.super_vibe, boosted);
     const platform_cut = parseFloat((amount * rate).toFixed(2));
     const creator_net = parseFloat((amount - platform_cut).toFixed(2));
     return { gross: amount, platform_cut, creator_net, rate, boosted };
   },
 
-  splitSubscription(monthlyAmount, boosted = false) {
+  splitSubscription(monthlyAmount: number, boosted = false) {
     const rate = boostedRate(TAKE_RATES.standard, boosted);
     const platform_cut = parseFloat((monthlyAmount * rate).toFixed(2));
     const creator_net = parseFloat((monthlyAmount - platform_cut).toFixed(2));
     return { gross: monthlyAmount, platform_cut, creator_net, rate, boosted, annual_est: parseFloat((creator_net * 12).toFixed(2)) };
   },
 
-  splitSpaceTicket(price, boosted = false) {
+  splitSpaceTicket(price: number, boosted = false) {
     const rate = boostedRate(TAKE_RATES.spaces_ticket, boosted);
     const platform_cut = parseFloat((price * rate).toFixed(2));
     const creator_net = parseFloat((price - platform_cut).toFixed(2));
     return { gross: price, platform_cut, creator_net, rate, boosted };
   },
 
-  splitDigitalProduct(price, boosted = false) {
+  splitDigitalProduct(price: number, boosted = false) {
     const rate = boostedRate(TAKE_RATES.digital_product, boosted);
     const platform_cut = parseFloat((price * rate).toFixed(2));
     const creator_net = parseFloat((price - platform_cut).toFixed(2));
     return { gross: price, platform_cut, creator_net, rate, boosted };
   },
 
-  calculatePayout(ledgerEntries, minThreshold = 10) {
-    const total = ledgerEntries.reduce((sum, e) => sum + parseFloat(e.net_usd), 0);
+  // net_usd is typed loosely because callers pass either plain numbers/strings
+  // (from shaped API responses) or Prisma Decimal objects (from raw query
+  // results) — parseFloat(String(...)) handles both correctly either way.
+  calculatePayout(ledgerEntries: { net_usd: unknown }[], minThreshold = 10) {
+    const total = ledgerEntries.reduce((sum, e) => sum + parseFloat(String(e.net_usd)), 0);
     const rounded = parseFloat(total.toFixed(2));
     const fee = rounded > 100 ? 0 : 0.25;
     return {
@@ -73,7 +76,7 @@ const CreatorEconomyEngine = {
     };
   },
 
-  generateTaxMetadata(creator) {
+  generateTaxMetadata(creator: any) {
     const annual_est = (creator.monthly_avg_earnings || 0) * 12;
     return {
       requires_1099: annual_est >= 600 && creator.country === "US",
@@ -85,4 +88,4 @@ const CreatorEconomyEngine = {
   },
 };
 
-module.exports = CreatorEconomyEngine;
+export = CreatorEconomyEngine;

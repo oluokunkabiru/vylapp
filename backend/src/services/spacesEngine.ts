@@ -1,5 +1,5 @@
-const crypto = require("crypto");
-const rand = (n) => crypto.randomBytes(n).toString("hex");
+import crypto from "crypto";
+const rand = (n: number) => crypto.randomBytes(n).toString("hex");
 
 // FIX LP-022: Clip IDs now use crypto.randomUUID() with a content-hash
 // component — two simultaneous requests within the same millisecond
@@ -14,7 +14,7 @@ const SpacesEngine = {
   // ── Join tokens ─────────────────────────────────────────────────────────
   generateJoinToken() {
     return {
-      token:      "jt_" + rand(16),
+      token: "jt_" + rand(16),
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // 1 hour
       single_use: false, // set to true for ticketed Spaces in route handler
     };
@@ -22,24 +22,24 @@ const SpacesEngine = {
 
   generateTicketedJoinToken() {
     return {
-      token:      "jt_" + rand(16),
+      token: "jt_" + rand(16),
       expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       single_use: true, // consumed on first join attempt; sharing it is useless
     };
   },
 
-  validateJoinToken(token, expiresAt, used, isTicketed) {
+  validateJoinToken(token: string | null | undefined, expiresAt: string | Date, used: boolean, isTicketed: boolean) {
     if (!token) return { valid: false, reason: "Missing token" };
     if (new Date(expiresAt) < new Date()) return { valid: false, reason: "Token expired" };
     if (isTicketed && used) return { valid: false, reason: "Ticketed token already used" };
     return { valid: true };
   },
 
-  generateRtcToken()         { return "rtc_" + rand(20); },
-  generateTranslationToken() { return "tr_"  + rand(12); },
+  generateRtcToken() { return "rtc_" + rand(20); },
+  generateTranslationToken() { return "tr_" + rand(12); },
 
   // ── Clips ────────────────────────────────────────────────────────────────
-  generateClip(spaceId, startSec, endSec, label = "") {
+  generateClip(spaceId: string, startSec: number, endSec: number, label = "") {
     const duration = endSec - startSec;
     if (duration < 10 || duration > 120) return { error: "Clips must be 10-120 seconds" };
 
@@ -56,9 +56,9 @@ const SpacesEngine = {
   },
 
   // ── Utilities ────────────────────────────────────────────────────────────
-  calendarLinks(title, spaceId) {
+  calendarLinks(title: string, spaceId: string) {
     return {
-      google:   `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(title)}`,
+      google: `https://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(title)}`,
       rsvp_url: `https://vylapp.com/spaces/${spaceId}`,
     };
   },
@@ -66,4 +66,4 @@ const SpacesEngine = {
   reminderIntervalsMinutes() { return [24 * 60, 60, 15]; },
 };
 
-module.exports = SpacesEngine;
+export = SpacesEngine;
