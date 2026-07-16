@@ -9,8 +9,8 @@
     "postbuild": "cp -r src/generated dist/generated",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "migrate": "node src/db/migrate.js",
-    "seed": "node src/db/seed.js",
+    "migrate": "tsx src/db/migrate.js",
+    "seed": "tsx src/db/seed.js",
     "setup": "npm run migrate && npm run seed"
   },
   "engines": {

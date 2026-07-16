@@ -1,10 +1,10 @@
-const http = require("http");
-const { Server } = require("socket.io");
-const createApp = require("./app");
-const env = require("./config/env");
-const { attachSockets } = require("./sockets");
-const { verifyMailConfig } = require("./utils/mailer");
-const logger = require("./utils/logger");
+import http from "http";
+import { Server } from "socket.io";
+import createApp from "./app";
+import env from "./config/env";
+import { attachSockets } from "./sockets";
+import { verifyMailConfig } from "./utils/mailer";
+import logger from "./utils/logger";
 
 const app = createApp();
 const server = http.createServer(app);

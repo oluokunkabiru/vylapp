@@ -1,6 +1,6 @@
-const { PrismaClient } = require("../generated/prisma");
-const { PrismaPg } = require("@prisma/adapter-pg");
-const env = require("./env");
+import { PrismaClient } from "../generated/prisma";
+import { PrismaPg } from "@prisma/adapter-pg";
+import env from "./env";
 
 const adapter = new PrismaPg({
   connectionString: env.databaseUrl,
@@ -9,4 +9,4 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
-module.exports = prisma;
+export = prisma;

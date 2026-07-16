@@ -1,12 +1,12 @@
-require("dotenv").config();
+import "dotenv/config";
 
-function get(name, fallback) {
+function get(name: string, fallback?: string): string {
   const v = process.env[name] ?? fallback;
   if (v === undefined) throw new Error(`Missing required env var: ${name}`);
   return v;
 }
 
-module.exports = {
+const env = {
   port: parseInt(process.env.PORT || "4000", 10),
   nodeEnv: process.env.NODE_ENV || "development",
   databaseUrl: get("DATABASE_URL"),
@@ -26,3 +26,5 @@ module.exports = {
   mailFromAddress: process.env.MAIL_FROM_ADDRESS || "hello@example.com",
   mailFromName: process.env.MAIL_FROM_NAME && !process.env.MAIL_FROM_NAME.includes("APP_NAME") ? process.env.MAIL_FROM_NAME : "Vylapp",
 };
+
+export = env;

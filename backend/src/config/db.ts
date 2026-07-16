@@ -1,5 +1,5 @@
-const { Pool } = require("pg");
-const env = require("./env");
+import { Pool, QueryResultRow } from "pg";
+import env from "./env";
 
 const pool = new Pool({
   connectionString: env.databaseUrl,
@@ -13,12 +13,12 @@ pool.on("error", (err) => {
 });
 
 // Convenience query helper
-async function query(text, params) {
-  return pool.query(text, params);
+async function query<T extends QueryResultRow = any>(text: string, params?: any[]) {
+  return pool.query<T>(text, params);
 }
 
 // Transaction helper — pass an async fn(client) and it commits/rolls back automatically
-async function withTransaction(fn) {
+async function withTransaction<T>(fn: (client: import("pg").PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -33,4 +33,4 @@ async function withTransaction(fn) {
   }
 }
 
-module.exports = { pool, query, withTransaction, getClient: () => pool.connect() };
+export = { pool, query, withTransaction, getClient: () => pool.connect() };

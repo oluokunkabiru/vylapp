@@ -1,5 +1,5 @@
 /**
- * logger.js — Laravel-style structured logger for Vylapp backend
+ * logger.ts — Laravel-style structured logger for Vylapp backend
  *
  * Output format (mirrors Laravel):
  *   [YYYY-MM-DD HH:MM:SS] vylapp.INFO: Message {"key":"value"}
@@ -17,9 +17,12 @@
  *   logger.debug("Payload received", req.body);   // only printed in development
  */
 
-const fs   = require("fs");
-const path = require("path");
-const env  = require("../config/env");
+import fs from "fs";
+import path from "path";
+import env from "../config/env";
+
+type Level = "DEBUG" | "INFO" | "WARNING" | "ERROR" | "CRITICAL";
+type Context = Record<string, unknown> | undefined | null;
 
 // ── Paths ──────────────────────────────────────────────────────────────────────
 // Stored inside the container/project under  backend/storage/logs/
@@ -44,7 +47,7 @@ const C = {
   white:  "\x1b[37m",
 };
 
-const LEVEL_COLOUR = {
+const LEVEL_COLOUR: Record<Level, string> = {
   DEBUG:   C.blue,
   INFO:    C.green,
   WARNING: C.yellow,
@@ -56,9 +59,9 @@ const LEVEL_COLOUR = {
 /**
  * Returns  "YYYY-MM-DD HH:MM:SS"  in local time — same as Laravel's default.
  */
-function timestamp() {
+function timestamp(): string {
   const now = new Date();
-  const pad = (n) => String(n).padStart(2, "0");
+  const pad = (n: number) => String(n).padStart(2, "0");
 
   const Y  = now.getFullYear();
   const M  = pad(now.getMonth() + 1);
@@ -71,17 +74,12 @@ function timestamp() {
 }
 
 /** Returns  "YYYY-MM-DD"  for the daily log file name. */
-function dateStamp() {
+function dateStamp(): string {
   return timestamp().slice(0, 10);
 }
 
 // ── Core write function ────────────────────────────────────────────────────────
-/**
- * @param {"DEBUG"|"INFO"|"WARNING"|"ERROR"|"CRITICAL"} level
- * @param {string}  message
- * @param {object}  [context]   Any extra key/value data to attach
- */
-function write(level, message, context) {
+function write(level: Level, message: string, context?: Context) {
   const ts       = timestamp();
   const channel  = "vylapp";
 
@@ -127,39 +125,40 @@ const REDACTED_KEYS = new Set(["password", "token", "secret", "authorization", "
 
 function _safeReplacer() {
   const seen = new WeakSet();
-  return function (key, value) {
+  return function (key: string, value: unknown) {
     if (REDACTED_KEYS.has(key.toLowerCase())) return "[REDACTED]";
     if (typeof value === "object" && value !== null) {
-      if (seen.has(value)) return "[Circular]";
-      seen.add(value);
+      if (seen.has(value as object)) return "[Circular]";
+      seen.add(value as object);
     }
     return value;
   };
 }
 
+interface HttpLogOpts {
+  method: string;
+  url: string;
+  status: number;
+  ms: number;
+  body?: unknown;
+  response?: unknown;
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────────
 const logger = {
-  debug   : (msg, ctx) => write("DEBUG",    msg, ctx),
-  info    : (msg, ctx) => write("INFO",     msg, ctx),
-  warn    : (msg, ctx) => write("WARNING",  msg, ctx),
-  error   : (msg, ctx) => write("ERROR",    msg, ctx),
-  critical: (msg, ctx) => write("CRITICAL", msg, ctx),
+  debug   : (msg: string, ctx?: Context) => write("DEBUG",    msg, ctx),
+  info    : (msg: string, ctx?: Context) => write("INFO",     msg, ctx),
+  warn    : (msg: string, ctx?: Context) => write("WARNING",  msg, ctx),
+  error   : (msg: string, ctx?: Context) => write("ERROR",    msg, ctx),
+  critical: (msg: string, ctx?: Context) => write("CRITICAL", msg, ctx),
 
   /**
    * Log a full HTTP request + response payload pair.
    * Useful for debugging API calls end-to-end.
-   *
-   * @param {object} opts
-   * @param {string} opts.method
-   * @param {string} opts.url
-   * @param {number} opts.status
-   * @param {number} opts.ms          Response time in milliseconds
-   * @param {object} [opts.body]      Request body
-   * @param {object} [opts.response]  Response payload
    */
-  http(opts) {
+  http(opts: HttpLogOpts) {
     const { method, url, status, ms, body, response } = opts;
-    const level = status >= 500 ? "ERROR" : status >= 400 ? "WARNING" : "INFO";
+    const level: Level = status >= 500 ? "ERROR" : status >= 400 ? "WARNING" : "INFO";
     write(level, `${method} ${url} → ${status} (${ms}ms)`, {
       request:  body     || undefined,
       response: response || undefined,
@@ -167,4 +166,4 @@ const logger = {
   },
 };
 
-module.exports = logger;
+export = logger;

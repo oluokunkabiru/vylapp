@@ -1,10 +1,12 @@
-const express = require("express");
-const cors = require("cors");
-const env = require("./config/env");
-const { notFound, errorHandler } = require("./middleware/errorHandler");
-const rateLimiter  = require("./middleware/rateLimiter");
-const httpLogger   = require("./middleware/httpLogger");
-const logger       = require("./utils/logger");
+import express from "express";
+import cors from "cors";
+import env from "./config/env";
+import errorHandlerModule from "./middleware/errorHandler";
+import rateLimiter from "./middleware/rateLimiter";
+import httpLogger from "./middleware/httpLogger";
+import logger from "./utils/logger";
+
+const { notFound, errorHandler } = errorHandlerModule;
 
 const { router: authRoutes } = require("./routes/auth.routes");
 const { router: userRoutes } = require("./routes/users.routes");
@@ -23,8 +25,8 @@ const translateRoutes = require("./routes/translate.routes");
 const ravenRoutes = require("./routes/raven.routes");
 const learnRoutes = require("./routes/learn.routes");
 const forumRoutes = require("./routes/forum.routes");
-const rbacRoutes  = require("./routes/rbac.routes");
-const devRoutes   = require("./routes/dev.routes");
+const rbacRoutes = require("./routes/rbac.routes");
+const devRoutes = require("./routes/dev.routes");
 
 function createApp() {
   const app = express();
@@ -81,4 +83,4 @@ function createApp() {
   return app;
 }
 
-module.exports = createApp;
+export = createApp;
