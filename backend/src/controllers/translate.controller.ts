@@ -1,19 +1,22 @@
-const { ok, fail } = require("../utils/respond");
-const TranslationEngine = require("../services/translationEngine");
-const prisma = require("../config/prisma");
+import { Request, Response } from "express";
+import respond from "../utils/respond";
+import TranslationEngine from "../services/translationEngine";
+import prisma from "../config/prisma";
 
-function listLanguages(req, res) {
+const { ok, fail } = respond;
+
+function listLanguages(req: Request, res: Response) {
   return ok(res, { languages: TranslationEngine.LANGUAGES });
 }
 
-async function translateText(req, res) {
+async function translateText(req: Request, res: Response) {
   const { text, fromLang, toLang, context } = req.body;
   if (!text || !toLang) return fail(res, 400, "text and toLang are required");
   const result = await TranslationEngine.translate(text, fromLang || "en", toLang, context || "post");
   return ok(res, result);
 }
 
-async function translateVibe(req, res) {
+async function translateVibe(req: Request, res: Response) {
   const { toLang } = req.body;
   if (!toLang) return fail(res, 400, "toLang is required");
   const vibe = await prisma.vibes.findUnique({
@@ -25,4 +28,4 @@ async function translateVibe(req, res) {
   return ok(res, result);
 }
 
-module.exports = { listLanguages, translateText, translateVibe };
+export = { listLanguages, translateText, translateVibe };

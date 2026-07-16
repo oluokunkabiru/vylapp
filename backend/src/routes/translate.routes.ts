@@ -1,7 +1,9 @@
-const express = require("express");
-const asyncHandler = require("../middleware/asyncHandler");
-const { requireAuth } = require("../middleware/auth");
-const translateController = require("../controllers/translate.controller");
+import express from "express";
+import asyncHandler from "../middleware/asyncHandler";
+import authMiddleware from "../middleware/auth";
+import translateController from "../controllers/translate.controller";
+
+const { requireAuth } = authMiddleware;
 
 const router = express.Router();
 
@@ -14,4 +16,4 @@ router.post("/", requireAuth, asyncHandler(translateController.translateText));
 // ── POST /translate/vibes/:id — translate a specific vibe's caption ──────
 router.post("/vibes/:id", requireAuth, asyncHandler(translateController.translateVibe));
 
-module.exports = router;
+export = router;
