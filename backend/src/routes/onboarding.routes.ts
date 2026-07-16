@@ -1,7 +1,9 @@
-const express = require("express");
-const asyncHandler = require("../middleware/asyncHandler");
-const { requireAuth } = require("../middleware/auth");
-const onboardingController = require("../controllers/onboarding.controller");
+import express from "express";
+import asyncHandler from "../middleware/asyncHandler";
+import authMiddleware from "../middleware/auth";
+import onboardingController from "../controllers/onboarding.controller";
+
+const { requireAuth } = authMiddleware;
 
 const router = express.Router();
 router.use(requireAuth);
@@ -14,4 +16,4 @@ router.post("/location", asyncHandler(onboardingController.setLocation));
 router.post("/follow-suggestions", asyncHandler(onboardingController.followSuggestions));
 router.post("/complete", asyncHandler(onboardingController.complete));
 
-module.exports = router;
+export = router;
