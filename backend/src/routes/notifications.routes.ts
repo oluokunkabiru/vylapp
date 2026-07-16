@@ -1,7 +1,9 @@
-const express = require("express");
-const asyncHandler = require("../middleware/asyncHandler");
-const { requireAuth } = require("../middleware/auth");
-const notificationsController = require("../controllers/notifications.controller");
+import express from "express";
+import asyncHandler from "../middleware/asyncHandler";
+import authMiddleware from "../middleware/auth";
+import notificationsController from "../controllers/notifications.controller";
+
+const { requireAuth } = authMiddleware;
 
 const router = express.Router();
 router.use(requireAuth);
@@ -12,4 +14,4 @@ router.post("/read-all", asyncHandler(notificationsController.markAllRead));
 router.get("/digest", asyncHandler(notificationsController.digest));
 router.patch("/preferences", asyncHandler(notificationsController.updatePreferences));
 
-module.exports = router;
+export = router;

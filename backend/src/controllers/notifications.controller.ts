@@ -1,8 +1,12 @@
-const { ok, fail } = require("../utils/respond");
-const NotificationEngine = require("../services/notificationEngine");
-const prisma = require("../config/prisma");
+import { Response } from "express";
+import { AuthedRequest } from "../types/express";
+import respond from "../utils/respond";
+import NotificationEngine from "../services/notificationEngine";
+import prisma from "../config/prisma";
 
-function shapeNotification(row) {
+const { ok, fail } = respond;
+
+function shapeNotification(row: any) {
   const actor = row.usersNotificationsActorIdTousers;
   return {
     id: row.id, type: row.type, body: row.body, isRead: row.isRead, createdAt: row.createdAt,
@@ -12,7 +16,7 @@ function shapeNotification(row) {
 }
 
 // ── GET /notifications ───────────────────────────────────────────────────
-async function list(req, res) {
+async function list(req: AuthedRequest, res: Response) {
   const rows = await prisma.notifications.findMany({
     where: { userId: req.user.id },
     include: {
@@ -29,7 +33,7 @@ async function list(req, res) {
 }
 
 // ── POST /notifications/:id/read ─────────────────────────────────────────
-async function markRead(req, res) {
+async function markRead(req: AuthedRequest, res: Response) {
   await prisma.notifications.updateMany({
     where: { id: req.params.id, userId: req.user.id },
     data: { isRead: true, readAt: new Date() },
@@ -38,7 +42,7 @@ async function markRead(req, res) {
 }
 
 // ── POST /notifications/read-all ─────────────────────────────────────────
-async function markAllRead(req, res) {
+async function markAllRead(req: AuthedRequest, res: Response) {
   await prisma.notifications.updateMany({
     where: { userId: req.user.id, isRead: false },
     data: { isRead: true, readAt: new Date() },
@@ -47,7 +51,7 @@ async function markAllRead(req, res) {
 }
 
 // ── GET /notifications/digest ─────────────────────────────────────────────
-async function digest(req, res) {
+async function digest(req: AuthedRequest, res: Response) {
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [recentFollowers, impressions, earnings] = await Promise.all([
@@ -65,14 +69,14 @@ async function digest(req, res) {
 }
 
 // ── PATCH /notifications/preferences ─────────────────────────────────────
-const ALLOWED_PREFS = {
+const ALLOWED_PREFS: Record<string, string> = {
   email_likes: "emailLikes", email_follows: "emailFollows", email_mentions: "emailMentions", email_dms: "emailDms",
   push_likes: "pushLikes", push_follows: "pushFollows", push_mentions: "pushMentions", push_dms: "pushDms",
   in_app_all: "inAppAll",
 };
 
-async function updatePreferences(req, res) {
-  const data = {};
+async function updatePreferences(req: AuthedRequest, res: Response) {
+  const data: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(req.body)) {
     if (!(key in ALLOWED_PREFS)) continue;
     data[ALLOWED_PREFS[key]] = val;
@@ -87,4 +91,4 @@ async function updatePreferences(req, res) {
   return ok(res, { updated: true });
 }
 
-module.exports = { list, markRead, markAllRead, digest, updatePreferences };
+export = { list, markRead, markAllRead, digest, updatePreferences };
