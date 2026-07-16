@@ -35,18 +35,36 @@
 //    A global permission always satisfies a scoped check.
 // ════════════════════════════════════════════════════════════════════════════
 
-const { fail } = require("../utils/respond");
+import { Request, Response, NextFunction, RequestHandler } from "express";
+import respond from "../utils/respond";
+import { ResolvedPermissions } from "../types/express";
+
+const { fail } = respond;
+
+interface ScopeOptions {
+  scopeFrom?: "params" | "body" | "query" | "static";
+  scopeKey?: string;
+  scopeType?: string;
+  scopeId?: string;
+}
+
+type PermArg = string | string[];
+
+function _lastIsOptions(args: (PermArg | ScopeOptions)[]): boolean {
+  const last = args[args.length - 1];
+  return args.length > 0 && typeof last === "object" && !Array.isArray(last);
+}
 
 // ── requirePermission ─────────────────────────────────────────────────────────
 // All listed permissions must be held (AND semantics, same as Spatie's
 // $user->hasAllPermissions([...]).
-function requirePermission(...args) {
+function requirePermission(...args: (PermArg | ScopeOptions)[]): RequestHandler {
   // Last arg may be an options object
-  const hasOptions = args.length > 0 && typeof args[args.length - 1] === "object" && !Array.isArray(args[args.length - 1]);
-  const options    = hasOptions ? args.pop() : {};
-  const perms      = args.flat();
+  const hasOptions = _lastIsOptions(args);
+  const options = (hasOptions ? args.pop() : {}) as ScopeOptions;
+  const perms = (args as PermArg[]).flat();
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !req.userPermissions) {
       return fail(res, 401, "Authentication required");
     }
@@ -62,18 +80,18 @@ function requirePermission(...args) {
 
 // ── requireAnyPermission ──────────────────────────────────────────────────────
 // At least one of the listed permissions must be held (OR semantics).
-function requireAnyPermission(...args) {
-  const hasOptions = args.length > 0 && typeof args[args.length - 1] === "object" && !Array.isArray(args[args.length - 1]);
-  const options    = hasOptions ? args.pop() : {};
-  const perms      = args.flat();
+function requireAnyPermission(...args: (PermArg | ScopeOptions)[]): RequestHandler {
+  const hasOptions = _lastIsOptions(args);
+  const options = (hasOptions ? args.pop() : {}) as ScopeOptions;
+  const perms = (args as PermArg[]).flat();
 
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !req.userPermissions) {
       return fail(res, 401, "Authentication required");
     }
     const scope = _resolveScope(req, options);
-    const ok    = perms.some(p => _check(req.userPermissions, p, scope));
-    if (!ok) {
+    const allowed = perms.some(p => _check(req.userPermissions, p, scope));
+    if (!allowed) {
       return fail(res, 403, `One of these permissions required: ${perms.join(", ")}`);
     }
     next();
@@ -83,15 +101,15 @@ function requireAnyPermission(...args) {
 // ── requireRole ───────────────────────────────────────────────────────────────
 // User must hold at least one of the listed roles (OR semantics, global scope).
 // For AND semantics, chain requireRole calls.
-function requireRole(...roles) {
+function requireRole(...roles: PermArg[]): RequestHandler {
   const roleList = roles.flat();
-  return (req, res, next) => {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !req.userPermissions) {
       return fail(res, 401, "Authentication required");
     }
     const userRoles = req.userPermissions.roles || [];
-    const ok        = roleList.some(r => userRoles.includes(r));
-    if (!ok) {
+    const allowed = roleList.some(r => userRoles.includes(r));
+    if (!allowed) {
       return fail(res, 403, `Role required: ${roleList.join(" or ")}`);
     }
     next();
@@ -101,8 +119,8 @@ function requireRole(...roles) {
 // ── requireSelf ───────────────────────────────────────────────────────────────
 // User must be the subject of the request (req.params.userId === req.user.id)
 // OR must hold the specified fallback permission.
-function requireSelf(fallbackPermission, userIdParam = "userId") {
-  return (req, res, next) => {
+function requireSelf(fallbackPermission?: string, userIdParam = "userId"): RequestHandler {
+  return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user || !req.userPermissions) {
       return fail(res, 401, "Authentication required");
     }
@@ -113,7 +131,7 @@ function requireSelf(fallbackPermission, userIdParam = "userId") {
 }
 
 // ── Internal: permission matching (mirrors rbac/index.js logic) ───────────────
-function _check(resolved, permName, scope = {}) {
+function _check(resolved: ResolvedPermissions | null | undefined, permName: string, scope: { scopeType?: string; scopeId?: string } = {}): boolean {
   if (!resolved) return false;
   const { permissions, scopedPermissions } = resolved;
 
@@ -121,14 +139,14 @@ function _check(resolved, permName, scope = {}) {
   if (_match(permissions, permName)) return true;
 
   if (scope.scopeType && scope.scopeId && scopedPermissions) {
-    const key    = `${scope.scopeType}:${scope.scopeId}`;
+    const key = `${scope.scopeType}:${scope.scopeId}`;
     const scoped = scopedPermissions.get(key);
     if (scoped && _match(scoped, permName)) return true;
   }
   return false;
 }
 
-function _match(permSet, required) {
+function _match(permSet: Set<string>, required: string): boolean {
   if (permSet.has(required)) return true;
   const parts = required.split(".");
   for (let i = parts.length - 1; i >= 1; i--) {
@@ -137,17 +155,17 @@ function _match(permSet, required) {
   return false;
 }
 
-function _resolveScope(req, options) {
+function _resolveScope(req: Request, options: ScopeOptions): { scopeType?: string; scopeId?: string } {
   if (!options.scopeFrom) return {};
-  let scopeId;
+  let scopeId: unknown;
   switch (options.scopeFrom) {
-    case "params": scopeId = req.params?.[options.scopeKey]; break;
-    case "body":   scopeId = req.body?.[options.scopeKey];   break;
-    case "query":  scopeId = req.query?.[options.scopeKey];  break;
-    case "static": scopeId = options.scopeId;                break;
-    default:       scopeId = undefined;
+    case "params": scopeId = req.params?.[options.scopeKey!]; break;
+    case "body": scopeId = req.body?.[options.scopeKey!]; break;
+    case "query": scopeId = req.query?.[options.scopeKey!]; break;
+    case "static": scopeId = options.scopeId; break;
+    default: scopeId = undefined;
   }
   return scopeId ? { scopeType: options.scopeType || "community", scopeId: String(scopeId) } : {};
 }
 
-module.exports = { requirePermission, requireAnyPermission, requireRole, requireSelf };
+export = { requirePermission, requireAnyPermission, requireRole, requireSelf };

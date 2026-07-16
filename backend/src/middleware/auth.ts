@@ -24,14 +24,18 @@
 //    req.hasAnyRole(...roleNames)  → boolean
 // ════════════════════════════════════════════════════════════════════════════
 
-const { verifyJWT }  = require("../utils/crypto");
-const env            = require("../config/env");
-const { fail }       = require("../utils/respond");
-const db             = require("../config/db");
-const rbac           = require("../rbac");
+import { Request, Response, NextFunction } from "express";
+import { verifyJWT } from "../utils/crypto";
+import env from "../config/env";
+import respond from "../utils/respond";
+import prisma from "../config/prisma";
+import rbac from "../rbac";
+import { CanOptions, ResolvedPermissions } from "../types/express";
+
+const { fail } = respond;
 
 // ── authenticate (required auth) ──────────────────────────────────────────────
-async function authenticate(req, res, next) {
+async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
     const token = _extractToken(req);
     if (!token) return fail(res, 401, "Missing access token");
@@ -39,26 +43,24 @@ async function authenticate(req, res, next) {
     const result = verifyJWT(token, env.jwtSecret);
     if (!result.valid) return fail(res, 401, result.error || "Invalid or expired token");
 
-    const { rows } = await db.query(
-      `SELECT id, handle, display_name, is_suspended, is_deactivated
-       FROM users WHERE id=$1 AND deleted_at IS NULL`,
-      [result.payload.sub]
-    );
-    if (!rows.length)            return fail(res, 401, "User no longer exists");
-    if (rows[0].is_suspended)   return fail(res, 403, "Account suspended");
-    if (rows[0].is_deactivated) return fail(res, 403, "Account deactivated");
+    const user = await prisma.users.findFirst({
+      where: { id: result.payload.sub, deletedAt: null },
+      select: { id: true, handle: true, displayName: true, isSuspended: true, isDeactivated: true },
+    });
+    if (!user) return fail(res, 401, "User no longer exists");
+    if (user.isSuspended) return fail(res, 403, "Account suspended");
+    if (user.isDeactivated) return fail(res, 403, "Account deactivated");
 
-    const user = rows[0];
-    req.user   = { id: user.id, handle: user.handle, displayName: user.display_name };
+    req.user = { id: user.id, handle: user.handle, displayName: user.displayName };
 
     // Resolve permissions (cache-first — typically zero DB queries)
-    const resolved         = await rbac.resolveUserPermissions(user.id);
-    req.userPermissions    = resolved;
+    const resolved = await rbac.resolveUserPermissions(user.id);
+    req.userPermissions = resolved;
 
     // Convenience helpers — mirrors Laravel's $request->user()->can() pattern
-    req.can        = (perm, opts = {}) => _checkPerm(resolved, perm, opts);
-    req.hasRole    = (role)            => resolved.roles.includes(role);
-    req.hasAnyRole = (...roles)        => roles.flat().some(r => resolved.roles.includes(r));
+    req.can = (perm: string, opts: CanOptions = {}) => _checkPerm(resolved, perm, opts);
+    req.hasRole = (role: string) => resolved.roles.includes(role);
+    req.hasAnyRole = (...roles: (string | string[])[]) => roles.flat().some(r => resolved.roles.includes(r));
 
     next();
   } catch (err) {
@@ -68,43 +70,42 @@ async function authenticate(req, res, next) {
 }
 
 // ── optionalAuth (auth if token present, anonymous if not) ───────────────────
-async function optionalAuth(req, res, next) {
+async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  const setAnonymous = () => {
+    req.user = null;
+    req.userPermissions = null;
+    req.can = () => false;
+    req.hasRole = () => false;
+    req.hasAnyRole = () => false;
+  };
   try {
     const token = _extractToken(req);
     if (!token) {
-      req.user            = null;
-      req.userPermissions = null;
-      req.can             = () => false;
-      req.hasRole         = () => false;
-      req.hasAnyRole      = () => false;
+      setAnonymous();
       return next();
     }
     const result = verifyJWT(token, env.jwtSecret);
     if (!result.valid) {
-      req.user = null; req.userPermissions = null;
-      req.can = () => false; req.hasRole = () => false; req.hasAnyRole = () => false;
+      setAnonymous();
       return next();
     }
-    const { rows } = await db.query(
-      "SELECT id, handle, display_name FROM users WHERE id=$1 AND deleted_at IS NULL AND is_suspended=FALSE",
-      [result.payload.sub]
-    );
-    if (!rows.length) {
-      req.user = null; req.userPermissions = null;
-      req.can = () => false; req.hasRole = () => false; req.hasAnyRole = () => false;
+    const user = await prisma.users.findFirst({
+      where: { id: result.payload.sub, deletedAt: null, isSuspended: false },
+      select: { id: true, handle: true, displayName: true },
+    });
+    if (!user) {
+      setAnonymous();
       return next();
     }
-    const user          = rows[0];
-    req.user            = { id: user.id, handle: user.handle, displayName: user.display_name };
-    const resolved      = await rbac.resolveUserPermissions(user.id);
+    req.user = { id: user.id, handle: user.handle, displayName: user.displayName };
+    const resolved = await rbac.resolveUserPermissions(user.id);
     req.userPermissions = resolved;
-    req.can             = (perm, opts = {}) => _checkPerm(resolved, perm, opts);
-    req.hasRole         = (role)            => resolved.roles.includes(role);
-    req.hasAnyRole      = (...roles)        => roles.flat().some(r => resolved.roles.includes(r));
+    req.can = (perm: string, opts: CanOptions = {}) => _checkPerm(resolved, perm, opts);
+    req.hasRole = (role: string) => resolved.roles.includes(role);
+    req.hasAnyRole = (...roles: (string | string[])[]) => roles.flat().some(r => resolved.roles.includes(r));
     next();
   } catch {
-    req.user = null; req.userPermissions = null;
-    req.can = () => false; req.hasRole = () => false; req.hasAnyRole = () => false;
+    setAnonymous();
     next();
   }
 }
@@ -112,19 +113,19 @@ async function optionalAuth(req, res, next) {
 // ── requireAdmin (backward-compatible shim → now checks admin.access) ─────────
 // Routes still calling requireAdmin work as before. Internally it now checks
 // the RBAC permission rather than the is_admin boolean.
-function requireAdmin(req, res, next) {
+function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (!req.userPermissions) return fail(res, 401, "Authentication required");
-  if (!req.can("admin.access")) return fail(res, 403, "Admin access required");
+  if (!req.can!("admin.access")) return fail(res, 403, "Admin access required");
   next();
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────
-function _extractToken(req) {
+function _extractToken(req: Request): string | null {
   const header = req.headers.authorization || "";
   return header.startsWith("Bearer ") ? header.slice(7).trim() : null;
 }
 
-function _checkPerm(resolved, permName, opts = {}) {
+function _checkPerm(resolved: ResolvedPermissions | null | undefined, permName: string, opts: CanOptions = {}): boolean {
   if (!resolved) return false;
   const { permissions, scopedPermissions } = resolved;
   if (permissions.has("*")) return true;
@@ -136,7 +137,7 @@ function _checkPerm(resolved, permName, opts = {}) {
   return false;
 }
 
-function _match(permSet, required) {
+function _match(permSet: Set<string>, required: string): boolean {
   if (permSet.has(required)) return true;
   const parts = required.split(".");
   for (let i = parts.length - 1; i >= 1; i--) {
@@ -145,9 +146,4 @@ function _match(permSet, required) {
   return false;
 }
 
-module.exports = { authenticate, optionalAuth, requireAdmin };
-
-// ── Named export aliases (existing routes use 'requireAuth') ─────────────────
-module.exports.requireAuth   = authenticate;
-module.exports.optionalAuth  = optionalAuth;
-module.exports.requireAdmin  = requireAdmin;
+export = { authenticate, optionalAuth, requireAdmin, requireAuth: authenticate };
