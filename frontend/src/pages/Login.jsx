@@ -32,11 +32,6 @@ export default function Login() {
     }
   };
 
-  const useDemoPersona = () => {
-    setForm({ emailOrHandle: "aisha.k", password: "VylappDemo123!" });
-    toast("Demo credentials loaded — click Log In");
-  };
-
   return (
     <AuthLayout
       title="Sign in"
@@ -85,38 +80,6 @@ export default function Login() {
           </PrimaryButton>
         </div>
       </form>
-
-      <div style={{
-        marginTop: 22,
-        padding: "12px 14px",
-        background: "var(--bg)",
-        border: "1px solid var(--border2)",
-        borderRadius: 8,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-      }}>
-        <span style={{ fontSize: 12.5, color: "var(--text2)" }}>
-          Testing the application?
-        </span>
-        <button
-          type="button"
-          onClick={useDemoPersona}
-          style={{
-            background: "transparent",
-            border: "1px solid var(--border)",
-            color: "var(--text2)",
-            fontSize: 12.5,
-            fontWeight: 600,
-            padding: "6px 12px",
-            borderRadius: 6,
-            whiteSpace: "nowrap",
-          }}
-        >
-          Use demo persona
-        </button>
-      </div>
     </AuthLayout>
   );
 }
