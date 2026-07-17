@@ -6,13 +6,15 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
-    "postbuild": "cp -r src/generated dist/generated && cp src/db/*.sql dist/db/",
+    "postbuild": "cp -r src/generated dist/generated && cp src/db/referenceData.sql dist/db/",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
-    "migrate": "tsx src/db/migrate.ts",
+    "migrate": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "seed:reference": "tsx src/db/seedReferenceData.ts",
     "seed": "tsx src/db/seed.ts",
     "clear-demo-data": "tsx src/db/clear-demo-data.ts",
-    "setup": "npm run migrate && npm run seed"
+    "setup": "npm run migrate:deploy && npm run seed:reference && npm run seed"
   },
   "engines": {
     "node": ">=18.0.0"

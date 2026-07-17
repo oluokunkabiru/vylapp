@@ -54,7 +54,7 @@ createdb vylapp_dev
 cd backend
 cp ../.env.example .env        # fill in your secrets
 npm install
-node src/db/migrate.js         # applies all 4 schema files in order
+npx prisma migrate deploy      # applies all pending Prisma migrations
 npm run dev                    # starts on port 4000
 ```
 
@@ -106,8 +106,10 @@ backend/src/
 │   ├── db.js                PostgreSQL pool (pg)
 │   └── env.js               Environment variable validation
 ├── db/
-│   ├── migrate.js           Migration runner
-│   ├── schema.sql           Core schema (81 tables, 24 triggers)
+│   ├── seed.ts              Demo data seeder (idempotent, safe to re-run)
+│   ├── schema.sql           Historical reference only — no longer executed;
+│   │                        the live schema is now tracked by Prisma
+│   │                        migrations in prisma/migrations/
 │   ├── schema_learn.sql     Learn pillar (13 tables, 4 triggers)
 │   ├── schema_forum.sql     Forum (9 tables, 3 triggers)
 │   └── schema_rbac.sql      RBAC (5 tables, 10 roles, 51 permissions)

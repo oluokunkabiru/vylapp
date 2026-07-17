@@ -1,7 +1,11 @@
-// Adds demo content on top of the personas already seeded by schema.sql
-// (Aisha, Marcus, Jade, Remi, Tanvi, Leon, Sena) — vibes, Spaces, and a
-// known login password, so the backend is immediately demoable against
-// the vylapp-instagram.jsx frontend without any manual data entry.
+// Creates the 7 demo personas (Aisha, Marcus, Jade, Remi, Tanvi, Leon, Sena)
+// plus their vibes, Spaces, and a known login password, so the backend is
+// immediately demoable against the frontend without any manual data entry.
+//
+// This used to be schema.sql's job (it INSERTed these personas once, tracked
+// via the now-retired custom migrate.ts), but Prisma migrations only track
+// DDL, not seed data — so persona creation now lives here, run on every
+// deploy alongside the rest of the demo content.
 import { Pool } from "pg";
 import env from "../config/env";
 import crypto from "../utils/crypto";
@@ -24,23 +28,31 @@ async function seed() {
   console.log("[seed] ── starting demo data seed ──────────────────────────────");
   const pool = new Pool({ connectionString: env.databaseUrl, ssl: env.pgSsl ? { rejectUnauthorized: false } : false });
 
-  // schema.sql inserts these 7 personas, but only the very first time it runs
-  // (migrate.ts tracks it in schema_migrations and never re-applies it) — if
-  // they were later removed (e.g. via clear-demo-data.ts, or a hand-pruned
-  // production DB), every persona-scoped insert below would FK-violate. Bail
-  // out cleanly instead of crashing partway through.
-  const { rows: personaCount } = await pool.query(
-    `SELECT COUNT(*) FROM users WHERE id::text LIKE '00000000-0000-0000-0001-%'`
-  );
-  if (parseInt(personaCount[0].count, 10) === 0) {
-    console.log("[seed] demo personas not found (schema.sql only inserts them once, and they may have since been removed) — skipping demo data seed entirely");
-    console.log("[seed] ── demo data seed complete (skipped) ─────────────────");
-    await pool.end();
-    return;
+  console.log("[seed] creating demo personas (if not already present) ...");
+  const hash = hashPassword(DEMO_PASSWORD);
+  const personas = [
+    { id: USERS.aisha,  email: "aisha@vylapp.com",  handle: "aisha.k",  name: "Aisha Kamara",  bio: "Building Web3 governance toolkits for the people 🌱", color: "#10F5A0", initials: "AK", roleTag: "Tech Viber",        verified: true,  tier: "official",  interests: ["tech", "global"] },
+    { id: USERS.marcus, email: "marcus@vylapp.com", handle: "marcus.o", name: "Marcus Osei",   bio: "DAO learner. Community first. 🔮",                     color: "#A78BFA", initials: "MO", roleTag: "DAO Learner",        verified: true,  tier: "community", interests: ["tech"] },
+    { id: USERS.jade,   email: "jade@vylapp.com",   handle: "jade.n",   name: "Jade Nakamura", bio: "Generative art × climate data 🎨",                     color: "#FFB830", initials: "JN", roleTag: "Creative Connector", verified: true,  tier: "creator",   interests: ["creative", "human"] },
+    { id: USERS.remi,   email: "remi@vylapp.com",   handle: "remi.k",   name: "Remi Kowalski", bio: "10k farmers onboarded. Impact builder. 🌾",             color: "#FF6B6B", initials: "RK", roleTag: "Impact Builder",     verified: false, tier: "none",      interests: ["global"] },
+    { id: USERS.tanvi,  email: "tanvi@vylapp.com",  handle: "t.patel",  name: "Tanvi Patel",   bio: "Human potential maximalist 🧠",                         color: "#A78BFA", initials: "TP", roleTag: "Human Potential",    verified: false, tier: "none",      interests: ["human"] },
+    { id: USERS.leon,   email: "leon@vylapp.com",   handle: "l.chen",   name: "Leon Chen",     bio: "AI explorer. Second brain architect. 🚀",               color: "#38BDF8", initials: "LC", roleTag: "AI Explorer",        verified: true,  tier: "community", interests: ["tech", "human"] },
+    { id: USERS.sena,   email: "sena@vylapp.com",   handle: "s.osei",   name: "Sena Osei",     bio: "AgriTech learner. Growing the future. 🌿",              color: "#2DD4BF", initials: "SO", roleTag: "AgriTech Learner",   verified: false, tier: "none",      interests: ["global"] },
+  ];
+  for (const p of personas) {
+    await pool.query(
+      `INSERT INTO users (id, email, handle, display_name, bio, avatar_color, avatar_initials, role_tag, verified, verification_tier, onboarding_done, onboarding_step, interests, password_hash)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,TRUE,'complete',$11,$12)
+       ON CONFLICT (id) DO NOTHING`,
+      [p.id, p.email, p.handle, p.name, p.bio, p.color, p.initials, p.roleTag, p.verified, p.tier, p.interests, hash]
+    );
   }
 
+  // Covers the case where personas already existed from before this seed
+  // owned their creation (e.g. an older DB still on the schema.sql path,
+  // which used a placeholder, non-functional password hash) — harmless
+  // no-op otherwise since the insert above already sets the real hash.
   console.log("[seed] setting known demo password for all seed personas ...");
-  const hash = hashPassword(DEMO_PASSWORD);
   await pool.query(`UPDATE users SET password_hash = $1 WHERE id::text LIKE '00000000-0000-0000-0001-%'`, [hash]);
 
   // Demo personas' vibes/spaces have no natural unique key to ON CONFLICT

@@ -1,11 +1,18 @@
 generator client {
   provider        = "prisma-client-js"
   output          = "../src/generated/prisma"
-  previewFeatures = ["partialIndexes"]
+  previewFeatures = ["partialIndexes", "postgresqlExtensions"]
 }
 
+// uuid-ossp/pg_trgm/unaccent/citext are structurally required — uuid_generate_v4()
+// defaults and @db.Citext columns depend on them. pgcrypto/pg_stat_statements from
+// the original schema.sql are deliberately left out: neither is queried anywhere
+// in the app, and pg_stat_statements specifically needs shared_preload_libraries
+// set at the Postgres server level — a managed host that hasn't preloaded it would
+// fail `CREATE EXTENSION` for zero functional benefit.
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [uuidOssp(map: "uuid-ossp"), pgTrgm(map: "pg_trgm"), unaccent, citext]
 }
 
 model AdminAuditLog {

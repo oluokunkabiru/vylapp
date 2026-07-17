@@ -23,15 +23,23 @@ RUN npx prisma generate && npm run build
 # The Prisma client is already generated at build time (builder stage above)
 # and copied in via dist/generated — running `prisma generate` again here
 # would need the schema/CLI in the image for no benefit, so it isn't repeated
-# at container start. Migrate + seed DO need to run at start (they need a
-# live DB connection), against the already-compiled plain-JS dist/db/*.js —
-# no tsx required, it's a devDependency not present in this stage's
-# node_modules. Each phase gets its own echo marker so the sequence is easy
-# to follow in the platform's deploy log stream.
+# at container start. `prisma migrate deploy` DOES need to run at start (it
+# needs a live DB connection) — it's the official non-interactive migration
+# runner (no shadow DB, never prompts), reading prisma/schema.prisma +
+# prisma/migrations + prisma.config.ts, all copied in below alongside dist/.
+# Reference-data seeding (RBAC roles/permissions, forum categories, etc.) is
+# a hard gate like migrate — the app has no functioning permission system
+# without it. Demo data (personas/vibes/Spaces) is best-effort: never let it
+# block the server from starting. Both run against already-compiled plain-JS
+# dist/db/*.js — no tsx required, it's a devDependency not present in this
+# stage's node_modules. Each phase gets its own echo marker so the sequence
+# is easy to follow in the platform's deploy log stream.
 FROM node:20-alpine AS production
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
+COPY prisma ./prisma
+COPY prisma.config.ts ./
 EXPOSE 4000
-CMD ["sh", "-c", "echo '[deploy] Running database migrations...' && node dist/db/migrate.js && echo '[deploy] Seeding demo data...' && (node dist/db/seed.js || echo '[deploy] Seed step failed — continuing to start the server anyway, demo data is not required for the app to run') && echo '[deploy] Starting server...' && node dist/server.js"]
+CMD ["sh", "-c", "echo '[deploy] Running database migrations...' && npx prisma migrate deploy && echo '[deploy] Seeding core reference data...' && node dist/db/seedReferenceData.js && echo '[deploy] Seeding demo data...' && (node dist/db/seed.js || echo '[deploy] Seed step failed — continuing to start the server anyway, demo data is not required for the app to run') && echo '[deploy] Starting server...' && node dist/server.js"]

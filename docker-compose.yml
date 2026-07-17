@@ -15,8 +15,10 @@ version: "3.9"
 #    cp .env.example backend/.env         # fill in your secrets
 #    docker compose up --build
 #
-#  To apply RBAC schema separately after initial setup:
-#    docker compose exec backend npx tsx src/db/migrate.ts
+#  To apply pending migrations separately after initial setup:
+#    docker compose exec backend npx prisma migrate deploy
+#  To author a new migration after editing prisma/schema.prisma:
+#    docker compose exec backend npx prisma migrate dev --name <description>
 # ════════════════════════════════════════════════════════════════════════════
 
 services:
@@ -59,13 +61,14 @@ services:
       - "4000:4000"
     volumes:
       - ./backend/src:/app/src       # hot-reload in dev; remove :ro in production
+      - ./backend/prisma:/app/prisma # so new migrations are picked up without a rebuild
     depends_on:
       postgres:
         condition: service_healthy
       mailpit:
         condition: service_started
     command: >
-      sh -c "npx prisma generate && npx tsx src/db/migrate.ts && npx tsx src/db/seed.ts && npx tsx watch src/server.ts"
+      sh -c "npx prisma generate && npx prisma migrate deploy && npx tsx src/db/seedReferenceData.ts && npx tsx src/db/seed.ts && npx tsx watch src/server.ts"
 
   # ── Mailpit (local SMTP catcher — dev only) ─────────────────────────────────
   # Host already runs a native Mailpit on 1025/8025, so this one is mapped to
