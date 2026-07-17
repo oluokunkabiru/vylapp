@@ -48,7 +48,7 @@ async function migrate() {
     )
   `);
 
-  console.log("[migrate] Starting migration sequence...");
+  console.log("[migrate] ── starting migration sequence ───────────────────────");
   let hasError = false;
 
   for (const filename of MIGRATIONS) {
@@ -90,6 +90,7 @@ async function migrate() {
     process.exitCode = 1;
   } else {
     console.log("[migrate] All migrations applied successfully.");
+    console.log("[migrate] ── migration sequence complete ───────────────────────");
   }
 }
 

@@ -21,43 +21,77 @@ const USERS = {
 };
 
 async function seed() {
+  console.log("[seed] ── starting demo data seed ──────────────────────────────");
   const pool = new Pool({ connectionString: env.databaseUrl, ssl: env.pgSsl ? { rejectUnauthorized: false } : false });
+
+  // schema.sql inserts these 7 personas, but only the very first time it runs
+  // (migrate.ts tracks it in schema_migrations and never re-applies it) — if
+  // they were later removed (e.g. via clear-demo-data.ts, or a hand-pruned
+  // production DB), every persona-scoped insert below would FK-violate. Bail
+  // out cleanly instead of crashing partway through.
+  const { rows: personaCount } = await pool.query(
+    `SELECT COUNT(*) FROM users WHERE id::text LIKE '00000000-0000-0000-0001-%'`
+  );
+  if (parseInt(personaCount[0].count, 10) === 0) {
+    console.log("[seed] demo personas not found (schema.sql only inserts them once, and they may have since been removed) — skipping demo data seed entirely");
+    console.log("[seed] ── demo data seed complete (skipped) ─────────────────");
+    await pool.end();
+    return;
+  }
 
   console.log("[seed] setting known demo password for all seed personas ...");
   const hash = hashPassword(DEMO_PASSWORD);
   await pool.query(`UPDATE users SET password_hash = $1 WHERE id::text LIKE '00000000-0000-0000-0001-%'`, [hash]);
 
-  console.log("[seed] inserting demo vibes ...");
-  const vibes = [
-    { user: USERS.aisha, cat: "TECH_VIBES", content: "Just open-sourced our community governance toolkit, built for Web3 DAOs but it works for any group making decisions together. Three months of building with Tech Vibers kept me accountable.", tags: ["opensource", "daos"], badge: "GLOBAL IMPACT" },
-    { user: USERS.remi, cat: "GLOBAL_CONNECT", content: "We just reached 10,000 farmers using our AI crop advisory tool across 5 African countries. This idea started as a Global Connect thread 18 months ago.", tags: ["agritech", "africa"], badge: null },
-    { user: USERS.jade, cat: "CREATIVE_LEARN", content: "Dropping a 12-piece generative art collection tonight, every piece reacts to real-time climate data. Preview at 9PM in the Creative Learn Space.", tags: ["genart", "climateart"], badge: null, event: { title: "AI x Climate Art — Collector Preview", time: "Tonight, 9PM" } },
-    { user: USERS.tanvi, cat: "HUMAN_POTENTIAL", content: "Hot take: the best learning system is the one your community holds you accountable to. None of the apps worked until I started sharing weekly reviews.", tags: ["learning", "accountability"], badge: null },
-  ];
-  for (const v of vibes) {
-    await pool.query(
-      `INSERT INTO vibes (user_id, content, category, tags, impact_badge, event_title, event_time, likes_count, reposts_count, replies_count)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [v.user, v.content, v.cat, v.tags, v.badge, v.event?.title || null, v.event?.time || null,
-       Math.floor(400 + Math.random() * 1800), Math.floor(50 + Math.random() * 400), Math.floor(20 + Math.random() * 300)]
-    );
+  // Demo personas' vibes/spaces have no natural unique key to ON CONFLICT
+  // against, so idempotency is a plain existence check instead — this script
+  // runs on every deploy/container start, and without this guard it would
+  // insert a fresh set of duplicate demo vibes/Spaces every single time.
+  const { rows: personaVibeCount } = await pool.query(
+    `SELECT COUNT(*) FROM vibes WHERE user_id::text LIKE '00000000-0000-0000-0001-%'`
+  );
+  if (parseInt(personaVibeCount[0].count, 10) > 0) {
+    console.log("[seed] demo vibes already exist, skipping");
+  } else {
+    console.log("[seed] inserting demo vibes ...");
+    const vibes = [
+      { user: USERS.aisha, cat: "TECH_VIBES", content: "Just open-sourced our community governance toolkit, built for Web3 DAOs but it works for any group making decisions together. Three months of building with Tech Vibers kept me accountable.", tags: ["opensource", "daos"], badge: "GLOBAL IMPACT" },
+      { user: USERS.remi, cat: "GLOBAL_CONNECT", content: "We just reached 10,000 farmers using our AI crop advisory tool across 5 African countries. This idea started as a Global Connect thread 18 months ago.", tags: ["agritech", "africa"], badge: null },
+      { user: USERS.jade, cat: "CREATIVE_LEARN", content: "Dropping a 12-piece generative art collection tonight, every piece reacts to real-time climate data. Preview at 9PM in the Creative Learn Space.", tags: ["genart", "climateart"], badge: null, event: { title: "AI x Climate Art — Collector Preview", time: "Tonight, 9PM" } },
+      { user: USERS.tanvi, cat: "HUMAN_POTENTIAL", content: "Hot take: the best learning system is the one your community holds you accountable to. None of the apps worked until I started sharing weekly reviews.", tags: ["learning", "accountability"], badge: null },
+    ];
+    for (const v of vibes) {
+      await pool.query(
+        `INSERT INTO vibes (user_id, content, category, tags, impact_badge, event_title, event_time, likes_count, reposts_count, replies_count)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [v.user, v.content, v.cat, v.tags, v.badge, v.event?.title || null, v.event?.time || null,
+         Math.floor(400 + Math.random() * 1800), Math.floor(50 + Math.random() * 400), Math.floor(20 + Math.random() * 300)]
+      );
+    }
   }
 
-  console.log("[seed] inserting demo Spaces ...");
-  const spaces = [
-    { host: USERS.leon, title: "Building Your Second Brain in 2026", cat: "HUMAN_POTENTIAL", status: "live", listeners: 1840 },
-    { host: USERS.aisha, title: "Web3 DAO Governance, Deep Vibe", cat: "TECH_VIBES", status: "live", listeners: 423 },
-    { host: USERS.jade, title: "AI Art & Climate Data Preview", cat: "CREATIVE_LEARN", status: "scheduled", listeners: 0 },
-    { host: USERS.remi, title: "African AgriTech: Scale & Impact", cat: "GLOBAL_CONNECT", status: "scheduled", listeners: 0 },
-  ];
-  for (const s of spaces) {
-    await pool.query(
-      `INSERT INTO spaces (host_id, title, category, status, listeners_count, peak_listeners, started_at, scheduled_for)
-       VALUES ($1,$2,$3,$4,$5,$5,$6,$7)`,
-      [s.host, s.title, s.cat, s.status, s.listeners,
-       s.status === "live" ? new Date() : null,
-       s.status === "scheduled" ? new Date(Date.now() + 3600000) : null]
-    );
+  const { rows: personaSpaceCount } = await pool.query(
+    `SELECT COUNT(*) FROM spaces WHERE host_id::text LIKE '00000000-0000-0000-0001-%'`
+  );
+  if (parseInt(personaSpaceCount[0].count, 10) > 0) {
+    console.log("[seed] demo Spaces already exist, skipping");
+  } else {
+    console.log("[seed] inserting demo Spaces ...");
+    const spaces = [
+      { host: USERS.leon, title: "Building Your Second Brain in 2026", cat: "HUMAN_POTENTIAL", status: "live", listeners: 1840 },
+      { host: USERS.aisha, title: "Web3 DAO Governance, Deep Vibe", cat: "TECH_VIBES", status: "live", listeners: 423 },
+      { host: USERS.jade, title: "AI Art & Climate Data Preview", cat: "CREATIVE_LEARN", status: "scheduled", listeners: 0 },
+      { host: USERS.remi, title: "African AgriTech: Scale & Impact", cat: "GLOBAL_CONNECT", status: "scheduled", listeners: 0 },
+    ];
+    for (const s of spaces) {
+      await pool.query(
+        `INSERT INTO spaces (host_id, title, category, status, listeners_count, peak_listeners, started_at, scheduled_for)
+         VALUES ($1,$2,$3,$4,$5,$5,$6,$7)`,
+        [s.host, s.title, s.cat, s.status, s.listeners,
+         s.status === "live" ? new Date() : null,
+         s.status === "scheduled" ? new Date(Date.now() + 3600000) : null]
+      );
+    }
   }
 
   console.log("[seed] inserting demo Learn courses ...");
@@ -78,6 +112,7 @@ async function seed() {
 
   console.log(`[seed] done. Demo login password for any seed user: ${DEMO_PASSWORD}`);
   console.log("[seed] e.g. POST /auth/login { emailOrHandle: 'aisha.k', password: '" + DEMO_PASSWORD + "' }");
+  console.log("[seed] ── demo data seed complete ───────────────────────────────");
   await pool.end();
 }
 
