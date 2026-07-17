@@ -429,7 +429,29 @@ async function issueCertificate(userId: string, courseId: string) {
   }
 }
 
+// ── DELETE /learn/courses/:id — owning educator or admin archives a course ────
+// Wires learn.delete.own (owner) and learn.delete.any (platform admin), both
+// previously unused by any endpoint. Courses have no hard-delete/is_deleted
+// column, so "delete" here means archiving — consistent with CourseStatus's
+// only terminal-ish state and with how courses are excluded from listCourses.
+async function archiveCourse(req: AuthedRequest, res: Response) {
+  const course = await prisma.courses.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, status: true, educatorProfiles: { select: { userId: true } } },
+  });
+  if (!course) return res.status(404).json({ ok: false, error: { message: "Course not found" } });
+
+  const isOwner = course.educatorProfiles.userId === req.user.id;
+  const canDeleteAny = req.can!("learn.delete.any");
+  const canDeleteOwn = isOwner && req.can!("learn.delete.own");
+  if (!canDeleteAny && !canDeleteOwn) return res.status(403).json({ ok: false, error: { message: "Not authorized to delete this course" } });
+
+  await prisma.courses.update({ where: { id: req.params.id }, data: { status: "archived" } });
+  res.json({ ok: true });
+}
+
 export = {
   listCategories, listCourses, getCourse, getLesson, answerCheckpoint, applyEducator,
   createCourse, createLesson, enrol, completeLesson, myEnrolments, myCertificates, getCertificate, rateCourse,
+  archiveCourse,
 };

@@ -52,4 +52,7 @@ router.get("/certificates/:id", asyncHandler(learnController.getCertificate));
 // ── POST /learn/courses/:id/rate ──────────────────────────────────────────────
 router.post("/courses/:id/rate", authenticate, asyncHandler(learnController.rateCourse));
 
+// ── DELETE /learn/courses/:id — owning educator (learn.delete.own) or admin (learn.delete.any)
+router.delete("/courses/:id", authenticate, asyncHandler(learnController.archiveCourse));
+
 export = router;

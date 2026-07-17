@@ -26,6 +26,7 @@ import ravenRoutes from "./routes/raven.routes";
 import learnRoutes from "./routes/learn.routes";
 import forumRoutes from "./routes/forum.routes";
 import rbacRoutes from "./routes/rbac.routes";
+import adminRoutes from "./routes/admin.routes";
 import devRoutes from "./routes/dev.routes";
 
 function createApp() {
@@ -70,6 +71,9 @@ function createApp() {
 
   // ── RBAC management API (super_admin / platform_admin only) ───────────────
   app.use("/rbac",  rbacRoutes);
+
+  // ── Admin dashboard API (admin.access + granular admin.* permissions) ─────
+  app.use("/admin", adminRoutes);
 
   // ── Dev-only utilities (never exposed in production) ─────────────────────
   if (env.nodeEnv !== "production") {

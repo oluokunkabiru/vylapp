@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
 import { getSocket } from "./lib/socket.js";
+
+import AdminGuard from "./pages/admin/AdminGuard.jsx";
+import AdminLayout from "./pages/admin/AdminLayout.jsx";
+import AdminOverview from "./pages/admin/AdminOverview.jsx";
+import AdminUsers from "./pages/admin/AdminUsers.jsx";
+import AdminModeration from "./pages/admin/AdminModeration.jsx";
+import AdminRoles from "./pages/admin/AdminRoles.jsx";
+import AdminAudit from "./pages/admin/AdminAudit.jsx";
 
 import TopBar from "./components/layout/TopBar.jsx";
 import BottomNav from "./components/layout/BottomNav.jsx";
@@ -149,9 +157,34 @@ function InnerApp() {
   );
 }
 
+// ── Admin console: its own layout, entirely separate from the vibes app chrome ──
+function AdminApp() {
+  return (
+    <AdminGuard>
+      <Routes>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminOverview />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="moderation" element={<AdminModeration />} />
+          <Route path="roles" element={<AdminRoles />} />
+          <Route path="audit" element={<AdminAudit />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Route>
+      </Routes>
+    </AdminGuard>
+  );
+}
+
 export default function App() {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) return <FullscreenSpinner />;
+
+  if (location.pathname.startsWith("/admin")) {
+    if (!user) return <AuthGate />;
+    return <AdminApp />;
+  }
+
   if (!user) return <AuthGate />;
   if (!user.onboardingDone) return <Onboarding />;
   return <InnerApp />;

@@ -210,13 +210,16 @@ async function patchThread(req: AuthedRequest, res: Response) {
   const thread = await prisma.forumThreads.findUnique({ where: { id: req.params.id }, select: { categoryId: true, status: true } });
   if (!thread) return res.status(404).json({ ok: false, error: { message: "Thread not found" } });
 
-  // Must be a moderator of this category
-  const mod = await assertModerator(req.user.id, thread.categoryId);
+  // A platform admin with forum.thread.delete.any bypasses the per-category
+  // moderator check entirely — this permission previously had no endpoint
+  // wired to it.
+  const hasGlobalOverride = req.can!("forum.thread.delete.any");
+  const mod = hasGlobalOverride ? null : await assertModerator(req.user.id, thread.categoryId);
   const { is_pinned, status, moderation_note } = req.body;
 
   const data: Record<string, unknown> = {};
-  if (is_pinned !== undefined && mod.role !== "moderator") { data.isPinned = is_pinned; }
-  if (is_pinned !== undefined && mod.role === "moderator") { /* pin requires senior_mod or above */ }
+  if (is_pinned !== undefined && (hasGlobalOverride || mod!.role !== "moderator")) { data.isPinned = is_pinned; }
+  if (is_pinned !== undefined && !hasGlobalOverride && mod!.role === "moderator") { /* pin requires senior_mod or above */ }
   if (status !== undefined) { data.status = status; }
   if (moderation_note) { data.moderationNote = moderation_note; }
 
