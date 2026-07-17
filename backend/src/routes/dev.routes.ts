@@ -17,6 +17,7 @@ import nodemailer from "nodemailer";
 import env from "../config/env";
 import logger from "../utils/logger";
 import mailer from "../utils/mailer";
+import prisma from "../config/prisma";
 
 const router = express.Router();
 
@@ -122,6 +123,27 @@ router.get("/test-2fa-otp", async (req: Request, res: Response) => {
     return res.json({ ok: true, message_id: info.messageId, mailpit_ui: MAILPIT, sent_to: to, template: "2fa-otp", otp });
   } catch (err: any) {
     logger.error("DEV test-2fa-otp failed", { error: err.message });
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── GET /dev/users — list first 5 users (DB connectivity check) ───────────────
+router.get("/users", async (req: Request, res: Response) => {
+  try {
+    const users = await prisma.users.findMany({
+      take: 5,
+      orderBy: { createdAt: "asc" },
+      select: {
+        id:          true,
+        email:       true,
+        handle:      true,
+        displayName: true,
+        createdAt:   true,
+      },
+    });
+    return res.json({ ok: true, count: users.length, users });
+  } catch (err: any) {
+    logger.error("DEV users list failed", { error: err.message });
     return res.status(500).json({ ok: false, error: err.message });
   }
 });

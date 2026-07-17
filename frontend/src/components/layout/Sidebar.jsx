@@ -18,7 +18,9 @@ const NAV = [
 
 export default function Sidebar({ onCreateClick, notifCount, msgCount, lang, setLang }) {
   const { pathname } = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
+
+  const nav = isAdmin ? [...NAV, { to:"/admin", icon:ic.lock, label:"Admin" }] : NAV;
 
   return (
     <div style={{
@@ -27,7 +29,7 @@ export default function Sidebar({ onCreateClick, notifCount, msgCount, lang, set
     }}>
       <div style={{ padding:"0 12px 22px" }}><VylappWordmark size={24} /></div>
 
-      {NAV.map(item => {
+      {nav.map(item => {
         const active = pathname === item.to || (item.to !== "/" && pathname.startsWith(item.to + "/"));
         const badge = (item.to==="/notifications" && notifCount) || (item.to==="/messages" && msgCount);
         return (
