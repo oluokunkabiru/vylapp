@@ -42,7 +42,7 @@ CREATE EXTENSION IF NOT EXISTS "citext";           -- Case-insensitive text
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- Feed categories (matches BRAND system in frontend)
-CREATE TYPE IF NOT EXISTS feed_category AS ENUM (
+CREATE TYPE feed_category AS ENUM (
   'TECH_VIBES',
   'GLOBAL_CONNECT',
   'CREATIVE_LEARN',
@@ -52,27 +52,27 @@ CREATE TYPE IF NOT EXISTS feed_category AS ENUM (
 );
 
 -- Auth providers
-CREATE TYPE IF NOT EXISTS auth_provider AS ENUM ('local','google','apple','twitter','linkedin');
+CREATE TYPE auth_provider AS ENUM ('local','google','apple','twitter','linkedin');
 
 -- Onboarding progression steps
-CREATE TYPE IF NOT EXISTS onboarding_step AS ENUM (
+CREATE TYPE onboarding_step AS ENUM (
   'welcome','interests','handle','avatar','follow_suggestions','complete'
 );
 
 -- Space states
-CREATE TYPE IF NOT EXISTS space_status AS ENUM ('scheduled','live','ended','cancelled');
+CREATE TYPE space_status AS ENUM ('scheduled','live','ended','cancelled');
 
 -- Participant roles in Spaces
-CREATE TYPE IF NOT EXISTS space_role AS ENUM ('host','co_host','speaker','listener','muted_speaker');
+CREATE TYPE space_role AS ENUM ('host','co_host','speaker','listener','muted_speaker');
 
 -- Conversation types
-CREATE TYPE IF NOT EXISTS conversation_type AS ENUM ('dm','group','space_chat','broadcast');
+CREATE TYPE conversation_type AS ENUM ('dm','group','space_chat','broadcast');
 
 -- Message content types
-CREATE TYPE IF NOT EXISTS message_content_type AS ENUM ('text','image','video','audio','file','vibe_share','space_invite','sticker','reaction_burst');
+CREATE TYPE message_content_type AS ENUM ('text','image','video','audio','file','vibe_share','space_invite','sticker','reaction_burst');
 
 -- Notification types (matches VYL_ALERTS in frontend)
-CREATE TYPE IF NOT EXISTS notification_type AS ENUM (
+CREATE TYPE notification_type AS ENUM (
   'like','repost','reply','mention','follow','connection_request',
   'space_invite','space_live','space_reminder',
   'dm','group_message',
@@ -83,40 +83,40 @@ CREATE TYPE IF NOT EXISTS notification_type AS ENUM (
 );
 
 -- User verification tiers
-CREATE TYPE IF NOT EXISTS verification_tier AS ENUM ('none','community','creator','official','partner');
+CREATE TYPE verification_tier AS ENUM ('none','community','creator','official','partner');
 
 -- Report reasons
-CREATE TYPE IF NOT EXISTS report_reason AS ENUM (
+CREATE TYPE report_reason AS ENUM (
   'spam','harassment','misinformation','explicit_content',
   'hate_speech','violence','copyright','impersonation','other'
 );
 
 -- Report status
-CREATE TYPE IF NOT EXISTS report_status AS ENUM ('pending','under_review','resolved_action','resolved_no_action','dismissed');
+CREATE TYPE report_status AS ENUM ('pending','under_review','resolved_action','resolved_no_action','dismissed');
 
 -- Subscription plans
-CREATE TYPE IF NOT EXISTS subscription_plan AS ENUM ('free','pro_monthly','pro_annual','creator','business');
+CREATE TYPE subscription_plan AS ENUM ('free','pro_monthly','pro_annual','creator','business');
 
 -- Subscription status
-CREATE TYPE IF NOT EXISTS subscription_status AS ENUM ('active','cancelled','expired','trial','paused');
+CREATE TYPE subscription_status AS ENUM ('active','cancelled','expired','trial','paused');
 
 -- Creator payout status
-CREATE TYPE IF NOT EXISTS payout_status AS ENUM ('pending','processing','paid','failed','cancelled');
+CREATE TYPE payout_status AS ENUM ('pending','processing','paid','failed','cancelled');
 
 -- Transaction types
-CREATE TYPE IF NOT EXISTS transaction_type AS ENUM (
+CREATE TYPE transaction_type AS ENUM (
   'super_vibe','creator_subscription','space_ticket',
   'digital_product','paid_dm','tip','pro_subscription','refund'
 );
 
 -- Autopilot run status
-CREATE TYPE IF NOT EXISTS autopilot_status AS ENUM ('idle','scanning','posting','engaging','replying','complete','stopped','error');
+CREATE TYPE autopilot_status AS ENUM ('idle','scanning','posting','engaging','replying','complete','stopped','error');
 
 -- Media types
-CREATE TYPE IF NOT EXISTS media_type AS ENUM ('image','video','audio','document','gif');
+CREATE TYPE media_type AS ENUM ('image','video','audio','document','gif');
 
 -- Momentum for trending topics
-CREATE TYPE IF NOT EXISTS trend_momentum AS ENUM ('emerging','rising','peak','viral','declining');
+CREATE TYPE trend_momentum AS ENUM ('emerging','rising','peak','viral','declining');
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
