@@ -5,28 +5,28 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/vyl_widgets.dart';
 
-class SpacesScreen extends StatefulWidget {{
+class SpacesScreen extends StatefulWidget {
   final String? param;
-  const SpacesScreen({{super.key, this.param}});
+  const SpacesScreen({super.key, this.param});
   @override State<SpacesScreen> createState() => _SpacesScreenState();
-}}
+}
 
-class _SpacesScreenState extends State<SpacesScreen> {{
+class _SpacesScreenState extends State<SpacesScreen> {
   final _api = getIt<ApiClient>();
   bool _loading = true;
   String? _error;
 
   @override
-  void initState() {{ super.initState(); _load(); }}
+  void initState() { super.initState(); _load(); }
 
-  Future<void> _load() async {{
-    try {{
+  Future<void> _load() async {
+    try {
       await Future.delayed(const Duration(milliseconds: 300));
       setState(() => _loading = false);
-    }} catch (e) {{
-      setState(() {{ _loading = false; _error = e.toString(); }});
-    }}
-  }}
+    } catch (e) {
+      setState(() { _loading = false; _error = e.toString(); });
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -73,4 +73,4 @@ class _SpacesScreenState extends State<SpacesScreen> {{
       ]),
     ),
   );
-}}
+}

@@ -5,28 +5,28 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../shared/widgets/vyl_widgets.dart';
 
-class ProfileScreen extends StatefulWidget {{
+class ProfileScreen extends StatefulWidget {
   final String? param;
-  const ProfileScreen({{super.key, this.param}});
+  const ProfileScreen({super.key, this.param});
   @override State<ProfileScreen> createState() => _ProfileScreenState();
-}}
+}
 
-class _ProfileScreenState extends State<ProfileScreen> {{
+class _ProfileScreenState extends State<ProfileScreen> {
   final _api = getIt<ApiClient>();
   bool _loading = true;
   String? _error;
 
   @override
-  void initState() {{ super.initState(); _load(); }}
+  void initState() { super.initState(); _load(); }
 
-  Future<void> _load() async {{
-    try {{
+  Future<void> _load() async {
+    try {
       await Future.delayed(const Duration(milliseconds: 300));
       setState(() => _loading = false);
-    }} catch (e) {{
-      setState(() {{ _loading = false; _error = e.toString(); }});
-    }}
-  }}
+    } catch (e) {
+      setState(() { _loading = false; _error = e.toString(); });
+    }
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -73,4 +73,4 @@ class _ProfileScreenState extends State<ProfileScreen> {{
       ]),
     ),
   );
-}}
+}

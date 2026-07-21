@@ -35,11 +35,20 @@ flutter build ios --dart-define-from-file=.env.production \
    ```
    Extract: `openssl s_client -connect api.vylapp.com:443 | openssl x509 -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | openssl enc -base64`
 
-3. **Physical device** — update `.env`:
-   ```json
-   { "VYLAPP_API_URL": "http://192.168.x.x:4000" }
-   ```
-   Replace with your machine's local IP.
+3. **Pointing at the backend** — `localhost:4000` in `.env` only works for the
+   iOS Simulator (it shares the host's network stack). Everything else needs
+   a different address, or requests will silently time out / connection-refuse:
+   - **Android Emulator**: use `http://10.0.2.2:4000` — the emulator's
+     special alias back to the host machine's `localhost`. Not your host's
+     real IP; `10.0.2.2` is fixed regardless of your actual network.
+   - **Physical device** (iOS or Android), same Wi-Fi as your dev machine:
+     use your machine's LAN IP, e.g. `http://192.168.0.180:4000`. Find it
+     with `hostname -I` (Linux) or `ipconfig getifaddr en0` (macOS). The
+     `docker compose` backend already publishes port 4000 on the host, so
+     nothing else needs to change on the backend side — just update `.env`:
+     ```json
+     { "VYLAPP_API_URL": "http://192.168.x.x:4000", "VYLAPP_SOCKET_URL": "http://192.168.x.x:4000" }
+     ```
 
 ## Hardware channels
 
