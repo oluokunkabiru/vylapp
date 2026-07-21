@@ -92,25 +92,35 @@ abstract final class ApiConstants {
 
   static const String feed              = '/vibes/feed';
   static const String createVibe        = '/vibes';
-  static String vibeById(String id)     => '/vibes/\$id';
-  static String likeVibe(String id)     => '/vibes/\$id/like';
-  static String bookmarkVibe(String id) => '/vibes/\$id/bookmark';
+  static String vibeById(String id)     => '/vibes/$id';
+  static String likeVibe(String id)     => '/vibes/$id/like';
+  static String repostVibe(String id)   => '/vibes/$id/repost';
+  static String bookmarkVibe(String id) => '/vibes/$id/bookmark';
 
-  static const String spaces           = '/spaces';
-  static String joinSpace(String id)   => '/spaces/\$id/join';
+  static const String spaces               = '/spaces';
+  static String joinSpace(String id)       => '/spaces/$id/join';
+  static String leaveSpace(String id)      => '/spaces/$id/leave';
+  static String remindSpace(String id)     => '/spaces/$id/remind';
+  static String tipSpace(String id)        => '/spaces/$id/tip';
 
-  static const String conversations    = '/messages/conversations';
-  static String conversationMessages(String id) => '/messages/conversations/\$id/messages';
+  static const String conversations                     = '/messages/conversations';
+  static const String conversationDm                    = '/messages/conversations/dm';
+  static String conversationMessages(String id)         => '/messages/conversations/$id/messages';
 
-  static const String notifications    = '/notifications';
-  static const String readAllNotifs    = '/notifications/read-all';
+  static const String notifications      = '/notifications';
+  static const String readAllNotifs      = '/notifications/read-all';
+  static const String notificationDigest = '/notifications/digest';
+  static String markNotifRead(String id) => '/notifications/$id/read';
 
-  static String translateVibe(String id) => '/translate/vibes/\$id';
+  static String translateVibe(String id) => '/translate/vibes/$id';
 
   static const String myEarnings       = '/creator/me/earnings';
   static const String payoutRequest    = '/creator/me/payout-request';
+  static String creatorProfile(String userId) => '/creator/$userId/profile';
 
+  static const String autopilotConfig  = '/autopilot/config';
   static const String autopilotRun     = '/autopilot/run';
+  static const String autopilotRuns    = '/autopilot/runs';
 
   static const String ravenMe          = '/raven/me';
   static const String ravenLeaderboard = '/raven/leaderboard';
@@ -121,17 +131,17 @@ abstract final class ApiConstants {
   static const String plans            = '/subscriptions/plans';
   static const String upgrade          = '/subscriptions/upgrade';
 
-  static String userByHandle(String h)  => '/users/\$h';
-  static String connectUser(String id)  => '/users/\$id/connect';
+  static String userByHandle(String h)  => '/users/$h';
+  static String connectUser(String id)  => '/users/$id/connect';
 
   static const String learnCourses     = '/learn/courses';
-  static String courseById(String id)  => '/learn/courses/\$id';
-  static String enrollCourse(String id)=> '/learn/courses/\$id/enrol';
+  static String courseById(String id)  => '/learn/courses/$id';
+  static String enrollCourse(String id)=> '/learn/courses/$id/enrol';
   static const String myEnrolments     = '/learn/me/enrolments';
   static const String myCertificates   = '/learn/me/certificates';
 
   static const String forumCategories  = '/forum/categories';
-  static String forumThreads(String s) => '/forum/categories/\$s/threads';
-  static String threadById(String id)  => '/forum/threads/\$id';
+  static String forumThreads(String s) => '/forum/categories/$s/threads';
+  static String threadById(String id)  => '/forum/threads/$id';
   static const String createThread     = '/forum/threads';
 }
