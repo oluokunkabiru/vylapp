@@ -1,0 +1,14 @@
+# Tells Grafana to auto-load any dashboard JSON dropped in
+# monitoring/grafana/dashboards/ — no manual import needed.
+apiVersion: 1
+
+providers:
+  - name: Vylapp
+    orgId: 1
+    folder: Vylapp
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/json

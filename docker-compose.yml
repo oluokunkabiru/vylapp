@@ -109,6 +109,58 @@ services:
       postgres:
         condition: service_healthy
 
+  # ── Prometheus ─────────────────────────────────────────────────────────────
+  # Scrapes /metrics off the backend (see src/middleware/metrics.ts) and
+  # postgres-exporter below. UI at localhost:9090 — mainly useful for
+  # checking a PromQL expression before putting it in a Grafana panel.
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+      - postgres-exporter
+
+  # ── Postgres exporter ──────────────────────────────────────────────────────
+  # Exposes Postgres-internal stats (connections, table sizes, query stats)
+  # as Prometheus metrics — the DB has no visibility otherwise, since the
+  # backend's own /metrics only covers the Node process.
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://vylapp:vylappdev@postgres:5432/vylapp_dev?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Grafana ────────────────────────────────────────────────────────────────
+  # Dashboards + datasources are auto-provisioned from monitoring/grafana/ —
+  # nothing to click through manually. Login admin / vylappadmin (change
+  # this for anything beyond local dev — see GF_SECURITY_ADMIN_PASSWORD).
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER:     admin
+      GF_SECURITY_ADMIN_PASSWORD: vylappadmin
+      GF_USERS_ALLOW_SIGN_UP:     "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   pgdata:
   frontend_node_modules:
+  prometheus_data:
+  grafana_data:

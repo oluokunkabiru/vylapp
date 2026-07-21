@@ -1,0 +1,27 @@
+# Auto-provisioned Grafana datasources — no manual "Add data source" click
+# needed. Grafana reads this on container start.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+
+  - name: Vylapp Postgres
+    uid: vylapp-postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    database: vylapp_dev
+    user: vylapp
+    secureJsonData:
+      password: vylappdev
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+    editable: true

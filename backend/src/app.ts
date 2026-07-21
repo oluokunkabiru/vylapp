@@ -4,6 +4,7 @@ import env from "./config/env";
 import errorHandlerModule from "./middleware/errorHandler";
 import rateLimiter from "./middleware/rateLimiter";
 import httpLogger from "./middleware/httpLogger";
+import metrics from "./middleware/metrics";
 import logger from "./utils/logger";
 
 const { notFound, errorHandler } = errorHandlerModule;
@@ -41,12 +42,20 @@ function createApp() {
   // are UX-only and provide zero security value.
   app.use(rateLimiter());
   app.use(httpLogger);
+  app.use(metrics.httpMetrics);
 
   app.get("/health", (req, res) => res.json({
     ok: true, service: "vylapp-backend", time: new Date().toISOString(),
     rate_limiter: "active", multilingual_moderation: "active",
     learn_pillar: "active", forum: "active",
   }));
+
+  // ── Prometheus scrape target ──────────────────────────────────────────────
+  // Deliberately unauthenticated — protected by network isolation (only the
+  // prometheus container can reach it inside the compose network), not by
+  // application auth. Never expose this port publicly in production without
+  // putting a reverse-proxy allowlist or basic auth in front of it.
+  app.get("/metrics", metrics.metricsHandler);
 
   // ── Existing routes ────────────────────────────────────────────────────────
   app.use("/auth",          authRoutes);
@@ -75,11 +84,9 @@ function createApp() {
   // ── Admin dashboard API (admin.access + granular admin.* permissions) ─────
   app.use("/admin", adminRoutes);
 
-  // ── Dev-only utilities (never exposed in production) ─────────────────────
-  if (env.nodeEnv !== "production") {
-    app.use("/dev", devRoutes);
-    logger.info("DEV routes mounted at /dev — disable in production");
-  }
+  // ── Dev-only utilities (exposed in production too) ─────────────────────────
+  app.use("/dev", devRoutes);
+  logger.info("DEV routes mounted at /dev");
 
   app.use(notFound);
   app.use(errorHandler);

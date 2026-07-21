@@ -1,0 +1,21 @@
+# Prometheus scrape configuration for local Vylapp development.
+# Container names below are the docker-compose service names — Prometheus
+# resolves them over the compose network the same way the backend resolves
+# "postgres".
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: vylapp-backend
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["backend:4000"]
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
