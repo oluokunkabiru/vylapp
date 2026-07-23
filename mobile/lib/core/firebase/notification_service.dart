@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:injectable/injectable.dart';
 import '../network/api_client.dart';
@@ -71,7 +72,7 @@ class FirebaseNotificationService {
     // Create the Android notification channel — must match what the backend sends
     await _localNotifs
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(const AndroidNotificationChannel(
+      ?.createNotificationChannel(AndroidNotificationChannel(
         'vylapp_high',              // id — must match backend FCM channel_id
         'Vylapp Notifications',    // name (shown in Android settings)
         description: 'Likes, comments, follows, messages, and Space alerts',
@@ -137,7 +138,7 @@ class FirebaseNotificationService {
           channelDescription: 'Likes, comments, follows, messages, and Space alerts',
           importance: Importance.high,
           priority: Priority.high,
-          color: const Color(0xFF7C3AED),
+          color: Color(0xFF7C3AED),
           icon: '@mipmap/ic_launcher',
         ),
         iOS: const DarwinNotificationDetails(

@@ -1,10 +1,12 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import env from "./config/env";
 import errorHandlerModule from "./middleware/errorHandler";
 import rateLimiter from "./middleware/rateLimiter";
 import httpLogger from "./middleware/httpLogger";
 import metrics from "./middleware/metrics";
+import csrfProtection from "./middleware/csrf";
 import logger from "./utils/logger";
 
 const { notFound, errorHandler } = errorHandlerModule;
@@ -31,9 +33,18 @@ import adminRoutes from "./routes/admin.routes";
 import devRoutes from "./routes/dev.routes";
 
 function createApp() {
+  // Cookie-based web auth + credentialed CORS can never work with a wildcard
+  // origin (browsers reject the combination outright) — fail loudly at boot
+  // rather than have auth silently break in production.
+  if (env.nodeEnv === "production" && env.clientOrigin === "*") {
+    throw new Error("CLIENT_ORIGIN must be set to a concrete origin in production (required for credentialed cookie auth)");
+  }
+
   const app = express();
 
   app.use(cors({ origin: env.clientOrigin, credentials: true }));
+  app.use(cookieParser());
+  app.use(csrfProtection);
   app.use(express.json({ limit: "2mb" }));
 
   // ── Server-side rate limiting — applied globally before any route ──────────
@@ -84,9 +95,11 @@ function createApp() {
   // ── Admin dashboard API (admin.access + granular admin.* permissions) ─────
   app.use("/admin", adminRoutes);
 
-  // ── Dev-only utilities (exposed in production too) ─────────────────────────
-  app.use("/dev", devRoutes);
-  logger.info("DEV routes mounted at /dev");
+  // ── Dev-only utilities (never exposed in production) ─────────────────────
+  if (env.nodeEnv !== "production") {
+    app.use("/dev", devRoutes);
+    logger.info("DEV routes mounted at /dev — disable in production");
+  }
 
   app.use(notFound);
   app.use(errorHandler);

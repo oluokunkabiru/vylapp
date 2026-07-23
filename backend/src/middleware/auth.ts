@@ -27,6 +27,7 @@
 import { Request, Response, NextFunction } from "express";
 import { verifyJWT } from "../utils/crypto";
 import env from "../config/env";
+import authCookies from "../utils/authCookies";
 import respond from "../utils/respond";
 import prisma from "../config/prisma";
 import rbac from "../rbac";
@@ -120,7 +121,11 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
 }
 
 // ── Internal ──────────────────────────────────────────────────────────────────
+// Web client: httpOnly vyl_at cookie. Mobile app / other API clients:
+// Authorization: Bearer header, unchanged.
 function _extractToken(req: Request): string | null {
+  const cookieToken = req.cookies?.[authCookies.ACCESS_COOKIE];
+  if (cookieToken) return cookieToken;
   const header = req.headers.authorization || "";
   return header.startsWith("Bearer ") ? header.slice(7).trim() : null;
 }

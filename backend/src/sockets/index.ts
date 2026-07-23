@@ -2,12 +2,17 @@
 //  REAL-TIME LAYER — Socket.IO
 //  Handles: conversation rooms (live message delivery), Space presence
 //  (listener join/leave broadcasts), and live notification pushes.
-//  Auth: client connects with { auth: { token } } using the same JWT
-//  issued by /auth/login — no separate session system needed.
+//  Auth: mobile app connects with { auth: { token } } using the JWT it holds
+//  in secure on-device storage. The web client can't do that (its access
+//  token lives in an httpOnly vyl_at cookie, invisible to JS) — it connects
+//  with { withCredentials: true } instead, and the token is read straight
+//  off the handshake's Cookie header.
 // ════════════════════════════════════════════════════════════════════════════
 import { Server, Socket } from "socket.io";
+import { parseCookie } from "cookie";
 import crypto from "../utils/crypto";
 import env from "../config/env";
+import authCookies from "../utils/authCookies";
 import db from "../config/db";
 
 const { verifyJWT } = crypto;
@@ -16,9 +21,17 @@ interface AuthedSocket extends Socket {
   userId?: string;
 }
 
+function _extractToken(socket: Socket): string | null {
+  const authToken = socket.handshake.auth?.token;
+  if (authToken) return authToken;
+  const rawCookie = socket.handshake.headers.cookie;
+  if (!rawCookie) return null;
+  return parseCookie(rawCookie)[authCookies.ACCESS_COOKIE] || null;
+}
+
 function attachSockets(io: Server) {
   io.use((socket: AuthedSocket, next) => {
-    const token = socket.handshake.auth?.token;
+    const token = _extractToken(socket);
     if (!token) return next(new Error("Missing auth token"));
     const result = verifyJWT(token, env.jwtSecret);
     if (!result.valid) return next(new Error(result.error || "Invalid token"));

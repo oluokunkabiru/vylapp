@@ -18,9 +18,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
-    const rt = localStorage.getItem("vyl_refresh");
-    if (rt) api.post("/auth/logout", { refreshToken: rt }).catch(() => {});
-    api.clearTokens();
+    api.post("/auth/logout").catch(() => {});
     disconnectSocket();
     setUser(null);
     setIsAdmin(false);
@@ -28,17 +26,17 @@ export function AuthProvider({ children }) {
 
   useEffect(() => { registerLogoutHandler(logout); }, [logout]);
 
+  // Tokens live in httpOnly cookies now — invisible to JS, so there's no
+  // cheap client-side "am I logged in" check. Always ask the server.
   useEffect(() => {
-    if (!api.getToken()) { setLoading(false); return; }
     api.get("/auth/me")
       .then(({ user: u }) => { setUser(u); connectSocket(); checkAdmin(); })
-      .catch(() => { api.clearTokens(); })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line
 
   const login = useCallback(async (emailOrHandle, password) => {
-    const { user: u, accessToken, refreshToken } = await api.post("/auth/login", { emailOrHandle, password });
-    api.setTokens(accessToken, refreshToken);
+    const { user: u } = await api.post("/auth/login", { emailOrHandle, password });
     setUser(u);
     connectSocket();
     checkAdmin();
@@ -46,8 +44,7 @@ export function AuthProvider({ children }) {
   }, [checkAdmin]);
 
   const register = useCallback(async ({ email, handle, password, displayName }) => {
-    const { user: u, accessToken, refreshToken } = await api.post("/auth/register", { email, handle, password, displayName });
-    api.setTokens(accessToken, refreshToken);
+    const { user: u } = await api.post("/auth/register", { email, handle, password, displayName });
     setUser(u);
     connectSocket();
     checkAdmin();

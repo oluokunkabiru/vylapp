@@ -1,15 +1,15 @@
 import { io } from "socket.io-client";
-import { api } from "./api.js";
 
 let socket = null;
 
 export function getSocket() { return socket; }
 
+// The access token lives in an httpOnly cookie now — withCredentials makes
+// the browser attach it automatically, no JS-readable token to pass here.
 export function connectSocket() {
-  const token = api.getToken();
-  if (!token || socket?.connected) return;
+  if (socket?.connected) return;
   socket = io("/", {
-    auth: { token },
+    withCredentials: true,
     reconnectionAttempts: 5,
     reconnectionDelay: 1500,
   });

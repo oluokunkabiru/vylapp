@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthedRequest } from "../types/express";
 import env from "../config/env";
 import crypto from "../utils/crypto";
+import authCookies from "../utils/authCookies";
 import mailer from "../utils/mailer";
 import logger from "../utils/logger";
 import respond from "../utils/respond";
@@ -114,7 +115,8 @@ async function register(req: Request, res: Response) {
     logger.warn("Welcome email failed to send after registration", { userId: user.id, error: err.message });
   }
 
-  return ok(res, { user: publicUser(toSnakeUser(user)), accessToken, refreshToken }, 201);
+  authCookies.setAuthCookies(res, { accessToken, refreshToken });
+  return ok(res, { user: publicUser(toSnakeUser(user)) }, 201);
 }
 
 // ── POST /auth/login ───────────────────────────────────────────────────────────
@@ -132,13 +134,14 @@ async function login(req: Request, res: Response) {
   const { accessToken, refreshToken } = issueTokens(user);
   await storeRefreshToken(user.id, refreshToken, { ip: req.ip, ua: req.headers["user-agent"] });
 
-  return ok(res, { user: publicUser(toSnakeUser(user)), accessToken, refreshToken });
+  authCookies.setAuthCookies(res, { accessToken, refreshToken });
+  return ok(res, { user: publicUser(toSnakeUser(user)) });
 }
 
 // ── POST /auth/refresh ─────────────────────────────────────────────────────────
 async function refresh(req: Request, res: Response) {
-  const { refreshToken } = req.body;
-  if (!refreshToken) return fail(res, 400, "refreshToken is required");
+  const refreshToken = req.cookies?.[authCookies.REFRESH_COOKIE];
+  if (!refreshToken) return fail(res, 401, "Missing refresh token");
 
   const record = await prisma.refreshTokens.findFirst({
     where: { token: refreshToken, revokedAt: null, expiresAt: { gt: new Date() } },
@@ -147,13 +150,15 @@ async function refresh(req: Request, res: Response) {
   if (!record) return fail(res, 401, "Invalid or expired refresh token");
 
   const accessToken = crypto.signJWT({ sub: record.userId, handle: record.users.handle }, env.jwtSecret, ACCESS_TTL_SEC);
-  return ok(res, { accessToken });
+  authCookies.setAccessCookie(res, accessToken);
+  return ok(res, { refreshed: true });
 }
 
 // ── POST /auth/logout ──────────────────────────────────────────────────────────
 async function logout(req: Request, res: Response) {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies?.[authCookies.REFRESH_COOKIE];
   if (refreshToken) await prisma.refreshTokens.updateMany({ where: { token: refreshToken }, data: { revokedAt: new Date() } });
+  authCookies.clearAuthCookies(res);
   return ok(res, { loggedOut: true });
 }
 

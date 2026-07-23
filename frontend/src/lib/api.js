@@ -2,34 +2,33 @@
 //  API CLIENT
 //  Thin fetch wrapper that:
 //  - Prefixes every request with /api (proxied to localhost:4000 in dev)
-//  - Injects the stored JWT access token as Bearer on every call
+//  - Sends the httpOnly vyl_at/vyl_rt session cookies automatically
+//    (credentials: "include") — tokens are never touched by JS
+//  - Attaches the CSRF double-submit token (read from the non-httpOnly
+//    vyl_csrf cookie) on every mutating request
 //  - On 401, tries to refresh once, retries the request, then logs out
 //  - Always returns { ok, data } or { ok: false, error } to callers
 // ════════════════════════════════════════════════════════════════════════════
 
 const BASE = "/api";
 
-function getToken() { return localStorage.getItem("vyl_access"); }
-function getRefresh() { return localStorage.getItem("vyl_refresh"); }
-function setTokens(access, refresh) {
-  if (access)  localStorage.setItem("vyl_access",  access);
-  if (refresh) localStorage.setItem("vyl_refresh", refresh);
-}
-function clearTokens() {
-  localStorage.removeItem("vyl_access");
-  localStorage.removeItem("vyl_refresh");
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)vyl_csrf=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
 }
 
 let _onLogout = null;
 export function registerLogoutHandler(fn) { _onLogout = fn; }
 
 async function rawFetch(path, opts = {}) {
-  const token = getToken();
+  const method = (opts.method || "GET").toUpperCase();
+  const csrfToken = method !== "GET" ? getCsrfToken() : null;
   const res = await fetch(BASE + path, {
     ...opts,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
       ...opts.headers,
     },
   });
@@ -38,17 +37,8 @@ async function rawFetch(path, opts = {}) {
 }
 
 async function refreshOnce() {
-  const rt = getRefresh();
-  if (!rt) return false;
-  const { status, json } = await rawFetch("/auth/refresh", {
-    method: "POST",
-    body: JSON.stringify({ refreshToken: rt }),
-  });
-  if (status === 200 && json?.data?.accessToken) {
-    setTokens(json.data.accessToken, null);
-    return true;
-  }
-  return false;
+  const { status } = await rawFetch("/auth/refresh", { method: "POST" });
+  return status === 200;
 }
 
 export async function request(method, path, body) {
@@ -65,7 +55,6 @@ export async function request(method, path, body) {
         body: body ? JSON.stringify(body) : undefined,
       }));
     } else {
-      clearTokens();
       _onLogout?.();
     }
   }
@@ -80,7 +69,4 @@ export const api = {
   patch:  (path, body)  => request("PATCH",  path, body),
   put:    (path, body)  => request("PUT",    path, body),
   delete: (path)        => request("DELETE", path),
-  setTokens,
-  clearTokens,
-  getToken,
 };
