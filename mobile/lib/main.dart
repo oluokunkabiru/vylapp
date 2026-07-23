@@ -13,10 +13,21 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ── Firebase ──────────────────────────────────────────────────────────────
-  await Firebase.initializeApp();
+  // google-services.json/GoogleService-Info.plist are placeholders until a
+  // real Firebase project is wired up (see README "Pending items"). Firebase
+  // init and FCM registration talk to that project over the network, so with
+  // placeholder credentials they throw — push notifications and crash
+  // reporting are best-effort, never a reason the whole app fails to start.
+  var firebaseReady = false;
+  try {
+    await Firebase.initializeApp();
+    firebaseReady = true;
+  } catch (e) {
+    debugPrint('Firebase.initializeApp() failed — continuing without Firebase: $e');
+  }
 
   // Route all Flutter errors to Crashlytics in release mode
-  if (!kDebugMode) {
+  if (firebaseReady && !kDebugMode) {
     FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
     PlatformDispatcher.instance.onError = (error, stack) {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
@@ -34,7 +45,13 @@ void main() async {
   // report.hasDebugger → only true in debug/profile builds
 
   // ── Push notifications ─────────────────────────────────────────────────────
-  await getIt<FirebaseNotificationService>().initialise();
+  if (firebaseReady) {
+    try {
+      await getIt<FirebaseNotificationService>().initialise();
+    } catch (e) {
+      debugPrint('Push notification setup failed — continuing without it: $e');
+    }
+  }
 
   // ── Lock orientation (mobile — portrait primary) ──────────────────────────
   await SystemChrome.setPreferredOrientations([

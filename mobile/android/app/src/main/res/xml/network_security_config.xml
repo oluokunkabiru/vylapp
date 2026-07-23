@@ -25,14 +25,17 @@
 <network-security-config>
 
   <!-- ── Production API: Fly.io Johannesburg ────────────────────────────── -->
+  <!-- Pinning is deliberately OFF for now — no production backend has been
+       deployed yet, so there's no real cert to pin. The placeholder pin
+       values that used to be here weren't valid base64-encoded SHA-256
+       digests (decoded to 28 bytes, not 32), and Android parses this whole
+       file at Application startup regardless of which domain a request
+       actually targets — so a malformed pin here crashed every launch, on
+       every domain, not just this one. Add a real <pin-set> back (see the
+       openssl instructions above) once a production backend with a real
+       TLS cert exists. -->
   <domain-config cleartextTrafficPermitted="false">
     <domain includeSubdomains="true">your-backend.fly.dev</domain>
-    <pin-set expiration="2027-07-01">
-      <!-- Primary certificate fingerprint — replace with your actual cert -->
-      <pin digest="SHA-256">REPLACE_WITH_YOUR_PRIMARY_CERT_SHA256_BASE64==</pin>
-      <!-- Backup certificate fingerprint — the NEXT cert you'll rotate to -->
-      <pin digest="SHA-256">REPLACE_WITH_YOUR_BACKUP_CERT_SHA256_BASE64==</pin>
-    </pin-set>
     <trust-anchors>
       <certificates src="system"/>
     </trust-anchors>
