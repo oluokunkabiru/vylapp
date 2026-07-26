@@ -173,17 +173,17 @@ export default function Landing() {
           <div className="lp-vision__text">
             <div className="lp-section__label reveal" style={{color:"#c4b5fd"}}>Our Mission &amp; Vision</div>
             <h2 className="lp-section__h2 reveal" style={{color:"#fff"}}>
-              Empowering every voice — one vibe at a time.
+              You'll never have to translate yourself to belong here.
             </h2>
             <p className="lp-section__sub reveal" style={{color:"#94a3b8"}}>
-              We believe every community's stories, knowledge and culture deserve a world-class digital home.
-              Vylapp closes the gap between talent and opportunity — for creators, educators,
-              students, and communities.
+              Vylapp is the multilingual social platform where multicultural communities vibe, learn and
+              connect — in their own languages. We exist to tear down the language barrier at the heart
+              of the social internet, so no community has to translate itself to belong.
             </p>
             <div className="lp-vision__cards reveal">
               {[
-                { title:"Mission", text:"To build the most inclusive social-learning platform for communities everywhere, from Lagos to London to wherever you call home." },
-                { title:"Vision", text:"A world where every voice, from every corner of the globe, has the tools and community to reach its fullest potential." },
+                { title:"Mission", text:"Vylapp exists to tear down the language barrier at the heart of the social internet — building one platform where multicultural and multilingual communities create, learn, and belong in their own languages, on their own terms." },
+                { title:"Vision", text:"A world where no one is a second-class citizen of the internet because of the language they speak — where an entrepreneur in Lagos, a student in Nairobi, and a creator in the diaspora share one digital home, and culture travels as freely as content." },
               ].map((c, i) => (
                 <div key={i} className="lp-vision__card">
                   <div>
