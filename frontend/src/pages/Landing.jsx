@@ -5,12 +5,12 @@ import "./Landing.css";
 const NAV_LINKS = ["Features","Vision","Learn","Community","Creator"];
 
 const FEATURES = [
-  { icon:"⚡", title:"Vibes Feed", desc:"Share thoughts, stories and creativity with your community. What matters most to you rises to the top." },
-  { icon:"🧠", title:"Guided Learning", desc:"Take structured courses from verified educators. Smart recommendations surface the right content at the right time." },
-  { icon:"🌍", title:"Spaces", desc:"Join topic-driven communities across culture, tech, agriculture, arts and more — built for people everywhere." },
-  { icon:"💬", title:"Real-time Messaging", desc:"Connect and collaborate instantly. Secure, fast, end-to-end conversations with the people you follow." },
-  { icon:"⚡", title:"Autopilot", desc:"Automated content scheduling, audience growth and engagement — so you can spend more time creating." },
-  { icon:"💰", title:"Creator Economy", desc:"Monetise your knowledge and creativity. Earn from subscriptions, courses and content directly on the platform." },
+  { icon:"", title:"Vibes Feed", desc:"Share thoughts, stories and creativity with your community. What matters most to you rises to the top." },
+  { icon:"", title:"Guided Learning", desc:"Take structured courses from verified educators. Smart recommendations surface the right content at the right time." },
+  { icon:"", title:"Spaces", desc:"Join topic-driven communities across culture, tech, agriculture, arts and more — built for people everywhere." },
+  { icon:"", title:"Real-time Messaging", desc:"Connect and collaborate instantly. Secure, fast, end-to-end conversations with the people you follow." },
+  { icon:"", title:"Autopilot", desc:"Automated content scheduling, audience growth and engagement — so you can spend more time creating." },
+  { icon:"", title:"Creator Economy", desc:"Monetise your knowledge and creativity. Earn from subscriptions, courses and content directly on the platform." },
 ];
 
 const STATS = [
@@ -179,7 +179,7 @@ export default function Landing() {
             <p className="lp-section__sub reveal" style={{color:"#94a3b8"}}>
               We believe every community's stories, knowledge and culture deserve a world-class digital home.
               Vylapp closes the gap between talent and opportunity — for creators, educators,
-              students, and communities everywhere, rooted in Africa and open to the world.
+              students, and communities everywhere, open to anybody around the globe.
             </p>
             <div className="lp-vision__cards reveal">
               {[
