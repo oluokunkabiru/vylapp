@@ -203,9 +203,12 @@ export function numFmt(n) {
 // ── Logo wordmark ─────────────────────────────────────────────────────────
 export function VylappWordmark({ size = 22 }) {
   return (
-    <span style={{
-      fontFamily:"var(--font)", fontWeight:900, fontSize:size, letterSpacing:-0.5,
-      background:"var(--grad)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
-    }}>VYLAPP</span>
+    <span style={{ display:"inline-flex", alignItems:"center", gap:8 }}>
+      <img src="/assets/logo.png" alt="Vylapp" style={{ height: size + 4, width: size + 4, borderRadius: 6, objectFit:"contain" }} />
+      <span style={{
+        fontFamily:"var(--font)", fontWeight:900, fontSize:size, letterSpacing:-0.5,
+        background:"var(--grad)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
+      }}>VYLAPP</span>
+    </span>
   );
 }

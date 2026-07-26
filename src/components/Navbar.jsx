@@ -22,8 +22,11 @@ export default function Navbar({ dark, setDark }) {
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
 
         {/* Logo */}
-        <Link to="/" onClick={close} className="font-sora font-extrabold text-xl tracking-tight">
-          <span style={{ color: COLORS.violet }}>Vyl</span>app
+        <Link to="/" onClick={close} className="flex items-center gap-2">
+          <img src="/assets/logo.png" alt="Vylapp" className="h-8 w-8 rounded-lg object-contain" />
+          <span className="font-sora font-extrabold text-xl tracking-tight">
+            <span style={{ color: COLORS.violet }}>Vyl</span>app
+          </span>
         </Link>
 
         {/* Desktop nav */}

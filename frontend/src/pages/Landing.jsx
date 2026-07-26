@@ -59,8 +59,9 @@ export default function Landing() {
       {/* ── NAV ── */}
       <nav className={`lp-nav ${scrolled ? "lp-nav--solid" : ""}`}>
         <div className="lp-nav__inner">
-          <div className="lp-nav__brand" onClick={() => window.scrollTo({top:0,behavior:"smooth"})}>
-            <span className="lp-nav__logo">✦</span> Vylapp
+          <div className="lp-nav__brand" onClick={() => window.scrollTo({top:0,behavior:"smooth"})} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
+            <img src="/assets/logo.png" alt="Vylapp" style={{height:28,width:28,borderRadius:6,objectFit:"contain"}} />
+            <span className="lp-nav__logo" style={{display:"none"}}>❆</span> Vylapp
           </div>
 
           <div className={`lp-nav__links ${menuOpen ? "open" : ""}`}>
@@ -322,7 +323,10 @@ export default function Landing() {
       <footer className="lp-footer">
         <div className="lp-footer__inner">
           <div className="lp-footer__brand">
-            <div className="lp-footer__logo">✦ Vylapp</div>
+            <div className="lp-footer__logo" style={{display:"flex",alignItems:"center",gap:8}}>
+              <img src="/assets/logo.png" alt="Vylapp" style={{height:24,width:24,borderRadius:4,objectFit:"contain"}} />
+              Vylapp
+            </div>
             <p>Vibe. Learn. Connect.<br />AI-Powered · Built for Africa &amp; the Diaspora.</p>
           </div>
           <div className="lp-footer__links">
