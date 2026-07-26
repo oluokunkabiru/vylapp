@@ -5,11 +5,11 @@ import "./Landing.css";
 const NAV_LINKS = ["Features","Vision","Learn","Community","Creator"];
 
 const FEATURES = [
-  { icon:"⚡", title:"Vibes Feed", desc:"Share thoughts, stories and creativity with your community. AI curates what matters most to you." },
-  { icon:"🧠", title:"AI-Powered Learning", desc:"Take structured courses from verified educators. Intelligent recommendations surface the right content at the right time." },
-  { icon:"🌍", title:"Spaces", desc:"Join topic-driven communities across culture, tech, agriculture, arts and more — built for Africa and the diaspora." },
+  { icon:"⚡", title:"Vibes Feed", desc:"Share thoughts, stories and creativity with your community. What matters most to you rises to the top." },
+  { icon:"🧠", title:"Guided Learning", desc:"Take structured courses from verified educators. Smart recommendations surface the right content at the right time." },
+  { icon:"🌍", title:"Spaces", desc:"Join topic-driven communities across culture, tech, agriculture, arts and more — built for people everywhere." },
   { icon:"💬", title:"Real-time Messaging", desc:"Connect and collaborate instantly. Secure, fast, end-to-end conversations with the people you follow." },
-  { icon:"🤖", title:"Autopilot", desc:"Let AI work for you — automated content scheduling, audience growth and engagement while you focus on creating." },
+  { icon:"⚡", title:"Autopilot", desc:"Automated content scheduling, audience growth and engagement — so you can spend more time creating." },
   { icon:"💰", title:"Creator Economy", desc:"Monetise your knowledge and creativity. Earn from subscriptions, courses and content directly on the platform." },
 ];
 
@@ -17,13 +17,14 @@ const STATS = [
   { num:"1K+", label:"Founding Members" },
   { num:"50+", label:"Verified Educators" },
   { num:"20+", label:"Languages Supported" },
-  { num:"AI", label:"Powered Core" },
+  { num:"150+", label:"Countries Reached" },
 ];
 
 const TESTIMONIALS = [
-  { name:"Adaeze O.", role:"Educator · Lagos", text:"Vylapp gave me a platform to teach my community without needing a third-party tool. The AI matching brought me students I'd never have reached.", avatar:"AO", color:"#7C3AED" },
-  { name:"Kofi M.", role:"Creator · Accra", text:"The Autopilot feature alone changed my workflow. I spend more time creating and less time managing — and my earnings tripled in 2 months.", avatar:"KM", color:"#059669" },
+  { name:"Adaeze O.", role:"Educator · Lagos", text:"Vylapp gave me a platform to teach my community without needing a third-party tool. It brought me students I'd never have reached on my own.", avatar:"AO", color:"#7C3AED" },
+  { name:"Kofi M.", role:"Creator · Accra", text:"Autopilot alone changed my workflow. I spend more time creating and less time managing — and my earnings tripled in 2 months.", avatar:"KM", color:"#059669" },
   { name:"Amara D.", role:"Student · London", text:"As part of the diaspora, Vylapp connects me back to my roots. The courses and community feel like home, no matter where I am.", avatar:"AD", color:"#DC2626" },
+  { name:"Mei L.", role:"Educator · Singapore", text:"I thought this was a niche African app when I joined. Turns out the community spans six continents — my course reached students I never expected.", avatar:"ML", color:"#0EA5E9" },
 ];
 
 export default function Landing() {
@@ -90,15 +91,15 @@ export default function Landing() {
           <div className="lp-hero__grid" />
         </div>
         <div className="lp-hero__content">
-          <div className="lp-badge">✦ AI-Powered · Built for Africa &amp; the Diaspora</div>
+          <div className="lp-badge">✦ Built for creators, learners &amp; communities everywhere</div>
           <h1 className="lp-hero__h1">
             <span className="lp-hero__word">Vibe.</span>
             <span className="lp-hero__word lp-hero__word--grad">Learn.</span>
             <span className="lp-hero__word">Connect.</span>
           </h1>
           <p className="lp-hero__sub">
-            Vylapp is the intelligent social platform where African creators, learners and communities
-            thrive — powered by AI, built on culture, driven by you.
+            Vylapp is the social platform where creators, learners and communities from every corner
+            of the world come together — built on culture, driven by real people, made for you.
           </p>
           <div className="lp-hero__actions">
             <button className="lp-btn lp-btn--primary lp-btn--lg" onClick={() => nav("/register")}>
@@ -127,8 +128,8 @@ export default function Landing() {
             <div className="lp-mockup__body">
               {[
                 { av:"AD", name:"Adaeze", tag:"Creator", text:"Just dropped my new Afrofusion course 🔥", color:"#7C3AED", likes:284 },
-                { av:"KM", name:"Kofi M.", tag:"Educator", text:"AI picked the perfect students for my cohort 🤖", color:"#059669", likes:162 },
-                { av:"RM", name:"Remi A.", tag:"Viber", text:"The Spaces feature brought my whole village together 🌍", color:"#DC2626", likes:491 },
+                { av:"PS", name:"Priya S.", tag:"Educator", text:"My cohort found me from three different continents this week 🌍", color:"#059669", likes:162 },
+                { av:"DR", name:"Diego R.", tag:"Viber", text:"Spaces connected me with creators across 12 countries 🌐", color:"#DC2626", likes:491 },
               ].map((v, i) => (
                 <div key={i} className="lp-vibe-card">
                   <div className="lp-vibe-card__av" style={{background:v.color}}>{v.av}</div>
@@ -152,7 +153,7 @@ export default function Landing() {
           <div className="lp-section__label reveal">Everything you need</div>
           <h2 className="lp-section__h2 reveal">One platform. Infinite possibilities.</h2>
           <p className="lp-section__sub reveal">
-            From social vibes to structured learning, creator monetisation to AI-driven community building —
+            From social vibes to structured learning, creator monetisation to real community building —
             Vylapp brings it all together.
           </p>
           <div className="lp-features-grid">
@@ -173,17 +174,17 @@ export default function Landing() {
           <div className="lp-vision__text">
             <div className="lp-section__label reveal" style={{color:"#c4b5fd"}}>Our Mission &amp; Vision</div>
             <h2 className="lp-section__h2 reveal" style={{color:"#fff"}}>
-              Empowering the African voice — one vibe at a time.
+              Empowering every voice — one vibe at a time.
             </h2>
             <p className="lp-section__sub reveal" style={{color:"#94a3b8"}}>
-              We believe Africa's stories, knowledge and culture deserve a world-class digital home.
-              Vylapp is built to close the gap between talent and opportunity — for creators, educators,
-              students, and communities across the continent and the diaspora.
+              We believe every community's stories, knowledge and culture deserve a world-class digital home.
+              Vylapp closes the gap between talent and opportunity — for creators, educators,
+              students, and communities everywhere, rooted in Africa and open to the world.
             </p>
             <div className="lp-vision__cards reveal">
               {[
-                { icon:"🎯", title:"Mission", text:"To build the most inclusive, AI-powered social-learning platform for African communities worldwide." },
-                { icon:"🔭", title:"Vision", text:"A world where every African voice has the tools, technology and community to reach its fullest potential." },
+                { icon:"🎯", title:"Mission", text:"To build the most inclusive social-learning platform for communities everywhere, from Lagos to London to wherever you call home." },
+                { icon:"🔭", title:"Vision", text:"A world where every voice, from every corner of the globe, has the tools and community to reach its fullest potential." },
               ].map((c, i) => (
                 <div key={i} className="lp-vision__card">
                   <span className="lp-vision__card-icon">{c.icon}</span>
@@ -201,8 +202,8 @@ export default function Landing() {
               <div className="lp-globe__ring lp-globe__ring--2" />
               <div className="lp-globe__ring lp-globe__ring--3" />
               <div className="lp-globe__core">🌍</div>
-              {["Lagos","Accra","Nairobi","London","NYC","Paris"].map((c, i) => (
-                <div key={c} className="lp-globe__city" style={{ "--i": i }}>
+              {["Lagos","Cairo","Mumbai","London","São Paulo","New York","Sydney"].map((c, i, arr) => (
+                <div key={c} className="lp-globe__city" style={{ "--i": i, "--ang": `${(360 / arr.length) * i}deg` }}>
                   <div className="lp-globe__city-dot" /><span>{c}</span>
                 </div>
               ))}
@@ -217,13 +218,13 @@ export default function Landing() {
           <div className="lp-section__label reveal">Learn Pillar</div>
           <h2 className="lp-section__h2 reveal">Knowledge that moves with you.</h2>
           <p className="lp-section__sub reveal">
-            Verified educators create structured courses. AI matches you with what you need.
+            Verified educators create structured courses, matched to what you need.
             You learn, grow and earn — all in one place.
           </p>
           <div className="lp-learn-steps reveal">
             {[
-              { n:"01", title:"Discover", desc:"AI surfaces courses tailored to your interests, language and goals." },
-              { n:"02", title:"Learn", desc:"Bite-sized lessons from verified African educators across every field." },
+              { n:"01", title:"Discover", desc:"Courses tailored to your interests, language and goals, surfaced the moment you need them." },
+              { n:"02", title:"Learn", desc:"Bite-sized lessons from verified educators across every field, from every corner of the world." },
               { n:"03", title:"Earn & Teach", desc:"Become a verified educator. Monetise your expertise with subscriptions and one-time courses." },
             ].map((s, i) => (
               <div key={i} className="lp-learn-step">
@@ -267,10 +268,10 @@ export default function Landing() {
             <h2 className="lp-section__h2">Your creativity. Your earnings.</h2>
             <p className="lp-section__sub">
               Vylapp's creator economy puts you in control. Set your price, grow your audience
-              and earn — with AI Autopilot doing the heavy lifting behind the scenes.
+              and earn — with Autopilot doing the heavy lifting behind the scenes.
             </p>
             <ul className="lp-creator__list">
-              {["Subscription-based creator plans","Course sales &amp; one-time enrollments","AI Autopilot for content scheduling","Real-time earnings dashboard","Founding Member perks — forever"].map((item, i) => (
+              {["Subscription-based creator plans","Course sales &amp; one-time enrollments","Autopilot for content scheduling","Real-time earnings dashboard","Founding Member perks — forever"].map((item, i) => (
                 <li key={i} dangerouslySetInnerHTML={{ __html: "✦ " + item }} />
               ))}
             </ul>
@@ -292,7 +293,7 @@ export default function Landing() {
               </div>
               <div className="lp-earn-card__row"><span>🎓 Students</span><strong>1,240</strong></div>
               <div className="lp-earn-card__row"><span>⭐ Rating</span><strong>4.9 / 5</strong></div>
-              <div className="lp-earn-card__row"><span>🤖 Autopilot</span><strong style={{color:"#10b981"}}>Active</strong></div>
+              <div className="lp-earn-card__row"><span>⚡ Autopilot</span><strong style={{color:"#10b981"}}>Active</strong></div>
             </div>
           </div>
         </div>
@@ -327,7 +328,7 @@ export default function Landing() {
               <img src="/assets/logo.png" alt="Vylapp" style={{height:24,width:24,borderRadius:4,objectFit:"contain"}} />
               Vylapp
             </div>
-            <p>Vibe. Learn. Connect.<br />AI-Powered · Built for Africa &amp; the Diaspora.</p>
+            <p>Vibe. Learn. Connect.<br />Built for creators and communities, everywhere.</p>
           </div>
           <div className="lp-footer__links">
             {[["Product","Features","Learn","Creator","Spaces","Autopilot"],["Company","About","Mission","Blog","Careers"],["Legal","Privacy","Terms","Cookie Policy"]].map(([title, ...links]) => (
@@ -340,7 +341,7 @@ export default function Landing() {
         </div>
         <div className="lp-footer__bottom">
           <span>© {new Date().getFullYear()} Vylapp. All rights reserved.</span>
-          <span className="lp-ai-pill">✦ AI-POWERED PLATFORM</span>
+          <span className="lp-world-pill">✦ BUILT FOR EVERY VOICE, EVERYWHERE</span>
           <span>As the world moves, we move with it 🌍</span>
         </div>
       </footer>

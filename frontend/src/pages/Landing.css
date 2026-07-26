@@ -214,7 +214,7 @@
 .lp-globe__core { font-size: 64px; z-index: 2; animation: pulse 4s ease-in-out infinite; }
 .lp-globe__city {
   position: absolute; display: flex; align-items: center; gap: 6px;
-  transform: rotate(calc(var(--i) * 60deg)) translateX(150px) rotate(calc(var(--i) * -60deg));
+  transform: rotate(var(--ang)) translateX(150px) rotate(calc(-1 * var(--ang)));
 }
 .lp-globe__city-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--vio); box-shadow: 0 0 8px var(--vio); animation: blink 2s ease-in-out infinite; animation-delay: calc(var(--i) * 0.3s); }
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
@@ -293,7 +293,7 @@
   padding: 20px 0; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
   font-size: 12px; color: #475569;
 }
-.lp-ai-pill {
+.lp-world-pill {
   background: linear-gradient(135deg,#1e1b4b,#312e81);
   color: #a5b4fc; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
   padding: 4px 12px; border-radius: 9999px;
