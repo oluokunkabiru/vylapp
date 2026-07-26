@@ -185,7 +185,6 @@
   transition: all 0.3s ease;
 }
 .lp-feature-card:hover { transform: translateY(-4px); box-shadow: 0 20px 48px rgba(124,58,237,0.12); border-color: #c4b5fd; }
-.lp-feature-card__icon { font-size: 32px; margin-bottom: 16px; }
 .lp-feature-card h3 { font-size: 17px; font-weight: 800; margin-bottom: 8px; }
 .lp-feature-card p { font-size: 14px; color: var(--text2); line-height: 1.65; }
 
@@ -197,7 +196,6 @@
   background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
   border-radius: 12px; padding: 18px;
 }
-.lp-vision__card-icon { font-size: 24px; flex-shrink: 0; }
 .lp-vision__card strong { color: #fff; font-size: 15px; display: block; margin-bottom: 4px; }
 .lp-vision__card p { color: #94a3b8; font-size: 13px; line-height: 1.6; }
 

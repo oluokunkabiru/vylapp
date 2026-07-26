@@ -5,12 +5,12 @@ import "./Landing.css";
 const NAV_LINKS = ["Features","Vision","Learn","Community","Creator"];
 
 const FEATURES = [
-  { icon:"", title:"Vibes Feed", desc:"Share thoughts, stories and creativity with your community. What matters most to you rises to the top." },
-  { icon:"", title:"Guided Learning", desc:"Take structured courses from verified educators. Smart recommendations surface the right content at the right time." },
-  { icon:"", title:"Spaces", desc:"Join topic-driven communities across culture, tech, agriculture, arts and more — built for people everywhere." },
-  { icon:"", title:"Real-time Messaging", desc:"Connect and collaborate instantly. Secure, fast, end-to-end conversations with the people you follow." },
-  { icon:"", title:"Autopilot", desc:"Automated content scheduling, audience growth and engagement — so you can spend more time creating." },
-  { icon:"", title:"Creator Economy", desc:"Monetise your knowledge and creativity. Earn from subscriptions, courses and content directly on the platform." },
+  { title:"Vibes Feed", desc:"Share thoughts, stories and creativity with your community. What matters most to you rises to the top." },
+  { title:"Guided Learning", desc:"Take structured courses from verified educators. Smart recommendations surface the right content at the right time." },
+  { title:"Spaces", desc:"Join topic-driven communities across culture, tech, agriculture, arts and more — built for people everywhere." },
+  { title:"Real-time Messaging", desc:"Connect and collaborate instantly. Secure, fast, end-to-end conversations with the people you follow." },
+  { title:"Autopilot", desc:"Automated content scheduling, audience growth and engagement — so you can spend more time creating." },
+  { title:"Creator Economy", desc:"Monetise your knowledge and creativity. Earn from subscriptions, courses and content directly on the platform." },
 ];
 
 const STATS = [
@@ -62,7 +62,7 @@ export default function Landing() {
         <div className="lp-nav__inner">
           <div className="lp-nav__brand" onClick={() => window.scrollTo({top:0,behavior:"smooth"})} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}>
             <img src="/assets/logo.png" alt="Vylapp" style={{height:28,width:28,borderRadius:6,objectFit:"contain"}} />
-            <span className="lp-nav__logo" style={{display:"none"}}>❆</span> Vylapp
+            Vylapp
           </div>
 
           <div className={`lp-nav__links ${menuOpen ? "open" : ""}`}>
@@ -91,7 +91,7 @@ export default function Landing() {
           <div className="lp-hero__grid" />
         </div>
         <div className="lp-hero__content">
-          <div className="lp-badge">✦ Built for creators, learners &amp; communities everywhere</div>
+          <div className="lp-badge">Built for creators, learners &amp; communities everywhere</div>
           <h1 className="lp-hero__h1">
             <span className="lp-hero__word">Vibe.</span>
             <span className="lp-hero__word lp-hero__word--grad">Learn.</span>
@@ -127,9 +127,9 @@ export default function Landing() {
             </div>
             <div className="lp-mockup__body">
               {[
-                { av:"AD", name:"Adaeze", tag:"Creator", text:"Just dropped my new Afrofusion course 🔥", color:"#7C3AED", likes:284 },
-                { av:"PS", name:"Priya S.", tag:"Educator", text:"My cohort found me from three different continents this week 🌍", color:"#059669", likes:162 },
-                { av:"DR", name:"Diego R.", tag:"Viber", text:"Spaces connected me with creators across 12 countries 🌐", color:"#DC2626", likes:491 },
+                { av:"AD", name:"Adaeze", tag:"Creator", text:"Just dropped my new Afrofusion course", color:"#7C3AED", likes:284 },
+                { av:"PS", name:"Priya S.", tag:"Educator", text:"My cohort found me from three different continents this week", color:"#059669", likes:162 },
+                { av:"DR", name:"Diego R.", tag:"Viber", text:"Spaces connected me with creators across 12 countries", color:"#DC2626", likes:491 },
               ].map((v, i) => (
                 <div key={i} className="lp-vibe-card">
                   <div className="lp-vibe-card__av" style={{background:v.color}}>{v.av}</div>
@@ -137,7 +137,7 @@ export default function Landing() {
                     <div className="lp-vibe-card__meta"><strong>{v.name}</strong><span>{v.tag}</span></div>
                     <div className="lp-vibe-card__text">{v.text}</div>
                     <div className="lp-vibe-card__actions">
-                      <span>❤️ {v.likes}</span><span>💬 Reply</span><span>🔁 Revibe</span>
+                      <span>{v.likes} Likes</span><span>Reply</span><span>Revibe</span>
                     </div>
                   </div>
                 </div>
@@ -159,7 +159,6 @@ export default function Landing() {
           <div className="lp-features-grid">
             {FEATURES.map((f, i) => (
               <div key={i} className="lp-feature-card reveal" style={{ animationDelay: `${i * 0.08}s` }}>
-                <div className="lp-feature-card__icon">{f.icon}</div>
                 <h3>{f.title}</h3>
                 <p>{f.desc}</p>
               </div>
@@ -179,15 +178,14 @@ export default function Landing() {
             <p className="lp-section__sub reveal" style={{color:"#94a3b8"}}>
               We believe every community's stories, knowledge and culture deserve a world-class digital home.
               Vylapp closes the gap between talent and opportunity — for creators, educators,
-              students, and communities everywhere, open to anybody around the globe.
+              students, and communities.
             </p>
             <div className="lp-vision__cards reveal">
               {[
-                { icon:"🎯", title:"Mission", text:"To build the most inclusive social-learning platform for communities everywhere, from Lagos to London to wherever you call home." },
-                { icon:"🔭", title:"Vision", text:"A world where every voice, from every corner of the globe, has the tools and community to reach its fullest potential." },
+                { title:"Mission", text:"To build the most inclusive social-learning platform for communities everywhere, from Lagos to London to wherever you call home." },
+                { title:"Vision", text:"A world where every voice, from every corner of the globe, has the tools and community to reach its fullest potential." },
               ].map((c, i) => (
                 <div key={i} className="lp-vision__card">
-                  <span className="lp-vision__card-icon">{c.icon}</span>
                   <div>
                     <strong>{c.title}</strong>
                     <p>{c.text}</p>
@@ -201,7 +199,7 @@ export default function Landing() {
               <div className="lp-globe__ring lp-globe__ring--1" />
               <div className="lp-globe__ring lp-globe__ring--2" />
               <div className="lp-globe__ring lp-globe__ring--3" />
-              <div className="lp-globe__core">🌍</div>
+              <div className="lp-globe__core" />
               {["Lagos","Cairo","Mumbai","London","São Paulo","New York","Sydney"].map((c, i, arr) => (
                 <div key={c} className="lp-globe__city" style={{ "--i": i, "--ang": `${(360 / arr.length) * i}deg` }}>
                   <div className="lp-globe__city-dot" /><span>{c}</span>
@@ -271,8 +269,8 @@ export default function Landing() {
               and earn — with Autopilot doing the heavy lifting behind the scenes.
             </p>
             <ul className="lp-creator__list">
-              {["Subscription-based creator plans","Course sales &amp; one-time enrollments","Autopilot for content scheduling","Real-time earnings dashboard","Founding Member perks — forever"].map((item, i) => (
-                <li key={i} dangerouslySetInnerHTML={{ __html: "✦ " + item }} />
+              {["Subscription-based creator plans","Course sales & one-time enrollments","Autopilot for content scheduling","Real-time earnings dashboard","Founding Member perks — forever"].map((item, i) => (
+                <li key={i}>{item}</li>
               ))}
             </ul>
             <button className="lp-btn lp-btn--primary" onClick={() => nav("/register")}>
@@ -291,9 +289,9 @@ export default function Landing() {
                   <div key={i} className="lp-earn-card__bar" style={{"--h": h + "%"}} />
                 ))}
               </div>
-              <div className="lp-earn-card__row"><span>🎓 Students</span><strong>1,240</strong></div>
-              <div className="lp-earn-card__row"><span>⭐ Rating</span><strong>4.9 / 5</strong></div>
-              <div className="lp-earn-card__row"><span>⚡ Autopilot</span><strong style={{color:"#10b981"}}>Active</strong></div>
+              <div className="lp-earn-card__row"><span>Students</span><strong>1,240</strong></div>
+              <div className="lp-earn-card__row"><span>Rating</span><strong>4.9 / 5</strong></div>
+              <div className="lp-earn-card__row"><span>Autopilot</span><strong style={{color:"#10b981"}}>Active</strong></div>
             </div>
           </div>
         </div>
@@ -341,8 +339,8 @@ export default function Landing() {
         </div>
         <div className="lp-footer__bottom">
           <span>© {new Date().getFullYear()} Vylapp. All rights reserved.</span>
-          <span className="lp-world-pill">✦ BUILT FOR EVERY VOICE, EVERYWHERE</span>
-          <span>As the world moves, we move with it 🌍</span>
+          <span className="lp-world-pill">BUILT FOR EVERY VOICE, EVERYWHERE</span>
+          <span>As the world moves, we move with it</span>
         </div>
       </footer>
 
