@@ -183,7 +183,7 @@ export default function Landing() {
             <div className="lp-vision__cards reveal">
               {[
                 { title:"Mission", text:"Vylapp exists to tear down the language barrier at the heart of the social internet — building one platform where multicultural and multilingual communities create, learn, and belong in their own languages, on their own terms." },
-                { title:"Vision", text:"A world where no one is a second-class citizen of the internet because of the language they speak — where an entrepreneur in Lagos, a student in Nairobi, and a creator in the diaspora share one digital home, and culture travels as freely as content." },
+                { title:"Vision", text:"A world where no one is a second-class citizen of the internet because of the language they speak — where an entrepreneur in Lagos, a student in São Paulo, a teacher in Manila, and a creator in Mexico City share one digital home, and culture travels as freely as content." },
               ].map((c, i) => (
                 <div key={i} className="lp-vision__card">
                   <div>
