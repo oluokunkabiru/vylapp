@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { PrimaryButton } from "../components/ui/index.jsx";
 import AuthLayout, { authInput, authLabel, authLink, authButtonStyle, focusAuthInput, blurAuthInput } from "../components/auth/AuthLayout.jsx";
+import SocialSignInButtons from "../components/auth/SocialSignInButtons.jsx";
 
 export default function Register() {
   const { register } = useAuth();
@@ -117,6 +118,7 @@ export default function Register() {
           </PrimaryButton>
         </div>
       </form>
+      <SocialSignInButtons />
     </AuthLayout>
   );
 }

@@ -1,16 +1,35 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { PrimaryButton } from "../components/ui/index.jsx";
 import AuthLayout, { authInput, authLabel, authLink, authButtonStyle, focusAuthInput, blurAuthInput } from "../components/auth/AuthLayout.jsx";
+import SocialSignInButtons from "../components/auth/SocialSignInButtons.jsx";
+
+const OAUTH_ERROR_MESSAGES = {
+  account_suspended: "That account has been suspended.",
+  account_exists: "An account with this email already exists — log in with your password to link it.",
+  invalid_or_expired_state: "That sign-in link expired — please try again.",
+  oauth_failed: "Sign-in failed — please try again.",
+};
 
 export default function Login() {
   const { login } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [form, setForm] = useState({ emailOrHandle: "", password: "" });
   const [loading, setLoading] = useState(false);
+
+  // Surfaces failures redirected back from the OAuth callback (?oauth_error=...)
+  // — strip the param right after so a refresh doesn't re-show the toast.
+  useEffect(() => {
+    const err = searchParams.get("oauth_error");
+    if (!err) return;
+    toast(OAUTH_ERROR_MESSAGES[err] || "Sign-in failed — please try again.", "error");
+    searchParams.delete("oauth_error");
+    setSearchParams(searchParams, { replace: true });
+  }, []); // eslint-disable-line
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -80,6 +99,7 @@ export default function Login() {
           </PrimaryButton>
         </div>
       </form>
+      <SocialSignInButtons />
     </AuthLayout>
   );
 }
