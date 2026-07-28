@@ -3,11 +3,16 @@ import { Ic, ic, VylappWordmark } from "../../components/ui/index.jsx";
 import { useAdmin } from "./AdminGuard.jsx";
 
 const NAV = [
-  { to: "/admin",            label: "Overview",   icon: ic.chart,  perm: null },
-  { to: "/admin/users",      label: "Users",      icon: ic.user,   perm: "admin.users.manage" },
-  { to: "/admin/moderation", label: "Moderation", icon: ic.zap,    perm: "admin.content.manage" },
-  { to: "/admin/roles",      label: "Roles",      icon: ic.trophy, perm: "admin.roles.manage" },
-  { to: "/admin/audit",      label: "Audit Log",  icon: ic.book,   perm: "admin.audit.read" },
+  { to: "/admin",              label: "Overview",     icon: ic.chart,  perm: null },
+  { to: "/admin/users",        label: "Users",        icon: ic.user,   perm: "admin.users.manage" },
+  { to: "/admin/content",      label: "Content",      icon: ic.image,  perm: "admin.content.manage" },
+  { to: "/admin/moderation",   label: "Moderation",   icon: ic.zap,    perm: "admin.content.manage" },
+  { to: "/admin/learn",        label: "Learn",        icon: ic.book,   perm: "learn.manage" },
+  { to: "/admin/forum",        label: "Forum",        icon: ic.comment, perm: "admin.content.manage" },
+  { to: "/admin/monetization", label: "Monetization", icon: ic.coins,  perm: "creator.manage" },
+  { to: "/admin/roles",        label: "Roles",        icon: ic.trophy, perm: "admin.roles.manage" },
+  { to: "/admin/settings",     label: "Settings",     icon: ic.lock,   perm: "admin.system.config" },
+  { to: "/admin/audit",        label: "Audit Log",    icon: ic.book,   perm: "admin.audit.read" },
 ];
 
 export default function AdminLayout() {

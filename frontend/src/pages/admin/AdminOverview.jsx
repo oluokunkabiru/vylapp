@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../lib/api.js";
-import { Spinner, numFmt } from "../../components/ui/index.jsx";
+import { useAdmin } from "./AdminGuard.jsx";
+import { Spinner, numFmt, Ic, ic } from "../../components/ui/index.jsx";
 
 const usd = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
 
@@ -26,9 +28,28 @@ function Sparkline({ series, color }) {
   );
 }
 
+function QuickLink({ to, icon, label, sub }) {
+  return (
+    <Link to={to} style={{
+      display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
+      background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14,
+      textDecoration: "none", flex: 1, minWidth: 200,
+    }}>
+      <Ic d={icon} s={20} c="var(--violet-lt)" />
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text)" }}>{label}</div>
+        {sub && <div style={{ color: "var(--text3)", fontSize: 11.5 }}>{sub}</div>}
+      </div>
+    </Link>
+  );
+}
+
 export default function AdminOverview() {
+  const { can } = useAdmin();
   const [platform, setPlatform] = useState(null);
   const [trends, setTrends] = useState(null);
+  const [learnStats, setLearnStats] = useState(null);
+  const [monetization, setMonetization] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -36,11 +57,13 @@ export default function AdminOverview() {
     Promise.all([
       api.get("/analytics/platform"),
       api.get("/admin/analytics/trends?days=30").catch(() => null),
+      can("learn.manage") ? api.get("/admin/learn/stats").catch(() => null) : Promise.resolve(null),
+      can("creator.manage") ? api.get("/admin/monetization/overview?days=30").catch(() => null) : Promise.resolve(null),
     ])
-      .then(([p, t]) => { setPlatform(p); setTrends(t); })
+      .then(([p, t, l, m]) => { setPlatform(p); setTrends(t); setLearnStats(l); setMonetization(m); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line
 
   if (loading) return <div style={{ display: "flex", justifyContent: "center", padding: "80px 0" }}><Spinner size={36} /></div>;
 
@@ -73,6 +96,32 @@ export default function AdminOverview() {
           </div>
         </div>
       )}
+
+      {(learnStats || monetization) && (
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 28 }}>
+          {learnStats && (
+            <Card label="PUBLISHED COURSES" value={numFmt(learnStats.by_status?.published || 0)} sub={`${numFmt(learnStats.enrolments)} enrolments · ${numFmt(learnStats.educators)} educators`} />
+          )}
+          {monetization && (
+            <>
+              <Card label="REVENUE (30D)" value={usd(monetization.gross_usd)} color="var(--green)" />
+              <Card label="PENDING PAYOUTS" value={usd(monetization.pending_payouts_usd)} color="var(--coral)" sub={`${monetization.pending_payouts_count} awaiting action`} />
+            </>
+          )}
+        </div>
+      )}
+
+      <div style={{ marginTop: 32 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text2)", marginBottom: 12 }}>Quick links</div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          {can("admin.content.manage") && <QuickLink to="/admin/content" icon={ic.image} label="Content" sub="Vibes & Spaces" />}
+          {can("admin.content.manage") && <QuickLink to="/admin/moderation" icon={ic.zap} label="Moderation" sub="Report queue" />}
+          {can("learn.manage") && <QuickLink to="/admin/learn" icon={ic.book} label="Learn" sub="Courses & educators" />}
+          {can("admin.content.manage") && <QuickLink to="/admin/forum" icon={ic.comment} label="Forum" sub="Categories & threads" />}
+          {can("creator.manage") && <QuickLink to="/admin/monetization" icon={ic.coins} label="Monetization" sub="Payouts & revenue" />}
+          {can("admin.system.config") && <QuickLink to="/admin/settings" icon={ic.lock} label="Settings" sub="Config & feature flags" />}
+        </div>
+      </div>
     </div>
   );
 }

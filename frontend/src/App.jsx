@@ -7,8 +7,13 @@ import AdminGuard from "./pages/admin/AdminGuard.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import AdminOverview from "./pages/admin/AdminOverview.jsx";
 import AdminUsers from "./pages/admin/AdminUsers.jsx";
+import AdminContent from "./pages/admin/AdminContent.jsx";
 import AdminModeration from "./pages/admin/AdminModeration.jsx";
+import AdminLearn from "./pages/admin/AdminLearn.jsx";
+import AdminForum from "./pages/admin/AdminForum.jsx";
+import AdminMonetization from "./pages/admin/AdminMonetization.jsx";
 import AdminRoles from "./pages/admin/AdminRoles.jsx";
+import AdminSettings from "./pages/admin/AdminSettings.jsx";
 import AdminAudit from "./pages/admin/AdminAudit.jsx";
 
 import TopBar from "./components/layout/TopBar.jsx";
@@ -165,8 +170,13 @@ function AdminApp() {
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminOverview />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="content" element={<AdminContent />} />
           <Route path="moderation" element={<AdminModeration />} />
+          <Route path="learn" element={<AdminLearn />} />
+          <Route path="forum" element={<AdminForum />} />
+          <Route path="monetization" element={<AdminMonetization />} />
           <Route path="roles" element={<AdminRoles />} />
+          <Route path="settings" element={<AdminSettings />} />
           <Route path="audit" element={<AdminAudit />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>

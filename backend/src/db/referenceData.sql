@@ -273,13 +273,17 @@ SELECT seed_role_permissions('platform_admin',
 );
 
 -- content_moderator: content review and action, no user management
+-- FIX: this role previously had admin.access but not admin.content.manage —
+-- every admin.routes.ts moderation/content endpoint requires the latter, so
+-- content_moderator could log into the admin console but couldn't actually
+-- open the moderation queue or take any bulk action. Added here.
 SELECT seed_role_permissions('content_moderator',
   'users.read',
   'vibes.read','vibes.delete.any','vibes.pin',
   'forum.thread.delete.any','forum.thread.pin','forum.thread.lock',
   'forum.reply.delete.any','forum.vote','forum.moderate',
   'moderation.review','moderation.action','moderation.appeal.review','moderation.escalate',
-  'admin.access','admin.audit.read'
+  'admin.access','admin.content.manage','admin.audit.read'
 );
 
 -- verified_educator: create + publish without review gate

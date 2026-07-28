@@ -280,7 +280,7 @@ SELECT seed_role_permissions('content_moderator',
   'forum.thread.delete.any','forum.thread.pin','forum.thread.lock',
   'forum.reply.delete.any','forum.vote','forum.moderate',
   'moderation.review','moderation.action','moderation.appeal.review','moderation.escalate',
-  'admin.access','admin.audit.read'
+  'admin.access','admin.content.manage','admin.audit.read'
 );
 
 -- verified_educator: create + publish without review gate
