@@ -46,6 +46,9 @@ function createApp() {
   app.use(cookieParser());
   app.use(csrfProtection);
   app.use(express.json({ limit: "2mb" }));
+  // Sign in with Apple's callback uses response_mode=form_post (the only
+  // consumer of urlencoded bodies in this API — everything else is JSON).
+  app.use(express.urlencoded({ extended: false, limit: "2mb" }));
 
   // ── Server-side rate limiting — applied globally before any route ──────────
   // Limits are configured per route prefix in middleware/rateLimiter.js.

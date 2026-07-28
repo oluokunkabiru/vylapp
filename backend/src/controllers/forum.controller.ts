@@ -1,6 +1,8 @@
 import { Response } from "express";
 import { AuthedRequest } from "../types/express";
 import ModerationEngine from "../services/moderationEngine";
+import TranslationEngine from "../services/translationEngine";
+import LanguageDetector from "../services/languageDetector";
 import prisma from "../config/prisma";
 import { ThreadStatus, VoteValue } from "../generated/prisma";
 
@@ -62,7 +64,7 @@ async function listThreads(req: AuthedRequest, res: Response) {
   // thrown "column u.displayName does not exist" in production. There's no
   // frontend consumer yet (grepped — forum has no UI), which is why nobody
   // noticed. Fixed here.
-  let sql = `SELECT t.id, t.title, t.vote_score, t.reply_count, t.view_count, t.is_pinned,
+  let sql = `SELECT t.id, t.title, t.language, t.vote_score, t.reply_count, t.view_count, t.is_pinned,
     t.is_announcement, t.tags, t.created_at, t.last_reply_at, t.status,
     u.id AS author_id, u.handle AS author_handle, u.display_name AS author_name
     FROM forum_threads t JOIN users u ON u.id = t.author_id
@@ -72,7 +74,8 @@ async function listThreads(req: AuthedRequest, res: Response) {
   if (q?.trim()) { params.push(`%${q.trim()}%`); sql += ` AND (t.title ILIKE $${params.length} OR t.body ILIKE $${params.length})`; }
 
   sql += ` ORDER BY t.is_pinned DESC, ${orderBy} LIMIT ${pageSize} OFFSET ${offset}`;
-  const threads = await prisma.$queryRawUnsafe(sql, ...params);
+  const threads: any[] = await prisma.$queryRawUnsafe(sql, ...params);
+  await TranslationEngine.translateEntitiesForViewer(threads, req.query.lang as string, req.user?.id, { contentType: "thread_title", textKey: "title" });
   res.json({ ok: true, data: { threads, page, page_size: pageSize } });
 }
 
@@ -91,14 +94,20 @@ async function getThread(req: AuthedRequest, res: Response) {
 
   // Fetch top-level replies (depth=0) with their immediate children
   const replies: any[] = await prisma.$queryRaw`
-    SELECT r.id, r.body, r.vote_score, r.is_accepted, r.depth, r.parent_reply_id,
+    SELECT r.id, r.body, r.language, r.vote_score, r.is_accepted, r.depth, r.parent_reply_id,
       r.created_at, r.is_removed, u.handle AS author_handle, u.display_name AS author_name
     FROM thread_replies r JOIN users u ON u.id = r.author_id
     WHERE r.thread_id=${req.params.id} AND r.is_removed=FALSE ORDER BY r.is_accepted DESC, r.vote_score DESC, r.created_at ASC
     LIMIT 100
   `;
 
-  res.json({ ok: true, data: { thread: threads[0], replies } });
+  const targetLang = req.query.lang as string;
+  const thread = threads[0];
+  await TranslationEngine.translateEntitiesForViewer([thread], targetLang, req.user?.id, { contentType: "thread_title", textKey: "title" });
+  await TranslationEngine.translateEntitiesForViewer([thread], targetLang, req.user?.id, { contentType: "thread", textKey: "body" });
+  await TranslationEngine.translateEntitiesForViewer(replies, targetLang, req.user?.id, { contentType: "reply", textKey: "body" });
+
+  res.json({ ok: true, data: { thread, replies } });
 }
 
 // ── POST /forum/threads ───────────────────────────────────────────────────────
@@ -125,12 +134,14 @@ async function createThread(req: AuthedRequest, res: Response) {
     return res.status(422).json({ ok: false, error: { message: `Content blocked: ${mod.label}` } });
   }
 
+  const language = await LanguageDetector.detect(`${title} ${body}`, "en");
   const thread = await prisma.forumThreads.create({
     data: {
       categoryId: category_id,
       authorId: req.user.id,
       title,
       body,
+      language,
       status: autoStatus,
       tags: Array.isArray(tags) ? tags.slice(0, 5) : [],
     },
@@ -167,8 +178,9 @@ async function createReply(req: AuthedRequest, res: Response) {
     return res.status(422).json({ ok: false, error: { message: `Content blocked: ${mod.label}` } });
   }
 
+  const language = await LanguageDetector.detect(body, "en");
   const reply = await prisma.threadReplies.create({
-    data: { threadId: req.params.id, authorId: req.user.id, parentReplyId: parent_reply_id || null, body, depth },
+    data: { threadId: req.params.id, authorId: req.user.id, parentReplyId: parent_reply_id || null, body, depth, language },
     select: { id: true, body: true, depth: true, createdAt: true },
   });
 

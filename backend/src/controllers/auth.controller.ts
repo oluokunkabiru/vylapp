@@ -8,6 +8,9 @@ import logger from "../utils/logger";
 import respond from "../utils/respond";
 import rbac from "../rbac";
 import prisma from "../config/prisma";
+import OauthEngine from "../services/oauthEngine";
+import type { OauthProvider } from "../types/oauth";
+import { AuthProvider } from "../generated/prisma";
 
 const { ok, fail } = respond;
 
@@ -303,7 +306,151 @@ async function resetPassword(req: Request, res: Response) {
   return ok(res, { message: "Password has been reset successfully." });
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+//  SOCIAL SIGN-IN — Google, Apple, Twitter(X), LinkedIn
+//
+//  Full-page browser redirect flow (not XHR): oauthStart 302s the browser to
+//  the provider, the provider 302s (or, for Apple, form_posts) back to
+//  oauthCallback, which sets the same session cookies login()/register() use
+//  and then 302s the browser back to the frontend.
+// ════════════════════════════════════════════════════════════════════════════
+const OAUTH_PROVIDERS: OauthProvider[] = ["google", "apple", "twitter", "linkedin"];
+const OAUTH_STATE_TTL_MIN = 10;
+
+function isValidProvider(p: string): p is OauthProvider {
+  return (OAUTH_PROVIDERS as string[]).includes(p);
+}
+
+// Only ever redirect back to a path on our own frontend — never to an
+// attacker-supplied absolute URL (open-redirect prevention).
+function safeRedirectPath(path: unknown): string {
+  return typeof path === "string" && path.startsWith("/") && !path.startsWith("//") ? path : "/";
+}
+
+function frontendRedirect(res: Response, path: string, params: Record<string, string> = {}) {
+  const qs = new URLSearchParams(params).toString();
+  res.redirect(`${env.clientOrigin}${path}${qs ? `?${qs}` : ""}`);
+}
+
+// ── GET /auth/oauth/providers — which providers the frontend can offer ──────
+async function oauthProviders(req: Request, res: Response) {
+  const configured = OAUTH_PROVIDERS.filter(p => OauthEngine.isConfigured(p));
+  return ok(res, { providers: configured });
+}
+
+// ── GET /auth/oauth/:provider — redirect to the provider ────────────────────
+async function oauthStart(req: Request, res: Response) {
+  const provider = req.params.provider;
+  if (!isValidProvider(provider)) return fail(res, 400, "Unknown provider");
+  if (!OauthEngine.isConfigured(provider)) return fail(res, 503, `${provider} sign-in is not configured on this server`);
+
+  const state = crypto.generateOAuthState();
+  const redirectTo = safeRedirectPath(req.query.redirect_to);
+  const expiresAt = new Date(Date.now() + OAUTH_STATE_TTL_MIN * 60000);
+
+  let codeVerifier: string | null = null;
+  let codeChallenge: string | undefined;
+  if (OauthEngine.usesPKCE(provider)) {
+    codeVerifier = OauthEngine.generateCodeVerifier();
+    codeChallenge = OauthEngine.codeChallengeFromVerifier(codeVerifier);
+  }
+
+  await prisma.oauthStates.create({
+    data: { state, provider: provider as AuthProvider, redirectTo, codeVerifier, expiresAt },
+  });
+
+  return res.redirect(OauthEngine.buildAuthUrl(provider, { state, codeChallenge }));
+}
+
+// Finds a returning OAuth user, links a verified-email match to an existing
+// local account, or creates a brand new account — in that priority order.
+async function findOrCreateOauthUser(provider: OauthProvider, profile: { providerId: string; email: string | null; emailVerified: boolean; displayName: string | null; avatarUrl: string | null }) {
+  const byProvider = await prisma.users.findFirst({ where: { provider: provider as AuthProvider, providerId: profile.providerId } });
+  if (byProvider) return byProvider;
+
+  if (profile.email) {
+    const byEmail = await prisma.users.findFirst({ where: { email: profile.email } });
+    if (byEmail) {
+      if (!profile.emailVerified) {
+        throw Object.assign(new Error("An account with this email already exists. Log in with your password to link " + provider + "."), { status: 409 });
+      }
+      return prisma.users.update({
+        where: { id: byEmail.id },
+        data: { provider: provider as AuthProvider, providerId: profile.providerId, verified: true },
+      });
+    }
+  }
+
+  // Brand new account
+  const baseHandle = (profile.displayName || profile.email?.split("@")[0] || provider + "user")
+    .toLowerCase().replace(/[^a-z0-9._]/g, "").slice(0, 20) || "viber";
+  let handle = baseHandle;
+  for (let i = 0; await prisma.users.findUnique({ where: { handle } }); i++) {
+    handle = `${baseHandle}${crypto.randomHex(3)}`;
+    if (i > 5) break; // pathological collision loop guard
+  }
+
+  const existingCount = await prisma.users.count();
+  const isFounding = existingCount < 1000;
+
+  const displayName = profile.displayName || handle;
+  const initials = displayName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() || "VY";
+
+  const user = await prisma.users.create({
+    data: {
+      // A provider account may have no email at all (e.g. Twitter) — fall
+      // back to a synthetic, unique, unroutable placeholder so the unique
+      // email constraint isn't violated. The user can set a real email later.
+      email: profile.email || `${provider}.${profile.providerId}@oauth.vylapp.invalid`,
+      handle, displayName, avatarInitials: initials,
+      provider: provider as AuthProvider, providerId: profile.providerId,
+      verified: profile.emailVerified,
+      isFoundingMember: isFounding, foundingRank: isFounding ? existingCount + 1 : null,
+    },
+  });
+  await rbac.assignRole(user.id, "user");
+  return user;
+}
+
+// ── GET/POST /auth/oauth/:provider/callback ──────────────────────────────────
+// GET for Google/Twitter/LinkedIn (query string); POST (form_post) for Apple.
+async function oauthCallback(req: Request, res: Response) {
+  const provider = req.params.provider;
+  if (!isValidProvider(provider)) return frontendRedirect(res, "/login", { oauth_error: "unknown_provider" });
+
+  const source = req.method === "POST" ? req.body : req.query;
+  const { code, state, error: providerError } = source as Record<string, string>;
+  if (providerError) return frontendRedirect(res, "/login", { oauth_error: providerError });
+  if (!code || !state) return frontendRedirect(res, "/login", { oauth_error: "missing_code_or_state" });
+
+  const stateRow = await prisma.oauthStates.findUnique({ where: { state } });
+  // Always delete on first use — states are single-use regardless of outcome.
+  if (stateRow) await prisma.oauthStates.delete({ where: { state } }).catch(() => {});
+  if (!stateRow || stateRow.provider !== provider || stateRow.expiresAt < new Date()) {
+    return frontendRedirect(res, "/login", { oauth_error: "invalid_or_expired_state" });
+  }
+
+  try {
+    const tokens = await OauthEngine.exchangeCode(provider, { code, codeVerifier: stateRow.codeVerifier });
+    const profile = await OauthEngine.fetchProfile(provider, tokens, provider === "apple" ? (source as any).user : undefined);
+    const user = await findOrCreateOauthUser(provider, profile);
+
+    if (user.isSuspended) return frontendRedirect(res, "/login", { oauth_error: "account_suspended" });
+
+    await prisma.users.update({ where: { id: user.id }, data: { online: true, lastSeen: new Date() } });
+    const { accessToken, refreshToken } = issueTokens(user);
+    await storeRefreshToken(user.id, refreshToken, { ip: req.ip, ua: req.headers["user-agent"], oauth: provider });
+    authCookies.setAuthCookies(res, { accessToken, refreshToken });
+
+    return frontendRedirect(res, stateRow.redirectTo || "/");
+  } catch (err: any) {
+    logger.warn("OAuth callback failed", { provider, error: err.message });
+    return frontendRedirect(res, "/login", { oauth_error: err.status === 409 ? "account_exists" : "oauth_failed" });
+  }
+}
+
 export = {
   publicUser, register, login, refresh, logout, me, changePassword, verifyEmail, resendVerification,
   enroll2FA, verify2FA, forgotPassword, resetPassword,
+  oauthProviders, oauthStart, oauthCallback,
 };

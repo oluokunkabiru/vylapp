@@ -13,18 +13,20 @@ import asyncHandler from "../middleware/asyncHandler";
 import authMiddleware from "../middleware/auth";
 import forumController from "../controllers/forum.controller";
 
-const { authenticate } = authMiddleware;
+const { authenticate, optionalAuth } = authMiddleware;
 
 const router = express.Router();
 
 // ── GET /forum/categories ─────────────────────────────────────────────────────
 router.get("/categories", asyncHandler(forumController.listCategories));
 
-// ── GET /forum/categories/:slug/threads ───────────────────────────────────────
-router.get("/categories/:slug/threads", asyncHandler(forumController.listThreads));
+// ── GET /forum/categories/:slug/threads?lang= ─────────────────────────────────
+// optionalAuth (not authenticate): threads are publicly readable, but a
+// signed-in viewer's own daily AI-translation quota is used when present.
+router.get("/categories/:slug/threads", optionalAuth, asyncHandler(forumController.listThreads));
 
-// ── GET /forum/threads/:id ────────────────────────────────────────────────────
-router.get("/threads/:id", asyncHandler(forumController.getThread));
+// ── GET /forum/threads/:id?lang= ──────────────────────────────────────────────
+router.get("/threads/:id", optionalAuth, asyncHandler(forumController.getThread));
 
 // ── POST /forum/threads ───────────────────────────────────────────────────────
 router.post("/threads", authenticate, asyncHandler(forumController.createThread));

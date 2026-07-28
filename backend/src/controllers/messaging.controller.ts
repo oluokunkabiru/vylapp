@@ -3,6 +3,9 @@ import { AuthedRequest } from "../types/express";
 import respond from "../utils/respond";
 import prisma from "../config/prisma";
 import NotificationEngine from "../services/notificationEngine";
+import TranslationEngine from "../services/translationEngine";
+import LanguageDetector from "../services/languageDetector";
+import PushEngine from "../services/pushEngine";
 
 const { ok, fail } = respond;
 
@@ -122,7 +125,10 @@ async function leaveGroup(req: AuthedRequest, res: Response) {
   return ok(res, { left: true });
 }
 
-// ── GET /messages/conversations/:id/messages ─────────────────────────────
+// ── GET /messages/conversations/:id/messages?lang=xx ──────────────────────
+// `lang` is the viewer's current reading language (same value the feed's
+// ?lang= uses) — when present, every message not already in that language
+// gets auto-translated for this viewer, same pipeline as the vibes feed.
 async function listMessages(req: AuthedRequest, res: Response) {
   const member = await prisma.conversationMembers.findUnique({
     where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
@@ -140,13 +146,14 @@ async function listMessages(req: AuthedRequest, res: Response) {
     data: { unreadCount: 0, lastReadAt: new Date() },
   });
 
-  return ok(res, {
-    messages: rows.reverse().map(m => ({
-      id: m.id, content: m.content, contentType: m.contentType, replyToId: m.replyToId,
-      sender: { id: m.senderId, handle: m.users.handle, displayName: m.users.displayName, avatarColor: m.users.avatarColor, avatarInitials: m.users.avatarInitials },
-      createdAt: m.createdAt,
-    })),
-  });
+  const shaped = rows.reverse().map(m => ({
+    id: m.id, content: m.content, language: m.language, contentType: m.contentType, replyToId: m.replyToId,
+    sender: { id: m.senderId, handle: m.users.handle, displayName: m.users.displayName, avatarColor: m.users.avatarColor, avatarInitials: m.users.avatarInitials },
+    createdAt: m.createdAt,
+  }));
+
+  await TranslationEngine.translateEntitiesForViewer(shaped, req.query.lang as string, req.user.id, { contentType: "message" });
+  return ok(res, { messages: shaped });
 }
 
 // ── POST /messages/conversations/:id/messages ────────────────────────────
@@ -159,36 +166,65 @@ async function sendMessage(req: AuthedRequest, res: Response) {
   });
   if (!member || member.leftAt) return fail(res, 403, "Not a member of this conversation");
 
+  const cleanContent = content.trim();
+  const language = await LanguageDetector.detect(cleanContent, "en");
   const msg = await prisma.messages.create({
-    data: { conversationId: req.params.id, senderId: req.user.id, content: content.trim(), contentType: contentType || "text" },
+    data: { conversationId: req.params.id, senderId: req.user.id, content: cleanContent, contentType: contentType || "text", language },
   });
 
-  await prisma.conversations.update({
+  const conv = await prisma.conversations.update({
     where: { id: req.params.id },
     data: { lastMessageId: msg.id, lastMessageAt: new Date(), lastMessagePreview: content.slice(0, 100) },
+    select: { type: true, name: true },
   });
   await prisma.conversationMembers.updateMany({
     where: { conversationId: req.params.id, userId: { not: req.user.id }, leftAt: null },
     data: { unreadCount: { increment: 1 } },
   });
 
+  const notifType = conv.type === "group" ? "group_message" : "dm";
+  const body = NotificationEngine.formatBody(notifType, req.user.displayName, { groupName: conv.name });
+
   // Notify other members (excluding anyone who has left the conversation)
   const others = await prisma.conversationMembers.findMany({
     where: { conversationId: req.params.id, userId: { not: req.user.id }, leftAt: null },
-    select: { userId: true },
+    select: { userId: true, mutedUntil: true },
   });
   for (const o of others) {
-    const body = NotificationEngine.formatBody("dm", req.user.displayName);
     await prisma.notifications.create({
-      data: { userId: o.userId, actorId: req.user.id, type: "dm", messageId: msg.id, conversationId: req.params.id, body },
+      data: { userId: o.userId, actorId: req.user.id, type: notifType, messageId: msg.id, conversationId: req.params.id, body },
     });
   }
 
   // Real-time push over Socket.IO if available
   const io = req.app.get("io");
-  if (io) io.to(`conversation:${req.params.id}`).emit("message:new", { conversationId: req.params.id, message: { id: msg.id, content: msg.content, senderId: req.user.id, createdAt: msg.createdAt } });
+  if (io) io.to(`conversation:${req.params.id}`).emit("message:new", { conversationId: req.params.id, message: { id: msg.id, content: msg.content, language: msg.language, senderId: req.user.id, createdAt: msg.createdAt } });
 
-  return ok(res, { message: { id: msg.id, content: msg.content, contentType: msg.contentType, createdAt: msg.createdAt } }, 201);
+  // FCM push for backgrounded/closed apps — skip anyone muted or opted out.
+  // Socket.IO above already covers the app-open case; this is additive, not
+  // a replacement, so failures here must never affect the message response.
+  if (PushEngine.isConfigured()) {
+    const now = new Date();
+    const notifiable = others.filter(o => !o.mutedUntil || o.mutedUntil < now);
+    if (notifiable.length) {
+      const prefs = await prisma.notificationPreferences.findMany({
+        where: { userId: { in: notifiable.map(o => o.userId) } },
+        select: { userId: true, pushDms: true },
+      });
+      const optedOut = new Set(prefs.filter(p => p.pushDms === false).map(p => p.userId));
+      await Promise.all(
+        notifiable
+          .filter(o => !optedOut.has(o.userId))
+          .map(o => PushEngine.sendToUser(
+            o.userId,
+            { title: req.user.displayName, body: cleanContent.slice(0, 100) },
+            { conversationId: req.params.id, type: "chat" },
+          )),
+      );
+    }
+  }
+
+  return ok(res, { message: { id: msg.id, content: msg.content, language: msg.language, contentType: msg.contentType, createdAt: msg.createdAt } }, 201);
 }
 
 export = { listConversations, getOrCreateDm, createGroup, addMember, leaveGroup, listMessages, sendMessage };

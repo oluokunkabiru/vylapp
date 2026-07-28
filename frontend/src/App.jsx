@@ -20,6 +20,7 @@ import TopBar from "./components/layout/TopBar.jsx";
 import BottomNav from "./components/layout/BottomNav.jsx";
 import Sidebar from "./components/layout/Sidebar.jsx";
 import CreateModal from "./components/feed/CreateModal.jsx";
+import PushNotificationManager from "./components/layout/PushNotificationManager.jsx";
 
 import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
@@ -114,7 +115,7 @@ function InnerApp() {
       <Route path="/learn/courses/:id" element={<CourseDetail />} />
       <Route path="/learn/courses/:id/lessons/:lessonId" element={<LessonViewer />} />
       <Route path="/notifications" element={<Notifications onClearBadge={()=>setNotifCount(0)} />} />
-      <Route path="/messages" element={<Messages onClearBadge={()=>setMsgCount(0)} />} />
+      <Route path="/messages" element={<Messages lang={lang} onClearBadge={()=>setMsgCount(0)} />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/profile/:handle" element={<Profile />} />
       <Route path="/autopilot" element={<Autopilot />} />
@@ -130,6 +131,7 @@ function InnerApp() {
 
   return (
     <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
+      <PushNotificationManager />
       {isMobile ? (
         /* MOBILE LAYOUT */
         <>

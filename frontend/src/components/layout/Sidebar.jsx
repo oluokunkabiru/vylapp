@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Ic, ic, Avatar, VylappWordmark } from "../ui/index.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { LANGUAGES } from "../../lib/languages.js";
 
 const NAV = [
   { to:"/dashboard",     icon:ic.chart,   label:"Dashboard" },
@@ -70,8 +71,8 @@ export default function Sidebar({ onCreateClick, notifCount, msgCount, lang, set
           width:"100%", padding:"9px 14px", borderRadius:10, border:"1px solid var(--border)",
           background:"var(--violet-dim)", color:"var(--violet-lt)", fontSize:12.5, fontWeight:700, cursor:"pointer",
         }}>
-          {[["en","English"],["es","Spanish"],["sw","Swahili"],["fr","French"],["yo","Yoruba"],["ha","Hausa"],["ar","Arabic"],["hi","Hindi"],["zh","Chinese"]].map(([k,v])=>(
-            <option key={k} value={k} style={{background:"var(--bg2)"}}>{v}</option>
+          {LANGUAGES.map(l=>(
+            <option key={l.code} value={l.code} style={{background:"var(--bg2)"}}>{l.name}</option>
           ))}
         </select>
       </div>

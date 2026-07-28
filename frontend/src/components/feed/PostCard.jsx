@@ -3,6 +3,7 @@ import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Avatar, VerifiedBadge, CategoryPill, TapIcon, ic, Ic, numFmt } from "../ui/index.jsx";
+import { LANG_NAMES } from "../../lib/languages.js";
 
 const CAT_GRADS = {
   TECH_VIBES:      "linear-gradient(135deg,#38BDF8,#7C3AED)",
@@ -24,8 +25,6 @@ function HeartBurst({ show }) {
     </div>
   );
 }
-
-const LANG_NAMES = { en:"English", es:"Spanish", sw:"Swahili", fr:"French", pt:"Portuguese", yo:"Yoruba", ha:"Hausa", ar:"Arabic", am:"Amharic", zh:"Chinese", hi:"Hindi" };
 
 export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
   const { user } = useAuth();

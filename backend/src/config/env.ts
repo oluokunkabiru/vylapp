@@ -25,6 +25,33 @@ const env = {
   mailPassword: process.env.MAIL_PASSWORD === "null" || !process.env.MAIL_PASSWORD ? null : process.env.MAIL_PASSWORD,
   mailFromAddress: process.env.MAIL_FROM_ADDRESS || "hello@example.com",
   mailFromName: process.env.MAIL_FROM_NAME && !process.env.MAIL_FROM_NAME.includes("APP_NAME") ? process.env.MAIL_FROM_NAME : "Vylapp",
+
+  // Public base URL of THIS backend — used to build OAuth redirect_uri values
+  // (must exactly match what's registered in each provider's console).
+  apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${parseInt(process.env.PORT || "4000", 10)}`,
+
+  oauth: {
+    google: { clientId: process.env.GOOGLE_CLIENT_ID || null, clientSecret: process.env.GOOGLE_CLIENT_SECRET || null },
+    linkedin: { clientId: process.env.LINKEDIN_CLIENT_ID || null, clientSecret: process.env.LINKEDIN_CLIENT_SECRET || null },
+    twitter: { clientId: process.env.TWITTER_CLIENT_ID || null, clientSecret: process.env.TWITTER_CLIENT_SECRET || null },
+    apple: {
+      clientId: process.env.APPLE_CLIENT_ID || null,       // the Services ID, e.g. com.vylapp.web
+      teamId: process.env.APPLE_TEAM_ID || null,
+      keyId: process.env.APPLE_KEY_ID || null,
+      // PEM-formatted EC private key for the Sign in with Apple key. May be
+      // stored with literal "\n" sequences in one env var line — normalized here.
+      privateKey: process.env.APPLE_PRIVATE_KEY ? process.env.APPLE_PRIVATE_KEY.replace(/\\n/g, "\n") : null,
+    },
+  },
+
+  // Firebase Admin SDK — server-side FCM push delivery (see pushEngine.ts).
+  // From Firebase console → Project Settings → Service accounts → Generate new private key.
+  firebase: {
+    projectId: process.env.FIREBASE_PROJECT_ID || null,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL || null,
+    // May be stored with literal "\n" sequences in one env var line — normalized here.
+    privateKey: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n") : null,
+  },
 };
 
 export = env;

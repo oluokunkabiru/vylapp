@@ -91,4 +91,17 @@ async function updatePreferences(req: AuthedRequest, res: Response) {
   return ok(res, { updated: true });
 }
 
-export = { list, markRead, markAllRead, digest, updatePreferences };
+// ── POST /notifications/push-token — register/refresh an FCM device token ──
+async function registerPushToken(req: AuthedRequest, res: Response) {
+  const { token, platform, deviceName } = req.body;
+  if (!token || !platform) return fail(res, 400, "token and platform are required");
+
+  await prisma.pushTokens.upsert({
+    where: { token },
+    create: { userId: req.user.id, token, platform, deviceName: deviceName || null },
+    update: { userId: req.user.id, platform, deviceName: deviceName || null, active: true },
+  });
+  return ok(res, { registered: true });
+}
+
+export = { list, markRead, markAllRead, digest, updatePreferences, registerPushToken };

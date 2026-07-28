@@ -43,4 +43,10 @@ router.post("/forgot-password", asyncHandler(authController.forgotPassword));
 // ── POST /auth/reset-password ──────────────────────────────────────────────────
 router.post("/reset-password", asyncHandler(authController.resetPassword));
 
+// ── Social sign-in (Google / Apple / Twitter(X) / LinkedIn) ───────────────────
+router.get("/oauth/providers", asyncHandler(authController.oauthProviders));
+router.get("/oauth/:provider", asyncHandler(authController.oauthStart));
+router.get("/oauth/:provider/callback", asyncHandler(authController.oauthCallback));
+router.post("/oauth/:provider/callback", asyncHandler(authController.oauthCallback));
+
 export = { router, publicUser: authController.publicUser };

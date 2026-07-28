@@ -956,6 +956,7 @@ model Messages {
   content          String?
   contentType      MessageContentType @default(text) @map("content_type")
   contentHtml      String?            @map("content_html")
+  language         String             @default("en")
   replyToId        String?            @map("reply_to_id") @db.Uuid
   sharedVibeId     String?            @map("shared_vibe_id") @db.Uuid
   sharedSpaceId    String?            @map("shared_space_id") @db.Uuid
@@ -1056,12 +1057,13 @@ model Notifications {
 }
 
 model OauthStates {
-  id         String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  state      String       @unique
-  provider   AuthProvider
-  redirectTo String?      @map("redirect_to")
-  expiresAt  DateTime     @map("expires_at") @db.Timestamptz(6)
-  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  id           String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  state        String       @unique
+  provider     AuthProvider
+  redirectTo   String?      @map("redirect_to")
+  codeVerifier String?      @map("code_verifier") // PKCE (Twitter/X requires it; unused by other providers)
+  expiresAt    DateTime     @map("expires_at") @db.Timestamptz(6)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("oauth_states")
 }
@@ -2010,6 +2012,22 @@ model VibeReposts {
   @@id([userId, vibeId])
   @@index([vibeId], map: "idx_vibe_reposts_vibe")
   @@map("vibe_reposts")
+}
+
+// Generic translation cache for any non-vibe content type (forum threads,
+// forum replies, DM/group messages, ...). Vibes keep their own dedicated
+// vibe_translations table (unchanged, higher volume); everything else goes
+// through this polymorphic one instead of adding a new table per content type.
+model ContentTranslations {
+  contentType String   @map("content_type")
+  contentId   String   @map("content_id") @db.Uuid
+  targetLang  String   @map("target_lang")
+  content     String
+  method      String
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([contentType, contentId, targetLang])
+  @@map("content_translations")
 }
 
 model VibeTranslations {

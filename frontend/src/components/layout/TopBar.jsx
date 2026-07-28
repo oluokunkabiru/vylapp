@@ -1,6 +1,9 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { VylappWordmark, TapIcon, ic, Ic } from "../ui/index.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { LANGUAGES, COMMON_LANGUAGE_CODES } from "../../lib/languages.js";
+
+const TOPBAR_LANGUAGES = COMMON_LANGUAGE_CODES.map(code => LANGUAGES.find(l => l.code === code));
 
 const TITLES = {
   "/explore":       "Search",
@@ -45,8 +48,8 @@ export default function TopBar({ notifCount, msgCount, lang, setLang }) {
         borderRadius:"var(--radius-pill)", padding:"5px 10px", fontSize:12, fontWeight:700, cursor:"pointer",
         marginRight:4,
       }}>
-        {[["en","EN"],["es","ES"],["sw","SW"],["fr","FR"],["yo","YO"],["ar","AR"],["hi","HI"],["zh","ZH"]].map(([k,v])=>(
-          <option key={k} value={k} style={{background:"var(--bg2)"}}>{v}</option>
+        {TOPBAR_LANGUAGES.map(l=>(
+          <option key={l.code} value={l.code} style={{background:"var(--bg2)"}}>{l.code.toUpperCase()}</option>
         ))}
       </select>
       {user && <>

@@ -13,5 +13,6 @@ router.post("/:id/read", asyncHandler(notificationsController.markRead));
 router.post("/read-all", asyncHandler(notificationsController.markAllRead));
 router.get("/digest", asyncHandler(notificationsController.digest));
 router.patch("/preferences", asyncHandler(notificationsController.updatePreferences));
+router.post("/push-token", asyncHandler(notificationsController.registerPushToken));
 
 export = router;

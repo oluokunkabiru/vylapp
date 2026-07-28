@@ -38,6 +38,10 @@ vylapp-platform/
 - Flutter 3.22+ (`flutter doctor` should pass)
 - Anthropic API key (for translation and content moderation)
 
+See [`docs/TRANSLATION_AND_CHAT_PUSH.md`](docs/TRANSLATION_AND_CHAT_PUSH.md) for
+the full env var reference for translation, social sign-in (OAuth), and
+Firebase chat push notifications — all optional, all degrade gracefully.
+
 ### 1. Database
 
 ```bash

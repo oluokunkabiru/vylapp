@@ -116,24 +116,25 @@ function NewGroupModal({ onClose, onCreated }) {
   );
 }
 
-function ChatWindow({ convo, onBack, onLeft }) {
+function ChatWindow({ convo, lang, onBack, onLeft }) {
   const { user } = useAuth();
   const toast = useToast();
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(new Set());
   const bottomRef = useRef(null);
 
   const loadMsgs = useCallback(async () => {
     if (!convo) return;
     setLoading(true);
     try {
-      const { messages: m } = await api.get(`/messages/conversations/${convo.id}/messages`);
+      const { messages: m } = await api.get(`/messages/conversations/${convo.id}/messages${lang ? `?lang=${lang}` : ""}`);
       setMessages(m || []);
     } catch {}
     finally { setLoading(false); }
-  }, [convo]);
+  }, [convo, lang]);
 
   useEffect(() => { loadMsgs(); }, [loadMsgs]);
 
@@ -199,15 +200,29 @@ function ChatWindow({ convo, onBack, onLeft }) {
          : messages.length === 0 ? <Empty emoji="💬" title="No messages yet" sub="Say hello!" />
          : messages.map((m, i) => {
             const mine = m.sender?.id === user?.id;
+            const key = m.id || i;
+            const hasTranslation = !!m.translation;
+            const original = showOriginal.has(key);
+            const text = (hasTranslation && !original) ? m.translation.text : m.content;
             return (
-              <div key={m.id || i} style={{ display:"flex", justifyContent:mine?"flex-end":"flex-start", marginBottom:8 }}>
-                {!mine && <Avatar user={m.sender} size={28} />}
-                <div style={{
-                  maxWidth:"72%", padding:"10px 14px", borderRadius:mine?"16px 16px 4px 16px":"16px 16px 16px 4px",
-                  background: mine ? "var(--grad)" : "var(--bg3)",
-                  color:"var(--text)", fontSize:14.5, lineHeight:1.45,
-                  marginLeft:mine?0:8, marginRight:mine?0:0,
-                }}>{m.content}</div>
+              <div key={key} style={{ display:"flex", flexDirection:"column", alignItems:mine?"flex-end":"flex-start", marginBottom:8 }}>
+                <div style={{ display:"flex", justifyContent:mine?"flex-end":"flex-start", width:"100%" }}>
+                  {!mine && <Avatar user={m.sender} size={28} />}
+                  <div style={{
+                    maxWidth:"72%", padding:"10px 14px", borderRadius:mine?"16px 16px 4px 16px":"16px 16px 16px 4px",
+                    background: mine ? "var(--grad)" : "var(--bg3)",
+                    color:"var(--text)", fontSize:14.5, lineHeight:1.45,
+                    marginLeft:mine?0:8, marginRight:mine?0:0,
+                  }}>{text}</div>
+                </div>
+                {hasTranslation && (
+                  <button
+                    onClick={() => setShowOriginal(s => { const n = new Set(s); n.has(key) ? n.delete(key) : n.add(key); return n; })}
+                    style={{ background:"none", border:"none", color:"var(--text3)", fontSize:11, marginTop:3, cursor:"pointer", padding:0 }}
+                  >
+                    {original ? "See translation" : "See original"}
+                  </button>
+                )}
               </div>
             );
           })}
@@ -238,7 +253,7 @@ function ChatWindow({ convo, onBack, onLeft }) {
   );
 }
 
-export default function Messages({ onClearBadge }) {
+export default function Messages({ lang, onClearBadge }) {
   const { user } = useAuth();
   const [convos, setConvos] = useState([]);
   const [active, setActive] = useState(null);
@@ -288,7 +303,7 @@ export default function Messages({ onClearBadge }) {
   if (isMobile) {
     if (active) return (
       <div style={{ height:"calc(100vh - 112px)", display:"flex", flexDirection:"column" }}>
-        <ChatWindow convo={active} onBack={()=>setActive(null)} onLeft={onLeftGroup} />
+        <ChatWindow convo={active} lang={lang} onBack={()=>setActive(null)} onLeft={onLeftGroup} />
         {groupModalOpen && <NewGroupModal onClose={()=>setGroupModalOpen(false)} onCreated={onGroupCreated} />}
       </div>
     );
@@ -314,7 +329,7 @@ export default function Messages({ onClearBadge }) {
         {convos.length === 0 ? <Empty emoji="💬" title="No conversations" sub="Start a DM from someone's profile, or create a group." /> : <ConversationList convos={convos} active={active} onSelect={setActive} />}
       </div>
       <div style={{ flex:1, display:"flex", flexDirection:"column" }}>
-        {active ? <ChatWindow convo={active} onLeft={onLeftGroup} /> : <Empty emoji="💬" title="Pick a conversation" sub="Select a conversation on the left." />}
+        {active ? <ChatWindow convo={active} lang={lang} onLeft={onLeftGroup} /> : <Empty emoji="💬" title="Pick a conversation" sub="Select a conversation on the left." />}
       </div>
       {groupModalOpen && <NewGroupModal onClose={()=>setGroupModalOpen(false)} onCreated={onGroupCreated} />}
     </div>

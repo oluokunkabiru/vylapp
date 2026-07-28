@@ -12,11 +12,12 @@
 // ════════════════════════════════════════════════════════════════════════════
 import TranslationEngine from "./translationEngine";
 
-// Map our 2-letter codes (TranslationEngine.LANGUAGES) to franc's ISO 639-3 codes.
-const TO_ISO6393: Record<string, string> = {
-  en: "eng", es: "spa", fr: "fra", pt: "por", ar: "arb",
-  sw: "swh", yo: "yor", ha: "hau", am: "amh", hi: "hin", zh: "cmn",
-};
+// Derived from TranslationEngine.LANGUAGES' `franc` field — single source of
+// truth, so adding a language there automatically extends what can be
+// auto-detected too (as long as franc-min actually supports it).
+const TO_ISO6393: Record<string, string> = Object.fromEntries(
+  TranslationEngine.LANGUAGES.filter(l => l.franc).map(l => [l.code, l.franc as string]),
+);
 const FROM_ISO6393: Record<string, string> = Object.fromEntries(Object.entries(TO_ISO6393).map(([k, v]) => [v, k]));
 const SUPPORTED_ISO6393 = Object.values(TO_ISO6393);
 

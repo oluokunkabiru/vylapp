@@ -10,9 +10,6 @@ import prisma from "../config/prisma";
 
 const { ok, fail } = respond;
 
-const FREE_DAILY_AI_TRANSLATIONS = 30;
-const PRO_DAILY_AI_TRANSLATIONS = 500;
-
 // Kept as a raw column list (used by $queryRaw below): the feed/category/
 // single-vibe/bookmarks queries stay as parameterized raw SQL rather than
 // Prisma relations — FeedEngine.rankFeed (still plain JS) reads
@@ -69,63 +66,11 @@ async function attachViewerState(rows: any[], userId?: string | null) {
   return rows.map(r => ({ row: r, state: { liked: likedSet.has(r.id), reposted: repostedSet.has(r.id), saved: savedSet.has(r.id) } }));
 }
 
-// Auto-translates a page of already-shaped vibes into `targetLang`, in place.
-// Free-for-everyone by default: results are cached per (vibe, lang) so the
-// AI-quality path only runs once per popular post, not once per viewer.
-// Signed-in users get a daily AI-translation allowance (higher for Pro);
-// once spent, remaining misses fall back to the offline dictionary rather
-// than failing the request.
-async function translateVibesForViewer(vibes: any[], targetLang: string | undefined, userId?: string | null) {
-  if (!targetLang) return vibes;
-  const candidates = vibes.filter(v => v.language && v.language !== targetLang && v.content);
-  if (!candidates.length) return vibes;
-
-  const cached = await prisma.vibeTranslations.findMany({
-    where: { targetLang, vibeId: { in: candidates.map(v => v.id) } },
-    select: { vibeId: true, content: true, method: true },
-  });
-  const cacheMap = new Map(cached.map(r => [r.vibeId, r]));
-
-  let remainingAI = 0;
-  if (userId) {
-    const [user, usage] = await Promise.all([
-      prisma.users.findUnique({ where: { id: userId }, select: { subscriptionPlan: true } }),
-      prisma.translationUsage.findUnique({ where: { userId_day: { userId, day: new Date() } } }),
-    ]);
-    const cap = (user?.subscriptionPlan || "free") !== "free" ? PRO_DAILY_AI_TRANSLATIONS : FREE_DAILY_AI_TRANSLATIONS;
-    remainingAI = Math.max(0, cap - (usage?.count || 0));
-  }
-
-  let aiCallsMade = 0;
-  for (const v of candidates) {
-    const hit = cacheMap.get(v.id);
-    if (hit) {
-      v.translation = { text: hit.content, method: hit.method, fromLang: v.language, toLang: targetLang };
-      continue;
-    }
-    const result = await TranslationEngine.translate(v.content, v.language, targetLang, "post", {
-      allowAI: aiCallsMade < remainingAI,
-    });
-    if (result.method === "untranslated" || result.method === "passthrough") continue;
-    await prisma.vibeTranslations.upsert({
-      where: { vibeId_targetLang: { vibeId: v.id, targetLang } },
-      create: { vibeId: v.id, targetLang, content: result.text, method: result.method },
-      update: { content: result.text, method: result.method },
-    }).catch(() => {});
-    if (result.method === "claude") aiCallsMade++;
-    v.translation = { text: result.text, method: result.method, fromLang: v.language, toLang: targetLang };
-  }
-
-  if (userId && aiCallsMade > 0) {
-    await prisma.translationUsage.upsert({
-      where: { userId_day: { userId, day: new Date() } },
-      create: { userId, day: new Date(), count: aiCallsMade },
-      update: { count: { increment: aiCallsMade } },
-    }).catch(() => {});
-  }
-
-  return vibes;
-}
+// Auto-translation for a page of shaped vibes now lives in TranslationEngine
+// (translateVibesForViewer) — shared with forum/messages via the same daily
+// AI quota, see translationEngine.ts. Kept as a thin alias here so callers
+// below don't change.
+const translateVibesForViewer = TranslationEngine.translateVibesForViewer.bind(TranslationEngine);
 
 // ── GET /vibes/feed — personalized home feed ─────────────────────────────
 async function feed(req: AuthedRequest, res: Response) {
