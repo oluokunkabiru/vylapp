@@ -48,7 +48,75 @@ function ConversationList({ convos, active, onSelect }) {
   );
 }
 
-function ChatWindow({ convo, onBack }) {
+function NewGroupModal({ onClose, onCreated }) {
+  const { user } = useAuth();
+  const toast = useToast();
+  const [following, setFollowing] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [name, setName] = useState("");
+  const [selected, setSelected] = useState(new Set());
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    api.get(`/users/${user.id}/following`)
+      .then(({ following }) => setFollowing(following || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user.id]);
+
+  const toggle = (id) => setSelected(s => {
+    const next = new Set(s);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const create = async () => {
+    if (!name.trim() || !selected.size || creating) return;
+    setCreating(true);
+    try {
+      const { conversationId } = await api.post("/messages/conversations/group", { name: name.trim(), member_ids: [...selected] });
+      onCreated(conversationId, name.trim());
+    } catch (e) { toast(e.message, "error"); }
+    finally { setCreating(false); }
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }} onClick={onClose}>
+      <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:16, padding:24, width:360, maxHeight:"75vh", display:"flex", flexDirection:"column" }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontWeight:800, fontSize:16, marginBottom:14 }}>New group</div>
+        <input
+          value={name} onChange={e => setName(e.target.value)} placeholder="Group name" maxLength={100}
+          style={{ padding:"10px 14px", borderRadius:10, border:"1px solid var(--border2)", background:"var(--bg3)", color:"var(--text)", fontSize:14, marginBottom:14 }}
+        />
+        <div style={{ fontSize:12.5, color:"var(--text3)", marginBottom:8 }}>Add members you follow</div>
+        <div style={{ flex:1, overflowY:"auto", marginBottom:14 }}>
+          {loading ? <Spinner size={24} /> : (
+            <>
+              {following.map(f => (
+                <label key={f.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 4px", cursor:"pointer" }}>
+                  <input type="checkbox" checked={selected.has(f.id)} onChange={() => toggle(f.id)} />
+                  <Avatar user={f} size={30} />
+                  <span style={{ fontSize:13.5, fontWeight:600 }}>{f.displayName} <span style={{ color:"var(--text3)", fontWeight:400 }}>@{f.handle}</span></span>
+                </label>
+              ))}
+              {!following.length && <div style={{ color:"var(--text3)", fontSize:13, padding:"12px 0" }}>You're not following anyone yet.</div>}
+            </>
+          )}
+        </div>
+        <div style={{ display:"flex", gap:10, justifyContent:"flex-end" }}>
+          <button onClick={onClose} style={{ background:"none", border:"1px solid var(--text3)", color:"var(--text3)", fontWeight:700, fontSize:13, padding:"8px 14px", borderRadius:8, cursor:"pointer" }}>Cancel</button>
+          <button onClick={create} disabled={!name.trim() || !selected.size || creating} style={{
+            background: (name.trim() && selected.size) ? "var(--grad)" : "var(--bg3)",
+            border:"none", color: (name.trim() && selected.size) ? "#fff" : "var(--text3)", fontWeight:700, fontSize:13,
+            padding:"8px 16px", borderRadius:8, cursor: (name.trim() && selected.size) ? "pointer" : "default",
+          }}>{creating ? "Creating…" : "Create group"}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChatWindow({ convo, onBack, onLeft }) {
   const { user } = useAuth();
   const toast = useToast();
   const [messages, setMessages] = useState([]);
@@ -99,16 +167,31 @@ function ChatWindow({ convo, onBack }) {
   };
 
   const other = convo?.otherUser;
+  const isGroup = convo?.type === "group";
+
+  const leave = async () => {
+    if (!window.confirm(`Leave "${convo.name}"?`)) return;
+    try {
+      await api.post(`/messages/conversations/${convo.id}/leave`);
+      toast("Left group");
+      onLeft?.();
+    } catch (e) { toast(e.message, "error"); }
+  };
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
       <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderBottom:"1px solid var(--border2)", flexShrink:0 }}>
         {onBack && <TapIcon d={ic.back} onClick={onBack} label="Back" size={22} />}
         <Avatar user={other} size={36} />
-        <div>
+        <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontWeight:800, fontSize:15 }}>{other?.displayName || convo?.name}</div>
-          <div style={{ color:"var(--text2)", fontSize:12 }}>@{other?.handle}</div>
+          {other?.handle && <div style={{ color:"var(--text2)", fontSize:12 }}>@{other.handle}</div>}
         </div>
+        {isGroup && (
+          <button onClick={leave} style={{ background:"none", border:"1px solid var(--coral)", color:"var(--coral)", fontWeight:700, fontSize:12, padding:"6px 12px", borderRadius:8, cursor:"pointer" }}>
+            Leave
+          </button>
+        )}
       </div>
 
       <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 8px" }}>
@@ -161,6 +244,7 @@ export default function Messages({ onClearBadge }) {
   const [active, setActive] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 800);
@@ -168,25 +252,54 @@ export default function Messages({ onClearBadge }) {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  const loadConvos = useCallback(() => {
+    return api.get("/messages/conversations").then(({ conversations: c }) => { setConvos(c||[]); onClearBadge?.(); });
+  }, [onClearBadge]);
+
   useEffect(() => {
     if (!user) return;
-    api.get("/messages/conversations").then(({ conversations: c }) => { setConvos(c||[]); onClearBadge?.(); })
-      .catch(() => {}).finally(() => setLoading(false));
-  }, [user, onClearBadge]);
+    loadConvos().catch(() => {}).finally(() => setLoading(false));
+  }, [user, loadConvos]);
+
+  const onGroupCreated = (conversationId, name) => {
+    setGroupModalOpen(false);
+    setActive({ id: conversationId, type: "group", name, otherUser: null });
+    loadConvos().catch(() => {});
+  };
+
+  const onLeftGroup = () => {
+    setActive(null);
+    loadConvos().catch(() => {});
+  };
 
   if (!user) return <Empty emoji="💬" title="Sign in to message" sub="Connect with the community in private." />;
   if (loading) return <div style={{ display:"flex", justifyContent:"center", padding:60 }}><Spinner size={32} /></div>;
+
+  const newGroupButton = (
+    <button onClick={() => setGroupModalOpen(true)} title="New group" style={{
+      width:32, height:32, borderRadius:"50%", background:"var(--bg3)", border:"1px solid var(--border2)",
+      display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0,
+    }}>
+      <Ic d={ic.plus} s={16} c="var(--text2)" />
+    </button>
+  );
 
   // Desktop: split pane; mobile: list or chat
   if (isMobile) {
     if (active) return (
       <div style={{ height:"calc(100vh - 112px)", display:"flex", flexDirection:"column" }}>
-        <ChatWindow convo={active} onBack={()=>setActive(null)} />
+        <ChatWindow convo={active} onBack={()=>setActive(null)} onLeft={onLeftGroup} />
+        {groupModalOpen && <NewGroupModal onClose={()=>setGroupModalOpen(false)} onCreated={onGroupCreated} />}
       </div>
     );
     return (
       <div>
-        {convos.length === 0 ? <Empty emoji="💬" title="No conversations yet" sub="Go to a profile and start a DM." /> : <ConversationList convos={convos} active={active} onSelect={setActive} />}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px" }}>
+          <span style={{ fontWeight:800, fontSize:18 }}>Messages</span>
+          {newGroupButton}
+        </div>
+        {convos.length === 0 ? <Empty emoji="💬" title="No conversations yet" sub="Go to a profile and start a DM, or create a group." /> : <ConversationList convos={convos} active={active} onSelect={setActive} />}
+        {groupModalOpen && <NewGroupModal onClose={()=>setGroupModalOpen(false)} onCreated={onGroupCreated} />}
       </div>
     );
   }
@@ -194,12 +307,16 @@ export default function Messages({ onClearBadge }) {
   return (
     <div style={{ display:"flex", height:"calc(100vh - 56px)" }}>
       <div style={{ width:320, borderRight:"1px solid var(--border2)", display:"flex", flexDirection:"column" }}>
-        <div style={{ padding:"16px", borderBottom:"1px solid var(--border2)", fontWeight:800, fontSize:18 }}>Messages</div>
-        {convos.length === 0 ? <Empty emoji="💬" title="No conversations" sub="Start a DM from someone's profile." /> : <ConversationList convos={convos} active={active} onSelect={setActive} />}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px", borderBottom:"1px solid var(--border2)" }}>
+          <span style={{ fontWeight:800, fontSize:18 }}>Messages</span>
+          {newGroupButton}
+        </div>
+        {convos.length === 0 ? <Empty emoji="💬" title="No conversations" sub="Start a DM from someone's profile, or create a group." /> : <ConversationList convos={convos} active={active} onSelect={setActive} />}
       </div>
       <div style={{ flex:1, display:"flex", flexDirection:"column" }}>
-        {active ? <ChatWindow convo={active} /> : <Empty emoji="💬" title="Pick a conversation" sub="Select a conversation on the left." />}
+        {active ? <ChatWindow convo={active} onLeft={onLeftGroup} /> : <Empty emoji="💬" title="Pick a conversation" sub="Select a conversation on the left." />}
       </div>
+      {groupModalOpen && <NewGroupModal onClose={()=>setGroupModalOpen(false)} onCreated={onGroupCreated} />}
     </div>
   );
 }

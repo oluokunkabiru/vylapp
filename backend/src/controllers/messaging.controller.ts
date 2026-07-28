@@ -58,12 +58,76 @@ async function getOrCreateDm(req: AuthedRequest, res: Response) {
   return ok(res, { conversationId: conv.id, created: true }, 201);
 }
 
+// ── POST /messages/conversations/group — body: { name, member_ids: string[] } ─
+async function createGroup(req: AuthedRequest, res: Response) {
+  const { name, member_ids } = req.body;
+  const cleanName = typeof name === "string" ? name.trim() : "";
+  if (!cleanName || cleanName.length > 100) return fail(res, 400, "name is required (max 100 characters)");
+  if (!Array.isArray(member_ids) || !member_ids.length) return fail(res, 400, "member_ids must be a non-empty array");
+
+  const uniqueMemberIds = [...new Set(member_ids.filter((id: unknown) => typeof id === "string" && id !== req.user.id))];
+  if (!uniqueMemberIds.length) return fail(res, 400, "Add at least one other member");
+
+  const validMembers = await prisma.users.count({ where: { id: { in: uniqueMemberIds }, deletedAt: null } });
+  if (validMembers !== uniqueMemberIds.length) return fail(res, 400, "One or more members were not found");
+
+  const conv = await prisma.conversations.create({ data: { type: "group", name: cleanName, createdBy: req.user.id } });
+  await prisma.conversationMembers.createMany({
+    data: [
+      { conversationId: conv.id, userId: req.user.id, role: "owner" },
+      ...uniqueMemberIds.map((userId: string) => ({ conversationId: conv.id, userId, role: "member" })),
+    ],
+  });
+  return ok(res, { conversationId: conv.id, conversation: { id: conv.id, type: conv.type, name: conv.name } }, 201);
+}
+
+// ── POST /messages/conversations/:id/members — body: { user_id } ──────────
+async function addMember(req: AuthedRequest, res: Response) {
+  const { user_id } = req.body;
+  if (!user_id) return fail(res, 400, "user_id is required");
+
+  const conv = await prisma.conversations.findUnique({ where: { id: req.params.id }, select: { type: true } });
+  if (!conv || conv.type !== "group") return fail(res, 404, "Group conversation not found");
+
+  const requester = await prisma.conversationMembers.findUnique({
+    where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
+  });
+  if (!requester || requester.leftAt) return fail(res, 403, "Not a member of this group");
+
+  const target = await prisma.users.findUnique({ where: { id: user_id }, select: { id: true } });
+  if (!target) return fail(res, 404, "User not found");
+
+  await prisma.conversationMembers.upsert({
+    where: { conversationId_userId: { conversationId: req.params.id, userId: user_id } },
+    create: { conversationId: req.params.id, userId: user_id, role: "member" },
+    update: { leftAt: null },
+  });
+  return ok(res, { added: true }, 201);
+}
+
+// ── POST /messages/conversations/:id/leave ────────────────────────────────
+async function leaveGroup(req: AuthedRequest, res: Response) {
+  const conv = await prisma.conversations.findUnique({ where: { id: req.params.id }, select: { type: true } });
+  if (!conv || conv.type !== "group") return fail(res, 400, "Can only leave a group conversation");
+
+  const member = await prisma.conversationMembers.findUnique({
+    where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
+  });
+  if (!member || member.leftAt) return fail(res, 404, "Not a member of this group");
+
+  await prisma.conversationMembers.update({
+    where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
+    data: { leftAt: new Date() },
+  });
+  return ok(res, { left: true });
+}
+
 // ── GET /messages/conversations/:id/messages ─────────────────────────────
 async function listMessages(req: AuthedRequest, res: Response) {
   const member = await prisma.conversationMembers.findUnique({
     where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
   });
-  if (!member) return fail(res, 403, "Not a member of this conversation");
+  if (!member || member.leftAt) return fail(res, 403, "Not a member of this conversation");
 
   const rows = await prisma.messages.findMany({
     where: { conversationId: req.params.id, isDeleted: false },
@@ -93,7 +157,7 @@ async function sendMessage(req: AuthedRequest, res: Response) {
   const member = await prisma.conversationMembers.findUnique({
     where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
   });
-  if (!member) return fail(res, 403, "Not a member of this conversation");
+  if (!member || member.leftAt) return fail(res, 403, "Not a member of this conversation");
 
   const msg = await prisma.messages.create({
     data: { conversationId: req.params.id, senderId: req.user.id, content: content.trim(), contentType: contentType || "text" },
@@ -104,13 +168,13 @@ async function sendMessage(req: AuthedRequest, res: Response) {
     data: { lastMessageId: msg.id, lastMessageAt: new Date(), lastMessagePreview: content.slice(0, 100) },
   });
   await prisma.conversationMembers.updateMany({
-    where: { conversationId: req.params.id, userId: { not: req.user.id } },
+    where: { conversationId: req.params.id, userId: { not: req.user.id }, leftAt: null },
     data: { unreadCount: { increment: 1 } },
   });
 
-  // Notify other members
+  // Notify other members (excluding anyone who has left the conversation)
   const others = await prisma.conversationMembers.findMany({
-    where: { conversationId: req.params.id, userId: { not: req.user.id } },
+    where: { conversationId: req.params.id, userId: { not: req.user.id }, leftAt: null },
     select: { userId: true },
   });
   for (const o of others) {
@@ -127,4 +191,4 @@ async function sendMessage(req: AuthedRequest, res: Response) {
   return ok(res, { message: { id: msg.id, content: msg.content, contentType: msg.contentType, createdAt: msg.createdAt } }, 201);
 }
 
-export = { listConversations, getOrCreateDm, listMessages, sendMessage };
+export = { listConversations, getOrCreateDm, createGroup, addMember, leaveGroup, listMessages, sendMessage };
