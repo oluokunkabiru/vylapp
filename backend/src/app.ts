@@ -98,11 +98,9 @@ function createApp() {
   // ── Admin dashboard API (admin.access + granular admin.* permissions) ─────
   app.use("/admin", adminRoutes);
 
-  // ── Dev-only utilities (never exposed in production) ─────────────────────
-  if (env.nodeEnv !== "production") {
-    app.use("/dev", devRoutes);
-    logger.info("DEV routes mounted at /dev — disable in production");
-  }
+  // ── Dev utilities ────────────────────────────────────────────────────────
+  app.use("/dev", devRoutes);
+  logger.info("DEV routes mounted at /dev");
 
   app.use(notFound);
   app.use(errorHandler);
