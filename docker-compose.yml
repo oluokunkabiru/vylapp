@@ -97,7 +97,7 @@ services:
       - "5180:5173"
     environment:
       - VITE_PORT=5173
-      - BACKEND_URL=http://backend:4000  # ← change this to switch backends
+      # - BACKEND_URL=http://backend:4000  # ← change this to switch backends
     depends_on:
       - backend
 

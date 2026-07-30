@@ -6,8 +6,8 @@ export default defineConfig(({ mode }) => {
   // for the current mode (development / production / etc.)
   const env = loadEnv(mode, process.cwd(), "");
 
-  const backendUrl = env.BACKEND_URL || "http://localhost:4000";
-
+  const backendUrl = env.BACKEND_BASE_URL;// || "http://localhost:4000";
+  console.log("Base url on the backend", backendUrl);
   return {
     plugins: [react()],
     server: {
