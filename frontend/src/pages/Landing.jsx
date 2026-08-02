@@ -20,6 +20,24 @@ const STATS = [
   { num:"150+", label:"Countries Reached" },
 ];
 
+// Curated sample for the scrolling greeting ticker and the hero's rotating
+// translation demo below — a small, hand-picked set of real languages/copy
+// for the marketing page, not pulled from the platform's live translation
+// engine (65 languages, see frontend/src/lib/languages.js). Hardcoding a
+// short showcase here is a deliberate landing-page choice: nobody actually
+// wants a ticker cycling through 65 languages, and this copy needs to read
+// as natural, hand-checked sentences rather than machine output.
+const MARQUEE_GREETINGS = ["Welcome","Kaabọ","Karibu","Bienvenido","Bem-vindo","欢迎","مرحبًا","स्वागत है","Bienvenue","Sannu da zuwa","Nnọọ","እንኳን መጡ","Chào mừng","Selamat datang"];
+
+const DEMO_VIBES = [
+  { lang: "English",   code: "EN", dir: "ltr", text: "Just dropped my new Afrofusion course — 340 signups in 6 hours." },
+  { lang: "Yorùbá",    code: "YO", dir: "ltr", text: "Mo ṣẹ̀ṣẹ̀ tú ẹ̀kọ́ Afrofusion tuntun mi jáde — 340 ti forúkọ sílẹ̀ ní wákàtí mẹ́fà." },
+  { lang: "Kiswahili", code: "SW", dir: "ltr", text: "Nimetoa kozi yangu mpya ya Afrofusion — watu 340 wamejiandikisha kwa saa 6." },
+  { lang: "Español",   code: "ES", dir: "ltr", text: "Acabo de lanzar mi nuevo curso de Afrofusion — 340 inscritos en 6 horas." },
+  { lang: "العربية",   code: "AR", dir: "rtl", text: "لقد أطلقت للتو دورتي الجديدة في الأفروفيوجن - 340 مسجلاً خلال 6 ساعات." },
+  { lang: "中文",       code: "ZH", dir: "ltr", text: "我刚发布了我的新Afrofusion课程——6小时内已有340人报名。" },
+];
+
 const TESTIMONIALS = [
   { name:"Adaeze O.", role:"Educator · Lagos", text:"Vylapp gave me a platform to teach my community without needing a third-party tool. It brought me students I'd never have reached on my own.", avatar:"AO", color:"#7C3AED" },
   { name:"Kofi M.", role:"Creator · Accra", text:"Autopilot alone changed my workflow. I spend more time creating and less time managing — and my earnings tripled in 2 months.", avatar:"KM", color:"#059669" },
@@ -27,16 +45,143 @@ const TESTIMONIALS = [
   { name:"Mei L.", role:"Educator · Singapore", text:"I thought this was a niche African app when I joined. Turns out the community spans six continents — my course reached students I never expected.", avatar:"ML", color:"#0EA5E9" },
 ];
 
+// ─── Phone-frame mini app screens ("See it in action" section) ───────────────
+// Uses the app's real logo (/assets/logo.png, same as the nav/footer) rather
+// than a separate drawn mark, so the brand stays consistent across the page.
+function PhoneFrame({ children }) {
+  return (
+    <div className="lp-phone">
+      <div className="lp-phone__notch" />
+      <div className="lp-phone__screen">{children}</div>
+    </div>
+  );
+}
+
+function ScreenHeader({ title, accent }) {
+  return (
+    <div className="lp-phone__head">
+      <div className="lp-phone__brand">
+        <img src="/assets/logo.png" alt="" />
+        <span>{title}</span>
+      </div>
+      <div className="lp-phone__avatar" style={{background:accent}}>YO</div>
+    </div>
+  );
+}
+
+function FeedMiniScreen() {
+  return (
+    <>
+      <ScreenHeader title="Vylapp" accent="#7C3AED" />
+      <div className="lp-phone__tabs">
+        {["For you","Tech","Learn","Global"].map((t,i)=>(
+          <span key={t} className={`lp-phone__tab${i===0 ? " active" : ""}`}>{t}</span>
+        ))}
+      </div>
+      <div className="lp-phone__card">
+        <div className="lp-phone__cardHead">
+          <div className="lp-phone__cardAv" style={{background:"#059669"}}>RK</div>
+          <div><strong>Remi Kowalski</strong><span>Global Connect · 4h</span></div>
+          <span className="lp-phone__langTag">EN</span>
+        </div>
+        <p>We just reached 10,000 farmers on our crop advisory platform.</p>
+        <div className="lp-phone__cardFoot">
+          <span>2.1K likes</span><span>1.4K reposts</span>
+          <span className="lp-phone__translated">translated</span>
+        </div>
+      </div>
+      <div className="lp-phone__card">
+        <div className="lp-phone__cardHead">
+          <div className="lp-phone__cardAv" style={{background:"#F59E0B"}}>JN</div>
+          <div><strong>Jade Nakamura</strong><span>Creative Learn · 6h</span></div>
+        </div>
+        <p>Dropping a 12-piece generative art collection tonight.</p>
+      </div>
+    </>
+  );
+}
+
+function SpaceMiniScreen() {
+  return (
+    <>
+      <ScreenHeader title="Space" accent="#DC2626" />
+      <div className="lp-phone__liveBadge">LIVE · 1,840 LISTENING</div>
+      <div className="lp-phone__spaceTitle">African AgriTech: Scale &amp; Impact</div>
+      <div className="lp-phone__speakers">
+        {[["AK","#059669",true],["MO","#7C3AED",false],["LC","#DC2626",false]].map(([init,color,talking],i)=>(
+          <div key={i} className="lp-phone__speakerAv" style={{background:color, borderColor: talking ? "#34d399" : "transparent"}}>{init}</div>
+        ))}
+      </div>
+      <div className="lp-phone__captions">
+        <div className="lp-phone__captionsLabel">LIVE CAPTIONS · SW → EN</div>
+        <p>"Teknolojia inabadilisha kilimo…"</p>
+        <p className="lp-phone__captionTranslated">"Technology is transforming farming…"</p>
+      </div>
+    </>
+  );
+}
+
+function LearnMiniScreen() {
+  return (
+    <>
+      <ScreenHeader title="Learn" accent="#059669" />
+      <div className="lp-phone__course">
+        <div className="lp-phone__courseLabel">TAUGHT IN PORTUGUÊS · SUBTITLED IN 8 LANGUAGES</div>
+        <div className="lp-phone__courseTitle">Construindo sua primeira startup</div>
+        <div className="lp-phone__progress"><div className="lp-phone__progressBar" style={{width:"68%"}} /></div>
+        <span className="lp-phone__progressLabel">Lesson 17 of 25 · 68% complete</span>
+      </div>
+      <div className="lp-phone__cert">Certificate on completion — verified &amp; shareable</div>
+    </>
+  );
+}
+
+function ChatMiniScreen() {
+  return (
+    <>
+      <ScreenHeader title="Connects" accent="#7C3AED" />
+      <div className="lp-phone__bubble lp-phone__bubble--in">
+        <p>¡Tu colección de arte es increíble!</p>
+        <span className="lp-phone__bubbleTranslated">"Your art collection is incredible!"</span>
+      </div>
+      <div className="lp-phone__bubble lp-phone__bubble--out">
+        <p>Absolutely! I've been hoping you'd ask.</p>
+        <span className="lp-phone__bubbleTranslated">"¡Claro! Esperaba que lo preguntaras."</span>
+      </div>
+      <div className="lp-phone__composer">Write in any language…</div>
+    </>
+  );
+}
+
 export default function Landing() {
   const nav = useNavigate();
   const heroRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [vibeIdx, setVibeIdx] = useState(0);
+  const [vibeFading, setVibeFading] = useState(false);
+  const [greetIdx, setGreetIdx] = useState(0);
+  const reduceMotionRef = useRef(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Rotates the hero's headline greeting and the mockup's live-translation
+  // demo card through MARQUEE_GREETINGS / DEMO_VIBES.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia) {
+      reduceMotionRef.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+    if (reduceMotionRef.current) return;
+    const g = setInterval(() => setGreetIdx(i => (i + 1) % MARQUEE_GREETINGS.length), 2000);
+    const t = setInterval(() => {
+      setVibeFading(true);
+      setTimeout(() => { setVibeIdx(i => (i + 1) % DEMO_VIBES.length); setVibeFading(false); }, 300);
+    }, 3200);
+    return () => { clearInterval(g); clearInterval(t); };
   }, []);
 
   // Intersection observer for scroll-reveal
@@ -93,6 +238,7 @@ export default function Landing() {
         <div className="lp-hero__content">
           <div className="lp-badge">Built for creators, learners &amp; communities everywhere</div>
           <h1 className="lp-hero__h1">
+            <span className="lp-hero__word lp-hero__word--grad" aria-live="polite">{MARQUEE_GREETINGS[greetIdx]}.</span>
             <span className="lp-hero__word">Vibe.</span>
             <span className="lp-hero__word lp-hero__word--grad">Learn.</span>
             <span className="lp-hero__word">Connect.</span>
@@ -126,8 +272,26 @@ export default function Landing() {
               <div className="lp-mockup__dot" /><div className="lp-mockup__dot" /><div className="lp-mockup__dot" />
             </div>
             <div className="lp-mockup__body">
+              <div className="lp-vibe-card">
+                <div className="lp-vibe-card__av" style={{background:"#7C3AED"}}>AD</div>
+                <div className="lp-vibe-card__body">
+                  <div className="lp-vibe-card__meta">
+                    <strong>Adaeze</strong><span>Creator</span>
+                    <span className="lp-vibe-card__lang">{DEMO_VIBES[vibeIdx].code}</span>
+                  </div>
+                  <div
+                    className="lp-vibe-card__text"
+                    dir={DEMO_VIBES[vibeIdx].dir}
+                    style={{ opacity: vibeFading ? 0 : 1, textAlign: DEMO_VIBES[vibeIdx].dir === "rtl" ? "right" : "left" }}
+                  >
+                    {DEMO_VIBES[vibeIdx].text}
+                  </div>
+                  <div className="lp-vibe-card__actions">
+                    <span>284 Likes</span><span>Reply</span><span className="lp-vibe-card__translated">translated instantly</span>
+                  </div>
+                </div>
+              </div>
               {[
-                { av:"AD", name:"Adaeze", tag:"Creator", text:"Just dropped my new Afrofusion course", color:"#7C3AED", likes:284 },
                 { av:"PS", name:"Priya S.", tag:"Educator", text:"My cohort found me from three different continents this week", color:"#059669", likes:162 },
                 { av:"DR", name:"Diego R.", tag:"Viber", text:"Spaces connected me with creators across 12 countries", color:"#DC2626", likes:491 },
               ].map((v, i) => (
@@ -147,6 +311,15 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── LANGUAGE MARQUEE ── */}
+      <div className="lp-marquee" aria-hidden="true">
+        <div className="lp-marquee__track">
+          {[...MARQUEE_GREETINGS, ...MARQUEE_GREETINGS].map((g, i) => (
+            <span key={i} className="lp-marquee__word">{g}</span>
+          ))}
+        </div>
+      </div>
+
       {/* ── FEATURES ── */}
       <section id="features" className="lp-section">
         <div className="lp-section__inner">
@@ -163,6 +336,24 @@ export default function Landing() {
                 <p>{f.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SEE IT IN ACTION (phone mockups) ── */}
+      <section className="lp-section lp-section--tinted">
+        <div className="lp-section__inner">
+          <div className="lp-section__label reveal">See It In Action</div>
+          <h2 className="lp-section__h2 reveal">One app. Every pillar. Your language.</h2>
+          <p className="lp-section__sub reveal">
+            From your feed to your classroom to your DMs — every screen in Vylapp reads back
+            in the language you chose.
+          </p>
+          <div className="lp-phones reveal">
+            <PhoneFrame><FeedMiniScreen /></PhoneFrame>
+            <PhoneFrame><SpaceMiniScreen /></PhoneFrame>
+            <PhoneFrame><LearnMiniScreen /></PhoneFrame>
+            <PhoneFrame><ChatMiniScreen /></PhoneFrame>
           </div>
         </div>
       </section>
@@ -205,6 +396,36 @@ export default function Landing() {
                   <div className="lp-globe__city-dot" /><span>{c}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── LIVE TRANSLATION DEMO ── */}
+      <section className="lp-section lp-section--dark">
+        <div className="lp-section__inner">
+          <div className="lp-section__label reveal" style={{color:"#c4b5fd"}}>See It Work</div>
+          <h2 className="lp-section__h2 reveal" style={{color:"#fff"}}>Live Spaces, captioned across languages.</h2>
+          <p className="lp-section__sub reveal" style={{color:"#94a3b8"}}>
+            Host or join a live audio Space and watch the conversation caption itself in real time —
+            everyone reads along in their own language, no interpreter required.
+          </p>
+          <div className="lp-caption-panel reveal">
+            <div className="lp-caption-panel__badge">LIVE · 1,840 LISTENING</div>
+            <div className="lp-caption-panel__title">African AgriTech: Scale &amp; Impact</div>
+            <div className="lp-caption-panel__lines">
+              <div className="lp-caption-line lp-caption-line--source">
+                <span className="lp-caption-line__lang">SW</span>
+                "Teknolojia inabadilisha kilimo Afrika Mashariki…"
+              </div>
+              <div className="lp-caption-line">
+                <span className="lp-caption-line__lang">EN</span>
+                "Technology is transforming farming in East Africa…"
+              </div>
+              <div className="lp-caption-line">
+                <span className="lp-caption-line__lang">ES</span>
+                "La tecnología está transformando la agricultura…"
+              </div>
             </div>
           </div>
         </div>
