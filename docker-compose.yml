@@ -82,7 +82,7 @@ services:
       - "8026:8025"   # Web UI
 
   # ── Frontend ───────────────────────────────────────────────────────────────
-  # 🔀 BACKEND SWITCH: change BACKEND_URL below to point to a different backend
+  # 🔀 BACKEND SWITCH: change BACKEND_BASE_URL below to point to a different backend
   #    http://backend:4000          → local Docker backend (default for compose)
   #    https://vylapp.onrender.com  → Render remote backend
   frontend:
@@ -97,7 +97,7 @@ services:
       - "5180:5173"
     environment:
       - VITE_PORT=5173
-      # - BACKEND_URL=http://backend:4000  # ← change this to switch backends
+      # - BACKEND_BASE_URL=http://backend:4000  # ← change this to switch backends
     depends_on:
       - backend
 
