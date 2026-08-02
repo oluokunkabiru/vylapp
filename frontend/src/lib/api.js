@@ -1,7 +1,14 @@
 // ════════════════════════════════════════════════════════════════════════════
 //  API CLIENT
 //  Thin fetch wrapper that:
-//  - Prefixes every request with /api (proxied to localhost:4000 in dev)
+//  - Dev: talks to the Vite dev-server proxy at /api (see vite.config.js),
+//    which forwards to the local/BACKEND_BASE_URL backend same-origin.
+//  - Production build: talks to the backend directly at VITE_BACKEND_URL —
+//    no proxy involved at all (the built bundle never runs behind Vite).
+//    This only works because the backend's auth cookies are already
+//    SameSite=None + Secure in production for exactly this cross-origin
+//    case (see backend/src/utils/authCookies.ts) and CORS is configured
+//    with credentials for the real frontend origin (CLIENT_ORIGIN).
 //  - Sends the httpOnly vyl_at/vyl_rt session cookies automatically
 //    (credentials: "include") — tokens are never touched by JS
 //  - Attaches the CSRF double-submit token (read from the non-httpOnly
@@ -10,7 +17,7 @@
 //  - Always returns { ok, data } or { ok: false, error } to callers
 // ════════════════════════════════════════════════════════════════════════════
 
-const BASE = "/api";
+const BASE = import.meta.env.DEV ? "/api" : (import.meta.env.VITE_BACKEND_URL || "/api");
 
 function getCsrfToken() {
   const match = document.cookie.match(/(?:^|;\s*)vyl_csrf=([^;]+)/);
