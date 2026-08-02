@@ -42,11 +42,6 @@ class _LoginScreenState extends State<LoginScreen> {
     context.read<AuthBloc>().add(AuthLogin(emailOrHandle: email, password: pw));
   }
 
-  void _fillDemo() {
-    _emailCtrl.text = 'aisha.k';
-    _pwCtrl.text    = 'VylappDemo123!';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,22 +115,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: AppColors.violetLight, fontWeight: FontWeight.w700)),
                   ),
                 ]),
-                const SizedBox(height: 32),
-                Divider(color: AppColors.borderSubtle, thickness: 0.5),
-                const SizedBox(height: 16),
-                Center(
-                  child: GestureDetector(
-                    onTap: _fillDemo,
-                    child: RichText(text: TextSpan(
-                      style: AppTextStyles.caption,
-                      children: [
-                        const TextSpan(text: 'Demo: '),
-                        TextSpan(text: 'aisha.k / VylappDemo123!',
-                          style: AppTextStyles.caption.copyWith(color: AppColors.sky)),
-                      ],
-                    )),
-                  ),
-                ),
                 const SizedBox(height: 32),
               ],
             ),

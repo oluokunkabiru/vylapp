@@ -5,7 +5,6 @@ import '../../../../core/constants/app_text_styles.dart';
 import '../../../../shared/widgets/vyl_widgets.dart';
 import '../bloc/feed_bloc.dart';
 import '../../data/models/vibe_model.dart';
-import '../../../auth/data/models/user_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -63,7 +62,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: CustomScrollView(
                     controller: _scrollController,
                     slivers: [
-                      const SliverToBoxAdapter(child: _StoriesBar()),
                       SliverList(
                         delegate: SliverChildBuilderDelegate(
                           (ctx, i) {
@@ -140,54 +138,6 @@ class _Header extends StatelessWidget {
             )),
           ]),
         ),
-      ],
-    ),
-  );
-}
-
-// ── Stories bar ────────────────────────────────────────────────────────────────
-class _StoriesBar extends StatelessWidget {
-  const _StoriesBar();
-
-  static final _demoUsers = [
-    UserModel(id:'1',handle:'aisha.k',displayName:'Aisha',avatarColor:'#10F5A0',avatarInitials:'AK'),
-    UserModel(id:'2',handle:'marcus.o',displayName:'Marcus',avatarColor:'#A78BFA',avatarInitials:'MO'),
-    UserModel(id:'3',handle:'jade.n',displayName:'Jade',avatarColor:'#FFB830',avatarInitials:'JN'),
-    UserModel(id:'4',handle:'remi.k',displayName:'Remi',avatarColor:'#FF6B6B',avatarInitials:'RK'),
-    UserModel(id:'5',handle:'l.chen',displayName:'Leon',avatarColor:'#38BDF8',avatarInitials:'LC'),
-  ];
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 96,
-    child: ListView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      children: [
-        // My story slot
-        Padding(
-          padding: const EdgeInsets.only(right: 14),
-          child: Column(children: [
-            Stack(children: [
-              VylAvatar(user: UserModel(id:'me',handle:'you',displayName:'You',avatarColor:'#10F5A0',avatarInitials:'YO'), size: 52),
-              Positioned(bottom:0, right:0, child: Container(
-                width:20, height:20,
-                decoration: BoxDecoration(shape:BoxShape.circle, color:AppColors.violet, border:Border.all(color:AppColors.bg,width:2)),
-                child: const Icon(Icons.add, size:13, color:Colors.white),
-              )),
-            ]),
-            const SizedBox(height:4),
-            Text('Your story', style: AppTextStyles.caption.copyWith(fontSize:11)),
-          ]),
-        ),
-        ..._demoUsers.map((u) => Padding(
-          padding: const EdgeInsets.only(right: 14),
-          child: Column(children: [
-            VylAvatar(user:u, size:52, showStoryRing:true),
-            const SizedBox(height:4),
-            SizedBox(width:52, child: Text(u.displayName, style:AppTextStyles.caption.copyWith(color:AppColors.textPrimary,fontSize:11), overflow:TextOverflow.ellipsis, textAlign:TextAlign.center)),
-          ]),
-        )),
       ],
     ),
   );
