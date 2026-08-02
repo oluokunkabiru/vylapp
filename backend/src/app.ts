@@ -104,8 +104,13 @@ function createApp() {
   app.use("/admin", adminRoutes);
 
   // ── Dev utilities ────────────────────────────────────────────────────────
-  app.use("/dev", devRoutes);
-  logger.info("DEV routes mounted at /dev");
+  // Genuinely dev-only: /dev/users leaks user PII unauthenticated, and the
+  // test-email routes trigger real outbound sends — must never be reachable
+  // in production regardless of what NODE_ENV happens to be set to.
+  if (env.nodeEnv !== "production") {
+    app.use("/dev", devRoutes);
+    logger.info("DEV routes mounted at /dev");
+  }
 
   app.use(notFound);
   app.use(errorHandler);
