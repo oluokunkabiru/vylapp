@@ -58,6 +58,11 @@ function createApp() {
   app.use(httpLogger);
   app.use(metrics.httpMetrics);
 
+  app.get("/", (req, res) => res.json({
+    ok: true, message: "Welcome to the Vylapp API — Vibe. Learn. Connect.",
+    docs: "See /health for status and /metrics for Prometheus metrics.",
+  }));
+
   app.get("/health", (req, res) => res.json({
     ok: true, service: "vylapp-backend", time: new Date().toISOString(),
     rate_limiter: "active", multilingual_moderation: "active",
