@@ -118,15 +118,14 @@ async function register(req: Request, res: Response) {
     logger.warn("Welcome email failed to send after registration", { userId: user.id, error: err.message });
   }
 
-  authCookies.setAuthCookies(res, { accessToken, refreshToken });
-  return ok(res, { user: publicUser(toSnakeUser(user)) }, 201);
+  const csrfToken = authCookies.setAuthCookies(res, { accessToken, refreshToken });
+  return ok(res, { user: publicUser(toSnakeUser(user)), csrfToken }, 201);
 }
 
 // ── POST /auth/login ───────────────────────────────────────────────────────────
 async function login(req: Request, res: Response) {
   const { emailOrHandle, password } = req.body;
   if (!emailOrHandle || !password) return fail(res, 400, "emailOrHandle and password are required");
-  console.log(emailOrHandle, password);
   const user = await prisma.users.findFirst({ where: { OR: [{ email: emailOrHandle }, { handle: emailOrHandle }] } });
   if (!user) return fail(res, 401, "Invalid credentials");
   if (user.isSuspended) return fail(res, 403, "Account suspended");
@@ -137,8 +136,8 @@ async function login(req: Request, res: Response) {
   const { accessToken, refreshToken } = issueTokens(user);
   await storeRefreshToken(user.id, refreshToken, { ip: req.ip, ua: req.headers["user-agent"] });
 
-  authCookies.setAuthCookies(res, { accessToken, refreshToken });
-  return ok(res, { user: publicUser(toSnakeUser(user)) });
+  const csrfToken = authCookies.setAuthCookies(res, { accessToken, refreshToken });
+  return ok(res, { user: publicUser(toSnakeUser(user)), csrfToken });
 }
 
 // ── POST /auth/refresh ─────────────────────────────────────────────────────────
@@ -168,7 +167,13 @@ async function logout(req: Request, res: Response) {
 // ── GET /auth/me ───────────────────────────────────────────────────────────────
 async function me(req: AuthedRequest, res: Response) {
   const user = await prisma.users.findUnique({ where: { id: req.user.id } });
-  return ok(res, { user: publicUser(toSnakeUser(user)) });
+  // Echoes the CSRF cookie back in the body so the frontend can restore its
+  // in-memory copy on page load — the browser attaches vyl_csrf to this
+  // request automatically (SameSite=None + credentials: include), but the
+  // frontend's JS can't read it directly cross-origin in production (see
+  // authCookies.ts's setAuthCookies for why).
+  const csrfToken = req.cookies?.[authCookies.CSRF_COOKIE] || null;
+  return ok(res, { user: publicUser(toSnakeUser(user)), csrfToken });
 }
 
 // ── POST /auth/change-password ─────────────────────────────────────────────────

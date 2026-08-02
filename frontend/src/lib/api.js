@@ -11,35 +11,38 @@
 //    with credentials for the real frontend origin (CLIENT_ORIGIN).
 //  - Sends the httpOnly vyl_at/vyl_rt session cookies automatically
 //    (credentials: "include") — tokens are never touched by JS
-//  - Attaches the CSRF double-submit token (read from the non-httpOnly
-//    vyl_csrf cookie) on every mutating request
+//  - Attaches the CSRF double-submit token on every mutating request. Kept
+//    in memory rather than read from document.cookie: in production the
+//    vyl_csrf cookie belongs to the backend's origin (cross-origin from the
+//    frontend's page), and document.cookie can never read a cookie that
+//    belongs to a different origin, full stop — no flag changes that. The
+//    backend hands the token back in the JSON body instead (login/register/
+//    me responses), which works regardless of origin.
 //  - On 401, tries to refresh once, retries the request, then logs out
 //  - Always returns { ok, data } or { ok: false, error } to callers
 // ════════════════════════════════════════════════════════════════════════════
 
 const BASE = import.meta.env.DEV ? "/api" : (import.meta.env.VITE_BACKEND_URL || "/api");
 
-function getCsrfToken() {
-  const match = document.cookie.match(/(?:^|;\s*)vyl_csrf=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
+let _csrfToken = null;
+export function setCsrfToken(token) { _csrfToken = token || null; }
 
 let _onLogout = null;
 export function registerLogoutHandler(fn) { _onLogout = fn; }
 
 async function rawFetch(path, opts = {}) {
   const method = (opts.method || "GET").toUpperCase();
-  const csrfToken = method !== "GET" ? getCsrfToken() : null;
   const res = await fetch(BASE + path, {
     ...opts,
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+      ...(method !== "GET" && _csrfToken ? { "X-CSRF-Token": _csrfToken } : {}),
       ...opts.headers,
     },
   });
   const json = await res.json().catch(() => null);
+  if (json?.data?.csrfToken) setCsrfToken(json.data.csrfToken);
   return { status: res.status, json };
 }
 

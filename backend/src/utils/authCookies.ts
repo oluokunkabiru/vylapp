@@ -37,13 +37,20 @@ function baseCookieOpts() {
   };
 }
 
-function setAuthCookies(res: Response, tokens: { accessToken: string; refreshToken: string }) {
+// Returns the generated CSRF token so callers can also hand it back in the
+// JSON response body (see auth.controller.ts) — required in production,
+// where frontend and backend are different origins: document.cookie can
+// never read a cookie set by a different origin no matter its flags, so
+// the double-submit pattern needs the token available some other way for
+// the frontend to echo back as X-CSRF-Token.
+function setAuthCookies(res: Response, tokens: { accessToken: string; refreshToken: string }): string {
   const opts = baseCookieOpts();
   const csrfToken = crypto.randomHex(24);
 
   res.cookie(ACCESS_COOKIE, tokens.accessToken, { ...opts, path: "/", maxAge: ACCESS_MAX_AGE_MS });
   res.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...opts, path: "/auth", maxAge: REFRESH_MAX_AGE_MS });
   res.cookie(CSRF_COOKIE, csrfToken, { ...opts, httpOnly: false, path: "/", maxAge: REFRESH_MAX_AGE_MS });
+  return csrfToken;
 }
 
 // Used by /auth/refresh — only the access token is reissued, refresh/CSRF
