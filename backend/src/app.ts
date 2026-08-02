@@ -36,13 +36,16 @@ function createApp() {
   // Cookie-based web auth + credentialed CORS can never work with a wildcard
   // origin (browsers reject the combination outright) — fail loudly at boot
   // rather than have auth silently break in production.
-  if (env.nodeEnv === "production" && env.clientOrigin === "*") {
-    throw new Error("CLIENT_ORIGIN must be set to a concrete origin in production (required for credentialed cookie auth)");
+  if (env.nodeEnv === "production" && env.clientOrigins.includes("*")) {
+    throw new Error("CLIENT_ORIGIN must be set to one or more concrete origins in production (required for credentialed cookie auth)");
   }
 
   const app = express();
 
-  app.use(cors({ origin: env.clientOrigin, credentials: true }));
+  // CLIENT_ORIGIN may be a comma-separated list — cors() matches the
+  // request's Origin header against every entry and reflects back only
+  // that one, same effect as an explicit multi-origin allow-list.
+  app.use(cors({ origin: env.clientOrigins.includes("*") ? "*" : env.clientOrigins, credentials: true }));
   app.use(cookieParser());
   app.use(csrfProtection);
   app.use(express.json({ limit: "2mb" }));

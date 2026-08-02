@@ -6,6 +6,12 @@ function get(name: string, fallback?: string): string {
   return v;
 }
 
+// CLIENT_ORIGIN accepts one origin or a comma-separated list, e.g.
+// "https://vylapp.com,https://www.vylapp.com,http://localhost:5173" — for
+// serving the same backend to more than one frontend origin (web + a
+// staging domain, apex + www, prod + local dev, etc).
+const clientOriginList = (process.env.CLIENT_ORIGIN || "*").split(",").map(s => s.trim()).filter(Boolean);
+
 const env = {
   port: parseInt(process.env.PORT || "4000", 10),
   nodeEnv: process.env.NODE_ENV || "development",
@@ -13,7 +19,11 @@ const env = {
   pgSsl: process.env.PGSSL === "true",
   jwtSecret: get("JWT_SECRET", "dev_insecure_secret_change_me"),
   refreshSecret: get("REFRESH_SECRET", "dev_insecure_refresh_secret_change_me"),
-  clientOrigin: process.env.CLIENT_ORIGIN || "*",
+  // The full allow-list, for CORS / Socket.IO (supports multiple origins).
+  clientOrigins: clientOriginList,
+  // The single primary origin — used anywhere a single concrete URL is
+  // needed (OAuth redirects, email links). Always the first entry.
+  clientOrigin: clientOriginList[0] || "*",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
   mailHost: process.env.MAIL_HOST || "127.0.0.1",
   mailPort: parseInt(process.env.MAIL_PORT || "1025", 10),

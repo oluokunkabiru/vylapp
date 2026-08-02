@@ -8,7 +8,7 @@ import logger from "./utils/logger";
 
 const app = createApp();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: env.clientOrigin, credentials: true } });
+const io = new Server(server, { cors: { origin: env.clientOrigins.includes("*") ? "*" : env.clientOrigins, credentials: true } });
 
 attachSockets(io);
 app.set("io", io); // lets routes emit real-time events, e.g. req.app.get("io")
