@@ -126,7 +126,7 @@ async function register(req: Request, res: Response) {
 async function login(req: Request, res: Response) {
   const { emailOrHandle, password } = req.body;
   if (!emailOrHandle || !password) return fail(res, 400, "emailOrHandle and password are required");
-
+  console.log(emailOrHandle, password);
   const user = await prisma.users.findFirst({ where: { OR: [{ email: emailOrHandle }, { handle: emailOrHandle }] } });
   if (!user) return fail(res, 401, "Invalid credentials");
   if (user.isSuspended) return fail(res, 403, "Account suspended");
