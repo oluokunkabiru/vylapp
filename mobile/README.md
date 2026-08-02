@@ -5,8 +5,15 @@ Flutter 3.22 (Dart 3.3) — iOS + Android.
 ## Environment setup
 
 All configuration is in `.env` (development) and `.env.production` (release).
-These are JSON files consumed by Flutter's native `--dart-define-from-file` flag.
-No extra packages required — values are baked at compile time.
+These are plain `KEY=VALUE` files consumed by Flutter's native
+`--dart-define-from-file` flag. No extra packages required — values are
+baked at compile time, which means the flag MUST be passed every time the
+app is run or built, including from an IDE's run/debug button — otherwise
+every value silently falls back to its hardcoded default in
+`lib/core/constants/api_constants.dart`. Already wired up in
+`.vscode/launch.json` and `.idea/runConfigurations/main_dart.xml` — if
+you're using a different run method, pass `--dart-define-from-file=.env`
+yourself.
 
 ```bash
 # Development (simulator or physical device)
