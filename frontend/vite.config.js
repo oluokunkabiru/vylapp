@@ -7,6 +7,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
 
   const backendUrl = env.BACKEND_BASE_URL;
+  console.log("Backend url", backendUrl);
+  
 
   // Dev-only: the built app (lib/api.js, lib/socket.js) talks to
   // VITE_BACKEND_URL directly in production — no proxy exists once it's
