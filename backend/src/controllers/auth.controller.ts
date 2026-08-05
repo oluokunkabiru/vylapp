@@ -153,7 +153,12 @@ async function refresh(req: Request, res: Response) {
 
   const accessToken = crypto.signJWT({ sub: record.userId, handle: record.users.handle }, env.jwtSecret, ACCESS_TTL_SEC);
   authCookies.setAccessCookie(res, accessToken);
-  return ok(res, { refreshed: true });
+  // Echoes the existing csrf cookie back — refresh doesn't rotate it, but
+  // this is often the very first response of a page load (expired access
+  // token → refresh), so it's also the frontend's first chance to recover
+  // its in-memory copy (see lib/api.js and this file's csrf.ts exemption).
+  const csrfToken = req.cookies?.[authCookies.CSRF_COOKIE] || null;
+  return ok(res, { refreshed: true, csrfToken });
 }
 
 // ── POST /auth/logout ──────────────────────────────────────────────────────────
