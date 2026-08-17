@@ -14,6 +14,7 @@
 //  transparently upgrades to real AI translation for anything outside the
 //  dictionary. Both paths are exposed through the same function signature.
 // ════════════════════════════════════════════════════════════════════════════
+import crypto from "crypto";
 import env from "../config/env";
 import prisma from "../config/prisma";
 
@@ -128,6 +129,41 @@ function organicFallback(text: string, fromLang: string, toLang: string) {
   return { text, method: "untranslated", note: "Not yet in the organic dictionary for this phrase" };
 }
 
+// ── T-01: the actual translation cache ──────────────────────────────────────
+// Keyed on (hash of source text, target language) — NOT on which content
+// item the text came from. Two different vibes with identical text (a
+// repost typed out again, a common greeting, the same message forwarded to
+// a different conversation) share one cached Claude result instead of each
+// paying for their own call. This sits underneath the per-content caches
+// (vibe_translations / content_translations below), which still exist for
+// their own item-shaped lookups — this cache is what makes a Claude call
+// actually rare instead of once per (item, lang) pair.
+function hashText(text: string): string {
+  return crypto.createHash("sha256").update(text.trim()).digest("hex");
+}
+
+async function getCachedTranslation(text: string, toLang: string) {
+  const textHash = hashText(text);
+  return prisma.translationCache.findUnique({ where: { textHash_targetLang: { textHash, targetLang: toLang } } });
+}
+
+function recordCacheHit(textHash: string, targetLang: string): void {
+  // Fire-and-forget — a missed increment under race is not worth blocking a translation response for.
+  prisma.translationCache.update({
+    where: { textHash_targetLang: { textHash, targetLang } },
+    data: { hitCount: { increment: 1 } },
+  }).catch(() => {});
+}
+
+async function setCachedTranslation(text: string, fromLang: string, toLang: string, content: string, method: string) {
+  const textHash = hashText(text);
+  await prisma.translationCache.upsert({
+    where: { textHash_targetLang: { textHash, targetLang: toLang } },
+    create: { textHash, targetLang: toLang, sourceLang: fromLang, content, method },
+    update: { content, method },
+  }).catch(() => {});
+}
+
 async function claudeTranslate(text: string, fromName: string, toName: string, context = "post"): Promise<string> {
   // SECURITY: The system prompt establishes Claude as a pure translation machine.
   // User content is wrapped in <source_text> tags — treated as DATA, not INSTRUCTION.
@@ -198,11 +234,19 @@ const TranslationEngine = {
   // still understands fine (it knows ISO codes and language names alike).
   async translate(text: string, fromLang: string, toLang: string, context = "post", { allowAI = true }: { allowAI?: boolean } = {}) {
     if (fromLang === toLang) return { text, method: "passthrough" };
+
+    const cached = await getCachedTranslation(text, toLang).catch(() => null);
+    if (cached) {
+      recordCacheHit(cached.textHash, toLang);
+      return { text: cached.content, method: cached.method };
+    }
+
     if (allowAI && env.anthropicApiKey) {
       try {
         const fromName = this.getLang(fromLang)?.name || fromLang;
         const toName = this.getLang(toLang)?.name || toLang;
         const out = await claudeTranslate(text, fromName, toName, context);
+        await setCachedTranslation(text, fromLang, toLang, out, "claude");
         return { text: out, method: "claude" };
       } catch (e) {
         return organicFallback(text, fromLang, toLang); // graceful degrade, never throws to the caller

@@ -2030,6 +2030,27 @@ model ContentTranslations {
   @@map("content_translations")
 }
 
+// T-01: the actual translation cache. content_translations / vibe_translations
+// above are keyed per (content item, lang) — two different vibes with
+// identical text (a repost, a common greeting, the same forwarded message)
+// each paid for their own Claude call. This is keyed on the source text
+// itself, so identical text anywhere on the platform shares one cached
+// result regardless of what content type or item it came from. Checked
+// inside TranslationEngine.translate() before any AI call is made.
+model TranslationCache {
+  textHash   String   @map("text_hash") // sha256(normalized source text)
+  targetLang String   @map("target_lang")
+  sourceLang String?  @map("source_lang")
+  content    String
+  method     String
+  hitCount   Int      @default(0) @map("hit_count")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@id([textHash, targetLang])
+  @@map("translation_cache")
+}
+
 model VibeTranslations {
   vibeId     String   @map("vibe_id") @db.Uuid
   targetLang String   @map("target_lang")
