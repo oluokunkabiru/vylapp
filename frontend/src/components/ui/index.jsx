@@ -194,6 +194,73 @@ export function Empty({ emoji = "✦", title, sub }) {
   );
 }
 
+// ── Error state (D-09/D-11) — the state most screens skip, leaving a
+// failed fetch to either hang on a spinner forever or fail silently. Same
+// visual language as Empty (same layout, same weight/colour hierarchy) so
+// the two read as siblings rather than two different design systems.
+export function ErrorState({ title = "Something went wrong", sub, onRetry }) {
+  return (
+    <div style={{ padding:"48px 24px", textAlign:"center", display:"flex", flexDirection:"column", alignItems:"center", gap:12 }}>
+      <span style={{ fontSize:42 }}>⚠</span>
+      <div style={{ fontWeight:800, fontSize:16, color:"var(--text)" }}>{title}</div>
+      {sub && <div style={{ fontSize:14, color:"var(--text2)", maxWidth:260 }}>{sub}</div>}
+      {onRetry && <GhostButton onClick={onRetry} style={{ marginTop:4 }}>Try again</GhostButton>}
+    </div>
+  );
+}
+
+// ── Skeleton (D-09) — shaped like the content it precedes, not a generic
+// spinner, so the layout is recognisable before it fills. Pulses using the
+// shared motion tokens rather than a hardcoded duration.
+export function Skeleton({ width = "100%", height = 16, radius = "var(--radius-sm)", circle, style: sx }) {
+  return (
+    <div style={{
+      width: circle ? height : width, height, borderRadius: circle ? "50%" : radius,
+      background: "var(--bg3)", position:"relative", overflow:"hidden", flexShrink:0, ...sx,
+    }}>
+      <div className="vy-skeleton-sweep" style={{
+        position:"absolute", inset:0,
+        background:"linear-gradient(90deg, transparent, var(--bg4), transparent)",
+      }} />
+    </div>
+  );
+}
+
+// Shaped like the actual PostCard (D-22: the most-repeated element) so the
+// feed's own layout — avatar, name, media block, caption lines — is what
+// a person recognises while it loads, instead of a generic shimmer block.
+export function SkeletonPostCard() {
+  return (
+    <div style={{ borderBottom:"1px solid var(--border2)", paddingBottom:14 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px" }}>
+        <Skeleton circle height={38} />
+        <div style={{ flex:1, display:"flex", flexDirection:"column", gap:6 }}>
+          <Skeleton width={120} height={13} />
+          <Skeleton width={70} height={11} />
+        </div>
+      </div>
+      <Skeleton width="100%" height={0} style={{ aspectRatio:"4/5", borderRadius:0 }} />
+      <div style={{ padding:"14px 16px 0", display:"flex", flexDirection:"column", gap:8 }}>
+        <Skeleton width="90%" height={14} />
+        <Skeleton width="60%" height={14} />
+      </div>
+    </div>
+  );
+}
+
+// ── Card (D-08) — generic elevated container for anything that isn't a
+// post (settings rows, summary panels, ...). Post cards keep their own
+// bespoke layout in PostCard.jsx rather than wrapping this.
+export function Card({ children, style: sx, onClick }) {
+  return (
+    <div onClick={onClick} style={{
+      background:"var(--bg2)", border:"1px solid var(--border2)",
+      borderRadius:"var(--radius-lg)", padding:16,
+      cursor: onClick ? "pointer" : "default", ...sx,
+    }}>{children}</div>
+  );
+}
+
 // ── Number formatter ──────────────────────────────────────────────────────
 export function numFmt(n) {
   if (!n) return "0";

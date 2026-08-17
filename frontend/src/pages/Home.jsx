@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { StoriesBar, StoryViewer } from "../components/feed/StoriesBar.jsx";
 import PostCard from "../components/feed/PostCard.jsx";
-import { Spinner, Empty } from "../components/ui/index.jsx";
+import { Spinner, Empty, ErrorState, SkeletonPostCard } from "../components/ui/index.jsx";
 
 export default function Home({ lang }) {
   const [vibes, setVibes] = useState([]);
@@ -10,17 +10,24 @@ export default function Home({ lang }) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState(false);
   const [storyUser, setStoryUser] = useState(null);
   const sentinelRef = useRef(null);
 
   const loadVibes = useCallback(async (p = 0) => {
     if (p === 0) setLoading(true); else setLoadingMore(true);
+    if (p === 0) setError(false);
     try {
       const { vibes: newVibes, hasMore: more } = await api.get(`/vibes/feed?page=${p}&pageSize=10&lang=${lang}`);
       if (p === 0) setVibes(newVibes || []);
       else setVibes(v => [...v, ...(newVibes || [])]);
       setHasMore(!!more);
-    } catch {}
+    } catch {
+      // D-09/D-11: a failed fetch used to fail silently, leaving the user
+      // staring at whatever was already on screen (or an infinite spinner
+      // on first load) with no way to know something broke or to retry.
+      if (p === 0) setError(true);
+    }
     finally { setLoading(false); setLoadingMore(false); }
   }, [lang]);
 
@@ -45,10 +52,17 @@ export default function Home({ lang }) {
     setVibes(v => [vibe, ...v]);
   }, []);
 
+  // D-11 five-state standard for this screen: loading (skeleton, shaped
+  // like the content — D-09) → error (retry) → empty → offline (not yet
+  // distinguished from generic error — see plan) → success.
   if (loading) return (
-    <div style={{ display:"flex", justifyContent:"center", padding:60 }}>
-      <Spinner size={36} />
-    </div>
+    <>
+      <SkeletonPostCard /><SkeletonPostCard /><SkeletonPostCard />
+    </>
+  );
+
+  if (error && vibes.length === 0) return (
+    <ErrorState title="Couldn't load your feed" sub="Check your connection and try again." onRetry={() => loadVibes(0)} />
   );
 
   return (
