@@ -4,7 +4,7 @@ import { StoriesBar, StoryViewer } from "../components/feed/StoriesBar.jsx";
 import PostCard from "../components/feed/PostCard.jsx";
 import { Spinner, Empty, ErrorState, SkeletonPostCard } from "../components/ui/index.jsx";
 
-export default function Home({ lang }) {
+export default function Home({ lang, newVibe }) {
   const [vibes, setVibes] = useState([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -13,6 +13,14 @@ export default function Home({ lang }) {
   const [error, setError] = useState(false);
   const [storyUser, setStoryUser] = useState(null);
   const sentinelRef = useRef(null);
+
+  // A post made via the global "+" composer lands here — deduped by id so
+  // a later refetch (e.g. after a language switch) that already contains
+  // it doesn't double it up.
+  useEffect(() => {
+    if (!newVibe) return;
+    setVibes(v => v.some(x => x.id === newVibe.id) ? v : [newVibe, ...v]);
+  }, [newVibe]);
 
   const loadVibes = useCallback(async (p = 0) => {
     if (p === 0) setLoading(true); else setLoadingMore(true);

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
 import { getSocket } from "./lib/socket.js";
+import { isRtl } from "./lib/languages.js";
 
 import AdminGuard from "./pages/admin/AdminGuard.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
@@ -77,14 +78,25 @@ function InnerApp() {
   const [lang, setLang] = useState(() => localStorage.getItem("vyl_lang") || user?.contentLanguages?.[0] || "en");
   const [notifCount, setNotifCount] = useState(0);
   const [msgCount, setMsgCount] = useState(0);
+  // V-16-adjacent: the global "+" composer used to post successfully (toast
+  // and all) but the new vibe never reached Home's feed — onCreated was a
+  // no-op, so the only way to see your own post was a manual refresh. Home
+  // is a separate component instance behind a <Route>, so there's no direct
+  // handle to its state; passed down as a prop instead, and Home dedupes by
+  // id so a later refetch that already contains it doesn't double it up.
+  const [justCreated, setJustCreated] = useState(null);
 
   useEffect(() => { localStorage.setItem("vyl_lang", lang); }, [lang]);
 
-  // Keep <html lang> in sync so screen readers and the browser's own
-  // language handling (spellcheck, translate prompts, font shaping) match
-  // what's actually on screen. Not flipping `dir` yet — see App.jsx notes
-  // near the language selector for why RTL needs its own pass.
-  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+  // Keep <html lang>/<html dir> in sync with the reading language so
+  // screen readers, spellcheck/translate prompts, and font shaping match
+  // what's actually on screen. `dir` here only flips the root default —
+  // it doesn't retroactively mirror layouts built assuming LTR (nav
+  // order, icon direction, swipe gestures); that's D-15's remaining scope.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = isRtl(lang) ? "rtl" : "ltr";
+  }, [lang]);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 860);
@@ -108,7 +120,7 @@ function InnerApp() {
   const mainContent = (
     <Routes>
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/" element={<Home {...commonProps} />} />
+      <Route path="/" element={<Home {...commonProps} newVibe={justCreated} />} />
       <Route path="/explore" element={<Explore />} />
       <Route path="/spaces" element={<SpacesPage />} />
       <Route path="/learn" element={<LearnHome />} />
@@ -157,7 +169,8 @@ function InnerApp() {
       {createOpen && (
         <CreateModal
           onClose={() => setCreateOpen(false)}
-          onCreated={() => {}}
+          onCreated={vibe => setJustCreated(vibe)}
+          defaultLang={lang}
         />
       )}
     </div>

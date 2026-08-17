@@ -147,7 +147,7 @@ async function getOne(req: AuthedRequest, res: Response) {
 
 // ── POST /vibes — create a vibe (post / reply / quote) ───────────────────
 async function create(req: AuthedRequest, res: Response) {
-  const { content, category, tags, replyTo, quoteOf, eventTitle, eventTime } = req.body;
+  const { content, category, tags, replyTo, quoteOf, eventTitle, eventTime, language: declaredLanguage } = req.body;
   if (!content?.trim()) return fail(res, 400, "content is required");
   if (content.length > 500) return fail(res, 400, "content must be 500 characters or fewer");
 
@@ -156,7 +156,15 @@ async function create(req: AuthedRequest, res: Response) {
     return fail(res, 422, `Post blocked: ${moderation.label}`, { moderation });
   }
 
-  const language = await LanguageDetector.detect(content, "en");
+  // T-10: what the author says the post is written in wins over the
+  // statistical detector — franc-min is unreliable on short text, and a
+  // detector can't know which of two languages a code-switched post is
+  // "really" in. Only trust it if it's a language we actually recognize;
+  // an unrecognized/garbage value falls through to auto-detect rather
+  // than getting stored verbatim.
+  const language = (typeof declaredLanguage === "string" && TranslationEngine.getLang(declaredLanguage))
+    ? declaredLanguage
+    : await LanguageDetector.detect(content, "en");
 
   const vibe = await prisma.vibes.create({
     data: {
