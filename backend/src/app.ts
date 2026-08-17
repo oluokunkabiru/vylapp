@@ -79,32 +79,39 @@ function createApp() {
   // putting a reverse-proxy allowlist or basic auth in front of it.
   app.get("/metrics", metrics.metricsHandler);
 
-  // ── Existing routes ────────────────────────────────────────────────────────
-  app.use("/auth",          authRoutes);
-  app.use("/users",         userRoutes);
-  app.use("/onboarding",    onboardingRoutes);
-  app.use("/vibes",         vibesRoutes);
-  app.use("/spaces",        spacesRoutes);
-  app.use("/messages",      messagingRoutes);
-  app.use("/notifications", notificationsRoutes);
-  app.use("/creator",       creatorRoutes);
-  app.use("/subscriptions", subscriptionsRoutes);
-  app.use("/search",        searchRoutes);
-  app.use("/moderation",    moderationRoutes);
-  app.use("/autopilot",     autopilotRoutes);
-  app.use("/analytics",     analyticsRoutes);
-  app.use("/translate",     translateRoutes);
-  app.use("/raven",         ravenRoutes);
+  // ── API surface (B1: versioned so a shipped mobile build never breaks) ─────
+  // Every route is mounted on this router once, then the router itself is
+  // mounted at both the bare path (unversioned, kept for every client built
+  // before this change) and under /v1 (the path new work should target).
+  // Nothing moves or gets removed here — this is purely additive. Once every
+  // client is confirmed on /v1, the bare mount can be dropped in its own
+  // change; until then both resolve to the exact same handlers.
+  const apiRouter = express.Router();
+  apiRouter.use("/auth",          authRoutes);
+  apiRouter.use("/users",         userRoutes);
+  apiRouter.use("/onboarding",    onboardingRoutes);
+  apiRouter.use("/vibes",         vibesRoutes);
+  apiRouter.use("/spaces",        spacesRoutes);
+  apiRouter.use("/messages",      messagingRoutes);
+  apiRouter.use("/notifications", notificationsRoutes);
+  apiRouter.use("/creator",       creatorRoutes);
+  apiRouter.use("/subscriptions", subscriptionsRoutes);
+  apiRouter.use("/search",        searchRoutes);
+  apiRouter.use("/moderation",    moderationRoutes);
+  apiRouter.use("/autopilot",     autopilotRoutes);
+  apiRouter.use("/analytics",     analyticsRoutes);
+  apiRouter.use("/translate",     translateRoutes);
+  apiRouter.use("/raven",         ravenRoutes);
+  apiRouter.use("/learn",         learnRoutes);
+  apiRouter.use("/forum",         forumRoutes);
+  // RBAC management (super_admin / platform_admin only) and the admin
+  // dashboard API are versioned the same way for consistency, even though
+  // only internal tooling calls them today.
+  apiRouter.use("/rbac",  rbacRoutes);
+  apiRouter.use("/admin", adminRoutes);
 
-  // ── New routes: Learn pillar and Forum ────────────────────────────────────
-  app.use("/learn", learnRoutes);
-  app.use("/forum", forumRoutes);
-
-  // ── RBAC management API (super_admin / platform_admin only) ───────────────
-  app.use("/rbac",  rbacRoutes);
-
-  // ── Admin dashboard API (admin.access + granular admin.* permissions) ─────
-  app.use("/admin", adminRoutes);
+  app.use(apiRouter);
+  app.use("/v1", apiRouter);
 
   // ── Dev utilities ────────────────────────────────────────────────────────
   // Genuinely dev-only: /dev/users leaks user PII unauthenticated, and the

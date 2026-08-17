@@ -16,10 +16,10 @@ export default function Home({ lang }) {
   const loadVibes = useCallback(async (p = 0) => {
     if (p === 0) setLoading(true); else setLoadingMore(true);
     try {
-      const { vibes: newVibes } = await api.get(`/vibes/feed?page=${p}&pageSize=10&lang=${lang}`);
+      const { vibes: newVibes, hasMore: more } = await api.get(`/vibes/feed?page=${p}&pageSize=10&lang=${lang}`);
       if (p === 0) setVibes(newVibes || []);
       else setVibes(v => [...v, ...(newVibes || [])]);
-      setHasMore((newVibes || []).length === 10);
+      setHasMore(!!more);
     } catch {}
     finally { setLoading(false); setLoadingMore(false); }
   }, [lang]);

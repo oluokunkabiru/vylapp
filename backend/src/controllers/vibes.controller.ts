@@ -101,7 +101,12 @@ async function feed(req: AuthedRequest, res: Response) {
   const withState = await attachViewerState(ranked, req.user?.id);
   const shaped = withState.map(({ row, state }) => shapeVibe(row, state));
   await translateVibesForViewer(shaped, req.query.lang as string, req.user?.id);
-  return ok(res, { vibes: shaped, page, pageSize });
+  // B1: additive field so the caller can tell "stop paginating" from "this
+  // page happens to be empty" without guessing from array length. Computed
+  // against the 100-row candidate window pulled above — real limit until
+  // V-02 replaces this offset scheme with cursor pagination (see plan).
+  const hasMore = (page + 1) * pageSize < rows.length;
+  return ok(res, { vibes: shaped, page, pageSize, hasMore });
 }
 
 // ── GET /vibes/category/:category — category feed (Explore filter chips) ─
