@@ -66,6 +66,50 @@
   --auth-accent-dim:   rgba(47,111,237,0.16);
   --auth-danger:       #E5484D;
   --auth-danger-dim:   rgba(229,72,77,0.14);
+
+  /* Type scale (D-01/D-02) — named by role, not by pixel size, so a role
+     can be re-tuned once instead of hunting every component that used to
+     hardcode "14px". line-height here is tuned for Latin; :lang() overrides
+     below widen it for scripts with taller ascenders/descenders (D-04) —
+     Ethiopic and Arabic run taller, Yoruba's sub-dots descend below the
+     baseline of a Latin-tuned line box and get clipped without more room. */
+  --text-display: 700 28px/1.2 var(--font);
+  --text-title:   700 18px/1.3 var(--font);
+  --text-body:    400 15px/1.55 var(--font);
+  --text-caption: 400 13px/1.4 var(--font);
+  --text-mono:    400 13px/1.5 var(--mono);
+  --line-body:    1.55;
+  --line-tall:    1.85; /* applied per-script below */
+
+  /* Motion (D-13) — named by intent, not by number, so "the duration used
+     for a sheet opening" can change everywhere at once. Respect
+     prefers-reduced-motion (below) rather than hardcoding these into
+     every transition individually. */
+  --duration-instant: 100ms; /* tap feedback — must land before any network call */
+  --duration-fast:    160ms; /* small state changes: toggle, chip select */
+  --duration-base:    240ms; /* sheets, dialogs, the translation reveal */
+  --duration-slow:    360ms; /* full-screen transitions */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0, 1);
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);
+}
+
+/* D-04 — line height accommodates the tallest and deepest script actually
+   in use, applied only where that script's text lives (via the lang/dir
+   attributes PostCard etc. now set), not globally. */
+:lang(ar), :lang(ur), :lang(fa), :lang(ps),
+:lang(am), :lang(ti),
+:lang(yo), :lang(ha) {
+  line-height: var(--line-tall);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-instant: 0ms;
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }

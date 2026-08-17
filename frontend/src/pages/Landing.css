@@ -277,7 +277,11 @@
 .lp-section--dark { background: var(--dark2); }
 .lp-section--tinted { background: var(--vio-pale); }
 .lp-section__inner { max-width: 1200px; margin: 0 auto; }
-.lp-section__label { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--vio); margin-bottom: 12px; }
+/* D-05: hierarchy from weight/size/colour, not uppercase — caps don't exist
+   in Arabic or Amharic, so anything built on them vanishes in half the
+   launch languages. This label already carried weight + colour; dropping
+   the transform keeps the same visual role without the Latin-only device. */
+.lp-section__label { font-size: 13px; font-weight: 800; color: var(--vio); margin-bottom: 12px; }
 .lp-section__h2 { font-size: clamp(32px, 4vw, 52px); font-weight: 900; letter-spacing: -1px; margin-bottom: 16px; line-height: 1.1; }
 .lp-section__sub { font-size: 16px; line-height: 1.7; color: var(--text2); max-width: 600px; margin-bottom: 60px; }
 

@@ -3,7 +3,7 @@ import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Avatar, VerifiedBadge, CategoryPill, TapIcon, ic, Ic, numFmt } from "../ui/index.jsx";
-import { LANG_NAMES } from "../../lib/languages.js";
+import { LANG_NAMES, isRtl } from "../../lib/languages.js";
 
 const CAT_GRADS = {
   TECH_VIBES:      "linear-gradient(135deg,#38BDF8,#7C3AED)",
@@ -117,7 +117,12 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
   const grad = CAT_GRADS[vibe.category] || CAT_GRADS.GENERAL;
   const emoji = CAT_EMOJI[vibe.category] || "✦";
   const translatedText = hasAutoTranslation ? vibe.translation.text : manualTranslatedText;
-  const caption = (isTranslationAvailable && !showOriginal) ? translatedText : vibe.content;
+  const showingTranslation = isTranslationAvailable && !showOriginal;
+  const caption = showingTranslation ? translatedText : vibe.content;
+  // The lang/dir actually being displayed right now (D-02 per-script line
+  // height, D-15 RTL, D-20 screen readers) — swaps when the translation
+  // reveal toggles between original and translated text.
+  const captionLang = showingTranslation ? lang : (vibe.language || "en");
   const timeAgo = vibe.createdAt ? timeString(vibe.createdAt) : "";
 
   return (
@@ -183,7 +188,7 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
 
         <div style={{ marginTop:4, fontSize:14, lineHeight:1.55 }}>
           <span style={{ fontWeight:800 }}>@{vibe.author?.handle}</span>{" "}
-          <span style={{ color:"var(--text)" }}>{caption}</span>
+          <span lang={captionLang} dir={isRtl(captionLang) ? "rtl" : "ltr"} style={{ color:"var(--text)" }}>{caption}</span>
         </div>
 
         {/* Provenance — makes translation visible as it happens, not just

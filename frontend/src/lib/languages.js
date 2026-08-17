@@ -83,3 +83,12 @@ export const LANG_NAMES = Object.fromEntries(LANGUAGES.map(l => [l.code, l.name]
 // A short, curated subset for compact UI (TopBar's pill selector) — the
 // full list is better suited to a scrollable menu (Sidebar).
 export const COMMON_LANGUAGE_CODES = ["en", "es", "fr", "pt", "ar", "hi", "sw", "yo", "ha", "am", "zh", "ur"];
+
+// D-15 — right-to-left languages among the launch set. Used to set dir="rtl"
+// on the specific element holding that text (not the whole page — a Yoruba
+// reader viewing an Arabic post's translation still reads their own UI
+// left-to-right; only the foreign-script content itself mirrors).
+const RTL_CODES = new Set(["ar", "ur", "fa", "ps"]);
+export function isRtl(code) {
+  return RTL_CODES.has(code);
+}
