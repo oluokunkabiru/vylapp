@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
-import { Avatar, VerifiedBadge, PrimaryButton, GhostButton, Spinner, Empty, Ic, ic, numFmt } from "../components/ui/index.jsx";
+import { Avatar, VerifiedBadge, PrimaryButton, GhostButton, Spinner, Empty, Ic, ic, numFmt, Tabs } from "../components/ui/index.jsx";
 
 const CAT_GRADS = { TECH_VIBES:"linear-gradient(135deg,#38BDF8,#7C3AED)", GLOBAL_CONNECT:"linear-gradient(135deg,#10F5A0,#2DD4BF)", CREATIVE_LEARN:"linear-gradient(135deg,#FFB830,#FF6B6B)", HUMAN_POTENTIAL:"linear-gradient(135deg,#A78BFA,#7C3AED)", SPACES_INVITE:"linear-gradient(135deg,#FF6B6B,#FFB830)", GENERAL:"linear-gradient(135deg,#7C3AED,#2DD4BF)" };
 const CAT_EMOJI = { TECH_VIBES:"⚡", GLOBAL_CONNECT:"🌍", CREATIVE_LEARN:"🎨", HUMAN_POTENTIAL:"🧠", SPACES_INVITE:"🎙️", GENERAL:"✦" };
@@ -147,17 +147,11 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display:"flex", borderTop:"1px solid var(--border2)", borderBottom:"1px solid var(--border2)" }}>
-        {[["vibes","Posts"], isMe && ["saved","Saved"]].filter(Boolean).map(([k,l]) => (
-          <button key={k} onClick={()=>setTab(k)} style={{
-            flex:1, textAlign:"center", padding:"12px 0", fontWeight:800, fontSize:13.5, border:"none",
-            background:"transparent", cursor:"pointer",
-            color: tab===k ? "var(--text)" : "var(--text3)",
-            borderBottom: tab===k ? "2px solid var(--violet)" : "2px solid transparent",
-          }}>{l.toUpperCase()}</button>
-        ))}
-      </div>
+      <Tabs
+        items={[{ key:"vibes", label:"Posts" }, isMe && { key:"saved", label:"Saved" }].filter(Boolean)}
+        active={tab}
+        onChange={setTab}
+      />
 
       {/* Grid */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:2, padding:"2px" }}>

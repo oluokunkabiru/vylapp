@@ -248,6 +248,27 @@ export function SkeletonPostCard() {
   );
 }
 
+// ── Tabs (D-10) — segmented nav shared across Profile/Learn/Creator/Raven,
+// which each rolled their own before this. Hierarchy from weight/colour/the
+// underline, never from uppercase (D-05) — labels render exactly as given,
+// so translated tab names never silently lose their meaning in scripts
+// without capitals.
+export function Tabs({ items, active, onChange }) {
+  return (
+    <div style={{ display:"flex", borderTop:"1px solid var(--border2)", borderBottom:"1px solid var(--border2)" }}>
+      {items.map(({ key, label }) => (
+        <button key={key} onClick={() => onChange(key)} style={{
+          flex:1, textAlign:"center", padding:"12px 0", fontWeight:800, fontSize:13.5, border:"none",
+          background:"transparent", cursor:"pointer",
+          color: active === key ? "var(--text)" : "var(--text3)",
+          borderBottom: active === key ? "2px solid var(--violet)" : "2px solid transparent",
+          transition: "color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard)",
+        }}>{label}</button>
+      ))}
+    </div>
+  );
+}
+
 // ── Card (D-08) — generic elevated container for anything that isn't a
 // post (settings rows, summary panels, ...). Post cards keep their own
 // bespoke layout in PostCard.jsx rather than wrapping this.

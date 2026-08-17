@@ -114,9 +114,9 @@ function RunRow({ run }) {
           ~{numFmt(run.total_likes_est)} likes est.
         </div>
         <div style={{
-          fontSize: 11, fontWeight: 800, letterSpacing: 0.4, marginTop: 3,
+          fontSize: 11, fontWeight: 800, marginTop: 3,
           color: statusColor,
-        }}>{run.status.toUpperCase()}</div>
+        }}>{run.status}</div>
       </div>
     </div>
   );

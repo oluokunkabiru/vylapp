@@ -92,3 +92,25 @@ const RTL_CODES = new Set(["ar", "ur", "fa", "ps"]);
 export function isRtl(code) {
   return RTL_CODES.has(code);
 }
+
+// D-06 — numeral system per locale. The rule ("decide per locale, apply
+// consistently, never mix them in one view") matters more than any single
+// choice, so the policy here is deliberately conservative: Western digits
+// (0-9) are the default for every language, including Arabic and Urdu,
+// where digital-native content overwhelmingly uses Western digits already
+// (this platform, X, Instagram) even though Eastern Arabic-Indic (٠-٩) is
+// still correct in some formal/print Gulf contexts. Persian is the one
+// launch language where Extended Arabic-Indic digits (۰-۹, distinct from
+// the Arabic set) are the actual digital norm, not just a formal register,
+// so it's the one override. Add more overrides here if correction data
+// (T-21) shows a language's speakers consistently want otherwise — don't
+// guess further ahead of that signal.
+const EXTENDED_ARABIC_DIGITS = "۰۱۲۳۴۵۶۷۸۹"; // Persian digit forms, distinct from Arabic's ٠-٩
+const NUMERAL_OVERRIDES = { fa: EXTENDED_ARABIC_DIGITS };
+
+export function formatNumeral(value, langCode) {
+  const digits = NUMERAL_OVERRIDES[langCode];
+  const str = String(value);
+  if (!digits) return str;
+  return str.replace(/[0-9]/g, d => digits[Number(d)]);
+}

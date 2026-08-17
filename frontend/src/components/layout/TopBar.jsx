@@ -48,8 +48,10 @@ export default function TopBar({ notifCount, msgCount, lang, setLang }) {
         borderRadius:"var(--radius-pill)", padding:"5px 10px", fontSize:12, fontWeight:700, cursor:"pointer",
         marginRight:4,
       }}>
+        {/* D-05/0.4-rule-9: each language in its own script and name, not
+            an uppercased Latin code — "language is content, not chrome". */}
         {TOPBAR_LANGUAGES.map(l=>(
-          <option key={l.code} value={l.code} style={{background:"var(--bg2)"}}>{l.code.toUpperCase()}</option>
+          <option key={l.code} value={l.code} style={{background:"var(--bg2)"}}>{l.nativeName}</option>
         ))}
       </select>
       {user && <>
