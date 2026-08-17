@@ -1,6 +1,7 @@
-import express from "express";
+import express, { Request } from "express";
 import asyncHandler from "../middleware/asyncHandler";
 import authMiddleware from "../middleware/auth";
+import { requireFeature } from "../middleware/featureFlag";
 import spacesController from "../controllers/spaces.controller";
 
 const { requireAuth, optionalAuth } = authMiddleware;
@@ -11,7 +12,15 @@ const router = express.Router();
 router.get("/", optionalAuth, asyncHandler(spacesController.list));
 
 // ── POST /spaces — create / schedule ─────────────────────────────────────
-router.post("/", requireAuth, asyncHandler(spacesController.create));
+// Runtime-flag-gated (A-17): video and ticketed Spaces can be killed instantly
+// without a release, independent of plain audio Spaces creation.
+router.post(
+  "/",
+  requireAuth,
+  requireFeature("video_spaces", (req: Request) => !!req.body?.isVideo),
+  requireFeature("paid_spaces", (req: Request) => !!req.body?.ticketPriceUsd),
+  asyncHandler(spacesController.create)
+);
 
 // ── POST /spaces/:id/start ────────────────────────────────────────────────
 router.post("/:id/start", requireAuth, asyncHandler(spacesController.start));

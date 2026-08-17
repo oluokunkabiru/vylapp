@@ -15,7 +15,7 @@ This file supersedes those for day-to-day execution — item IDs (`D-`, `I-`, `V
 
 ### R0.0 — Immediate risk (do first, regardless of release order)
 - [x] **Close the paid-enrolment vulnerability (L-35)** — `backend/src/controllers/learn.controller.ts` accepted a client-supplied `stripe_payment_intent_id` with no verification against Stripe (no `stripe` package installed, no live key configured). Fixed: paid-course enrolment now fails closed (402) until `M-06` server-side verification exists. Free-course enrolment untouched.
-- [ ] **A-17 Runtime feature control** — add a feature-flag table/service so any capability can be killed without an app-store release. Needed before shipping anything risky (Spaces, paid enrolment reopening, new composer).
+- [x] **A-17 Runtime feature control** — `feature_flags`/`user_feature_flags` tables and admin CRUD already existed but nothing consumed them. Added `backend/src/services/featureFlags.service.ts` (cached lookup, deterministic rollout-pct bucketing, per-user override) and `backend/src/middleware/featureFlag.ts` (`requireFeature`). Wired onto `POST /spaces` — video Spaces gated by `video_spaces`, ticketed Spaces by `paid_spaces` — as the first real consumer. Admin flag CRUD now calls `invalidate()` so edits apply immediately instead of waiting out the 15s cache. Future risky routes (composer, reopened paid enrolment) should gate through this same middleware rather than a redeploy.
 - [ ] **T-01 Translation cache** — key on (source text hash + target language). Build before any translation is served to a real user — cost is 30x different depending on this.
 
 ### R0.1 — Backend contract (`B1`)
@@ -109,4 +109,4 @@ This file supersedes those for day-to-day execution — item IDs (`D-`, `I-`, `V
 ## Session log
 *One line per work session — what landed, what's next.*
 
-- **2026-08-17 (session 1):** Wrote this plan from the two source docs. Verified against live repo: confirmed L-35 vulnerability was real and current (`backend/src/controllers/learn.controller.ts:277-304`, no `stripe` package, no live key). Fixed it — paid enrolment now fails closed. Next: A-17 feature flags, then T-01 translation cache, then D-01 design tokens.
+- **2026-08-17 (session 1):** Wrote this plan from the two source docs. Verified against live repo: confirmed L-35 vulnerability was real and current (`backend/src/controllers/learn.controller.ts:277-304`, no `stripe` package, no live key). Fixed it — paid enrolment now fails closed. Built A-17 runtime feature flags (service + middleware) and wired onto Spaces video/ticketed creation. Both changes type-check clean and verified live against the running `vylapp-backend-1` dev container (tsx hot-reload, no errors). Next: T-01 translation cache, then D-01 design tokens.

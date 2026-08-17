@@ -12,6 +12,7 @@ import { Response } from "express";
 import { AuthedRequest } from "../types/express";
 import respond from "../utils/respond";
 import prisma from "../config/prisma";
+import featureFlags from "../services/featureFlags.service";
 
 const { ok, fail } = respond;
 
@@ -74,6 +75,7 @@ async function createFlag(req: AuthedRequest, res: Response) {
     data: { key: key.trim(), description: description || null, enabled: !!enabled, rolloutPct: rollout_pct ?? 0, updatedBy: req.user.id },
   });
   await writeAudit(req.user.id, "settings.flag.create", "feature_flag", flag.id, null, flag, req.ip || null);
+  featureFlags.invalidate();
   return ok(res, { flag: { id: flag.id, key: flag.key, enabled: flag.enabled, rollout_pct: flag.rolloutPct, description: flag.description } }, 201);
 }
 
@@ -90,6 +92,7 @@ async function updateFlag(req: AuthedRequest, res: Response) {
 
   const flag = await prisma.featureFlags.update({ where: { id: req.params.id }, data });
   await writeAudit(req.user.id, "settings.flag.update", "feature_flag", req.params.id, before, flag, req.ip || null);
+  featureFlags.invalidate();
   return ok(res, { flag: { id: flag.id, key: flag.key, enabled: flag.enabled, rollout_pct: flag.rolloutPct, description: flag.description } });
 }
 
@@ -100,6 +103,7 @@ async function deleteFlag(req: AuthedRequest, res: Response) {
 
   await prisma.featureFlags.delete({ where: { id: req.params.id } });
   await writeAudit(req.user.id, "settings.flag.delete", "feature_flag", req.params.id, before, null, req.ip || null);
+  featureFlags.invalidate();
   return ok(res, { deleted: true });
 }
 
