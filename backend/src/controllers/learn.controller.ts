@@ -285,15 +285,10 @@ async function enrol(req: AuthedRequest, res: Response) {
   if (existing) return res.status(409).json({ ok: false, error: { message: "Already enrolled" } });
 
   if (!course.isFree && Number(course.priceUsd) > 0) {
-    // Paid course: payment intent must be provided and verified
-    const { stripe_payment_intent_id } = req.body;
-    if (!stripe_payment_intent_id) return res.status(402).json({ ok: false, error: { message: "Payment required. Provide stripe_payment_intent_id." } });
-    // TODO: verify payment intent with Stripe SDK before inserting
-    const enrolment = await prisma.courseEnrolments.create({
-      data: { userId: req.user.id, courseId: req.params.id, stripePaymentIntentId: stripe_payment_intent_id, amountPaidUsd: course.priceUsd },
-      select: { id: true, enrolledAt: true },
-    });
-    return res.status(201).json({ ok: true, data: { enrolment } });
+    // Paid enrolment is disabled until server-side payment verification ships (see docs/PROJECT_PLAN.md M-06).
+    // Previously this accepted a client-supplied stripe_payment_intent_id with no verification against Stripe,
+    // letting anyone enrol in a paid course for free.
+    return res.status(503).json({ ok: false, error: { message: "Paid enrolment is temporarily unavailable" } });
   }
 
   const enrolment = await prisma.courseEnrolments.create({
