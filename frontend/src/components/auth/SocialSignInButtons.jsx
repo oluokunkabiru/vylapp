@@ -50,9 +50,6 @@ export default function SocialSignInButtons() {
   }, []);
 
   if (!providers.length) return null;
-  console.log("providers", providers);
-
-
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18 }}>

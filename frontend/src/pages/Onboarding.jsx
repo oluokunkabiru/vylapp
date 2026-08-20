@@ -4,8 +4,12 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { Ic, ic, Avatar, VylappWordmark, PrimaryButton, GhostButton, Spinner } from "../components/ui/index.jsx";
 import { COUNTRIES, flagEmoji, countryName } from "../data/countries.js";
+import { isRtl } from "../lib/languages.js";
+import i18n from "../i18n.js";
 
-const STEP_ORDER = ["welcome", "interests", "handle", "avatar", "location", "follow_suggestions", "complete"];
+// I-17 — language comes before anything else, including the brand splash:
+// "the language step is the first impression of what this product is for."
+const STEP_ORDER = ["language", "welcome", "interests", "handle", "avatar", "location", "follow_suggestions", "complete"];
 
 // Best-effort, non-authoritative guess from the browser's own locale — no
 // network call, no IP lookup, nothing leaves the device. Always shown to
@@ -47,12 +51,22 @@ function StepShell({ title, subtitle, children }) {
 export default function Onboarding() {
   const { user, updateUser } = useAuth();
   const toast = useToast();
-  const [step, setStep] = useState(user?.onboardingStep && STEP_ORDER.includes(user.onboardingStep) ? user.onboardingStep : "welcome");
+  // "language" isn't a backend-tracked onboarding_step (the DB enum has no
+  // such value, and every account defaults to "welcome" until it advances)
+  // — so "welcome" here means "hasn't started," and starts at language.
+  // Anyone further along resumes exactly where the backend says, skipping
+  // language rather than re-asking someone already past it.
+  const [step, setStep] = useState(
+    user?.onboardingStep && STEP_ORDER.includes(user.onboardingStep) && user.onboardingStep !== "welcome"
+      ? user.onboardingStep
+      : "language"
+  );
   const [busy, setBusy] = useState(false);
 
   const [languages, setLanguages] = useState([]);
+  const [primaryLang, setPrimaryLang] = useState(user?.uiLanguage || "en");
   const [selectedInterests, setSelectedInterests] = useState([]);
-  const [selectedLangs, setSelectedLangs] = useState(["en"]);
+  const [selectedLangs, setSelectedLangs] = useState([user?.uiLanguage || "en"]);
 
   const [handle, setHandle] = useState(user?.handle || "");
   const [avatarColor, setAvatarColor] = useState(user?.avatarColor || "#7C3AED");
@@ -74,6 +88,24 @@ export default function Onboarding() {
 
   const toggleInterest = key => setSelectedInterests(s => s.includes(key) ? s.filter(k => k !== key) : [...s, key]);
   const toggleLang = code => setSelectedLangs(s => s.includes(code) ? s.filter(c => c !== code) : [...s, code]);
+
+  // I-17 — takes effect immediately: the rest of onboarding, and everything
+  // after it, should already be in the language just picked, not wait for
+  // a settings screen the person hasn't found yet. Errors here don't block
+  // progress — a failed sync just means the choice stays local until the
+  // next successful one (same pattern as the settings-screen language
+  // picker in App.jsx).
+  const submitLanguage = async () => {
+    setSelectedLangs(s => s.includes(primaryLang) ? s : [primaryLang, ...s]);
+    i18n.changeLanguage(primaryLang);
+    document.documentElement.lang = primaryLang;
+    document.documentElement.dir = isRtl(primaryLang) ? "rtl" : "ltr";
+    localStorage.setItem("vyl_lang", primaryLang);
+    api.patch("/users/me", { ui_language: primaryLang })
+      .then(({ user: updatedUser }) => updateUser(updatedUser || { uiLanguage: primaryLang }))
+      .catch(() => {});
+    setStep("welcome");
+  };
   const toggleFollow = id => setSelectedFollows(s => {
     const next = new Set(s);
     next.has(id) ? next.delete(id) : next.add(id);
@@ -179,7 +211,30 @@ export default function Onboarding() {
     <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:24, background:"var(--bg)" }}>
       <div style={{ position:"fixed", inset:0, background:"radial-gradient(circle at 50% 20%, rgba(124,58,237,0.10) 0%, transparent 60%)", pointerEvents:"none" }} />
       <div style={{ position:"relative", width:"100%", display:"flex", flexDirection:"column", alignItems:"center" }}>
-        {step !== "welcome" && <ProgressDots step={step} />}
+        {step !== "language" && step !== "welcome" && <ProgressDots step={step} />}
+
+        {step === "language" && (
+          <StepShell title="Choose your language" subtitle="You can always change this later.">
+            {/* I-17 — each language in its own script and its own name, not
+                translated into English: "that single detail communicates
+                the entire mission before a word of copy is read." Full
+                list here, not the trimmed picker used elsewhere, since
+                this is the one moment worth showing real breadth. */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(130px, 1fr))", gap:10, marginBottom:28, maxHeight:360, overflowY:"auto", padding:2 }}>
+              {(languages.length ? languages : [{code:"en",name:"English",nativeName:"English"}]).map(l => (
+                <button key={l.code} onClick={() => setPrimaryLang(l.code)} lang={l.code} dir={isRtl(l.code) ? "rtl" : "ltr"} style={{
+                  padding:"16px 12px", borderRadius:16, textAlign:"center", cursor:"pointer",
+                  border:`1.5px solid ${primaryLang===l.code ? "var(--violet)" : "var(--border)"}`,
+                  background: primaryLang===l.code ? "var(--violet-dim)" : "var(--bg3)",
+                }}>
+                  <div style={{ fontSize:17, fontWeight:800, color: primaryLang===l.code ? "var(--violet-lt)" : "var(--text)" }}>{l.nativeName}</div>
+                  {l.nativeName !== l.name && <div style={{ fontSize:11.5, color:"var(--text3)", marginTop:3 }}>{l.name}</div>}
+                </button>
+              ))}
+            </div>
+            <PrimaryButton full onClick={submitLanguage}>Continue</PrimaryButton>
+          </StepShell>
+        )}
 
         {step === "welcome" && (
           <StepShell title="">
@@ -215,8 +270,8 @@ export default function Onboarding() {
               ))}
             </div>
 
-            <div style={{ fontSize:13, fontWeight:800, color:"var(--text2)", letterSpacing:0.4, marginBottom:10, textAlign:"center" }}>
-              WHICH LANGUAGES DO YOU READ?
+            <div style={{ fontSize:13, fontWeight:700, color:"var(--text2)", marginBottom:10, textAlign:"center" }}>
+              Which other languages do you read?
             </div>
             <div style={{ display:"flex", flexWrap:"wrap", gap:8, justifyContent:"center", marginBottom:28 }}>
               {(languages.length ? languages : [{code:"en",name:"English",nativeName:"English"}]).map(l => (
@@ -264,7 +319,7 @@ export default function Onboarding() {
         {step === "location" && (
           <StepShell title="Where are you vibing from?" subtitle="Helps us surface people and Spaces from your community — heritage is optional.">
             <div style={{ marginBottom:16 }}>
-              <label style={{ fontSize:12.5, fontWeight:700, color:"var(--text2)", display:"block", marginBottom:6 }}>WHERE DO YOU LIVE NOW?</label>
+              <label style={{ fontSize:12.5, fontWeight:700, color:"var(--text2)", display:"block", marginBottom:6 }}>Where do you live now?</label>
               <select value={currentCountry} onChange={e => setCurrentCountry(e.target.value)} style={{
                 width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid var(--border)",
                 background:"var(--bg3)", color:"var(--text)", fontSize:14.5, outline:"none", cursor:"pointer",
@@ -277,13 +332,13 @@ export default function Onboarding() {
             </div>
 
             <div style={{ marginBottom:24 }}>
-              <label style={{ fontSize:12.5, fontWeight:700, color:"var(--text2)", display:"block", marginBottom:6 }}>CITY (OPTIONAL)</label>
+              <label style={{ fontSize:12.5, fontWeight:700, color:"var(--text2)", display:"block", marginBottom:6 }}>City (optional)</label>
               <input value={currentCity} onChange={e => setCurrentCity(e.target.value)} placeholder="e.g. Houston"
                 style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid var(--border)", background:"var(--bg3)", color:"var(--text)", fontSize:14.5, outline:"none" }}
               />
             </div>
 
-            <label style={{ fontSize:12.5, fontWeight:700, color:"var(--text2)", display:"block", marginBottom:6 }}>HERITAGE OR CULTURAL BACKGROUND (OPTIONAL)</label>
+            <label style={{ fontSize:12.5, fontWeight:700, color:"var(--text2)", display:"block", marginBottom:6 }}>Heritage or cultural background (optional)</label>
             <div style={{ display:"flex", gap:8, marginBottom:12 }}>
               <select value={heritagePick} onChange={e => setHeritagePick(e.target.value)} style={{
                 flex:1, padding:"11px 14px", borderRadius:12, border:"1.5px solid var(--border)",
