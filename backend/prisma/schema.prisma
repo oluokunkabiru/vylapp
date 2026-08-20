@@ -1879,6 +1879,7 @@ model Users {
   threadReplies                                               ThreadReplies[]
   transactionsTransactionsCounterpartyIdTousers               Transactions[]             @relation("transactions_counterparty_idTousers")
   transactionsTransactionsUserIdTousers                       Transactions[]             @relation("transactions_user_idTousers")
+  translationCorrections                                      TranslationCorrections[]
   translationUsage                                            TranslationUsage[]
   trustSignals                                                TrustSignals?
   twoFactorChallenges                                         TwoFactorChallenges[]
@@ -2058,6 +2059,29 @@ model TranslationCache {
 
   @@id([textHash, targetLang])
   @@map("translation_cache")
+}
+
+// T-21/T-22 — a native speaker's proposed fix for a specific cached
+// translation. References the same (textHash, targetLang) key as
+// TranslationCache so an approved correction (T-24, not built yet) can
+// update that row directly. sourceText/originalTranslation are stored in
+// full (not just the hash) because a human reviewer needs to actually read
+// what's being corrected — the hash alone isn't reversible.
+model TranslationCorrections {
+  id                  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  textHash            String   @map("text_hash")
+  targetLang          String   @map("target_lang")
+  sourceText          String   @map("source_text")
+  originalTranslation String   @map("original_translation")
+  suggestedText       String   @map("suggested_text")
+  submittedBy         String   @map("submitted_by") @db.Uuid
+  status              String   @default("pending") // pending | approved | rejected — no review workflow yet (T-23)
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  users               Users    @relation(fields: [submittedBy], references: [id], onDelete: Cascade)
+
+  @@index([textHash, targetLang])
+  @@index([status])
+  @@map("translation_corrections")
 }
 
 model VibeTranslations {

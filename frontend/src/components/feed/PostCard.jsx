@@ -72,6 +72,24 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
   const isTranslationAvailable = hasAutoTranslation || !!manualTranslatedText;
   const burstTimer = useRef(null);
 
+  // T-21/T-22 — the correction affordance lives right where the translation
+  // itself is shown, not buried in a menu. `correctionText` is pre-filled
+  // with the current translation so the reader is editing it, not starting
+  // from a blank field.
+  const [showCorrection, setShowCorrection] = useState(false);
+  const [correctionText, setCorrectionText] = useState("");
+  const submitCorrection = async currentTranslation => {
+    if (!correctionText.trim() || correctionText.trim() === currentTranslation.trim()) return;
+    try {
+      await api.post("/translate/corrections", {
+        text: vibe.content, targetLang: lang,
+        originalTranslation: currentTranslation, suggestedText: correctionText.trim(),
+      });
+      toast("Thanks — your correction was submitted for review");
+      setShowCorrection(false);
+    } catch (e) { toast(e.message, "error"); }
+  };
+
   const toggleLike = async () => {
     if (!user) { toast("Sign in to like vibes", "error"); return; }
     const wasLiked = liked;
@@ -262,11 +280,30 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
             available behind a button. This is the one place in the feed
             that shows the "translation is architecture" claim in the UI. */}
         {isTranslationAvailable && !showOriginal && (
-          <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:5 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:5, marginTop:5, flexWrap:"wrap" }}>
             <Ic d={ic.globe} s={11} c="var(--sky)" />
             <span style={{ fontSize:11.5, color:"var(--sky)", fontWeight:600 }}>
               Translated from {LANG_NAMES[vibe.language] || vibe.language}
             </span>
+            {/* T-21 — discreet, always present wherever a translation is shown. */}
+            {!showCorrection && (
+              <button onClick={() => { setCorrectionText(translatedText); setShowCorrection(true); }} style={{
+                background:"none", color:"var(--text3)", fontSize:11.5, fontWeight:600, textDecoration:"underline",
+              }}>Suggest a fix</button>
+            )}
+          </div>
+        )}
+
+        {showCorrection && (
+          <div style={{ marginTop:6 }}>
+            <textarea
+              dir="auto" value={correctionText} onChange={e=>setCorrectionText(e.target.value)} rows={2}
+              style={{ width:"100%", padding:8, borderRadius:10, border:"1px solid var(--sky)", background:"var(--bg3)", color:"var(--text)", fontSize:13, outline:"none", resize:"none", fontFamily:"var(--font)" }}
+            />
+            <div style={{ display:"flex", gap:8, marginTop:6 }}>
+              <button onClick={() => submitCorrection(translatedText)} style={{ padding:"5px 12px", borderRadius:"var(--radius-pill)", background:"var(--sky)", color:"#08070F", fontWeight:700, fontSize:12.5 }}>Submit</button>
+              <button onClick={() => setShowCorrection(false)} style={{ padding:"5px 12px", borderRadius:"var(--radius-pill)", border:"1px solid var(--border)", background:"transparent", color:"var(--text2)", fontWeight:700, fontSize:12.5 }}>Cancel</button>
+            </div>
           </div>
         )}
 

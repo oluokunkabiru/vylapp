@@ -16,4 +16,7 @@ router.post("/", requireAuth, asyncHandler(translateController.translateText));
 // ── POST /translate/vibes/:id — translate a specific vibe's caption ──────
 router.post("/vibes/:id", requireAuth, asyncHandler(translateController.translateVibe));
 
+// ── POST /translate/corrections — T-21/T-22 ───────────────────────────────
+router.post("/corrections", requireAuth, asyncHandler(translateController.submitCorrection));
+
 export = router;

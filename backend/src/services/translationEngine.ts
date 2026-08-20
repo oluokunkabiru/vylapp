@@ -226,6 +226,10 @@ async function recordAIUsage(userId: string | null | undefined, count: number) {
 const TranslationEngine = {
   LANGUAGES,
   getLang(code: string) { return LANGUAGES.find(l => l.code === code) || null; },
+  // Exposed so callers outside this file (T-21 corrections) key off the
+  // exact same hash as the cache itself, rather than reimplementing it and
+  // risking silent drift between the two.
+  hashText,
 
   // Translates `text` from any language to any language — `fromLang`/`toLang`
   // can be any code at all, not just one from LANGUAGES. LANGUAGES is only
