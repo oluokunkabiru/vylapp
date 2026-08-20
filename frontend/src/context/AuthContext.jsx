@@ -43,8 +43,8 @@ export function AuthProvider({ children }) {
     return u;
   }, [checkAdmin]);
 
-  const register = useCallback(async ({ email, handle, password, displayName }) => {
-    const { user: u } = await api.post("/auth/register", { email, handle, password, displayName });
+  const register = useCallback(async ({ email, handle, password, displayName, dateOfBirth }) => {
+    const { user: u } = await api.post("/auth/register", { email, handle, password, displayName, date_of_birth: dateOfBirth });
     setUser(u);
     connectSocket();
     checkAdmin();

@@ -1737,6 +1737,15 @@ model Users {
   location                                                    String?
   website                                                     String?
   birthday                                                    DateTime?                  @db.Date
+  // I-14/I-15: computed server-side from `birthday` at the moment identity
+  // is established (registration), never trusted from the client, and not
+  // silently recomputed on every request — "permanently attached" per the
+  // plan. Defaults true (fail-closed): an account with no birthday on
+  // record is treated as a minor for enforcement purposes until one is
+  // provided, rather than assumed adult. Existing pre-this-change rows are
+  // backfilled false in the migration so no currently-unrestricted account
+  // is retroactively restricted without a real DOB backing that decision.
+  isMinor                                                     Boolean                    @default(true) @map("is_minor")
   language                                                    String?                    @default("en")
   timezone                                                    String?                    @default("UTC")
   avatarColor                                                 String                     @default("#7C3AED") @map("avatar_color")

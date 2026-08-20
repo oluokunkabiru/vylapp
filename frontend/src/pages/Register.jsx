@@ -15,7 +15,8 @@ export default function Register() {
     email: "",
     handle: "",
     password: "",
-    displayName: ""
+    displayName: "",
+    dateOfBirth: ""
   });
   const [loading, setLoading] = useState(false);
 
@@ -23,7 +24,7 @@ export default function Register() {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.email || !form.handle || !form.password || !form.displayName) {
+    if (!form.email || !form.handle || !form.password || !form.displayName || !form.dateOfBirth) {
       toast("All fields are required", "error");
       return;
     }
@@ -91,6 +92,20 @@ export default function Register() {
             value={form.email}
             onChange={set("email")}
             required
+            style={authInput}
+            onFocus={focusAuthInput}
+            onBlur={blurAuthInput}
+          />
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <label style={authLabel}>Date of birth</label>
+          <input
+            type="date"
+            value={form.dateOfBirth}
+            onChange={set("dateOfBirth")}
+            required
+            max={new Date().toISOString().slice(0, 10)}
             style={authInput}
             onFocus={focusAuthInput}
             onBlur={blurAuthInput}

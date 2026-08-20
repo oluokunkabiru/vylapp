@@ -42,6 +42,7 @@ function publicUser(row: any) {
     contentLanguages: row.content_language, uiLanguage: row.language, location: row.location,
     currentCountry: row.current_country, currentCity: row.current_city, heritageCountries: row.heritage_countries,
     isFoundingMember: row.is_founding_member, foundingRank: row.founding_rank,
+    isMinor: row.is_minor,
   };
 }
 
@@ -59,7 +60,32 @@ function toSnakeUser(u: any) {
     content_language: u.contentLanguage, language: u.language, location: u.location,
     current_country: u.currentCountry, current_city: u.currentCity, heritage_countries: u.heritageCountries,
     is_founding_member: u.isFoundingMember, founding_rank: u.foundingRank,
+    is_minor: u.isMinor,
   };
+}
+
+// I-14: fail-closed age computation. Never trust an age from the client —
+// only ever a birthdate, which is checked server-side. Returns null (never
+// a guessed age) when the input isn't a real, sane, past date; callers
+// must treat null the same as "under 18" rather than assuming adult.
+//
+// Deliberately no minimum-age rejection here (e.g. a hard 13+ floor) — that
+// is a real legal/policy decision (COPPA/GDPR-K), tracked separately as
+// I-16 (parental consent path), not something to invent inline with the
+// age-computation utility.
+function computeAge(dobInput: unknown): number | null {
+  if (typeof dobInput !== "string" || !dobInput) return null;
+  const dob = new Date(dobInput);
+  if (Number.isNaN(dob.getTime())) return null;
+  const now = new Date();
+  if (dob > now) return null; // future birthdate — nonsensical, not "0 years old"
+  let age = now.getUTCFullYear() - dob.getUTCFullYear();
+  const hadBirthdayThisYear =
+    now.getUTCMonth() > dob.getUTCMonth() ||
+    (now.getUTCMonth() === dob.getUTCMonth() && now.getUTCDate() >= dob.getUTCDate());
+  if (!hadBirthdayThisYear) age--;
+  if (age < 0 || age > 130) return null; // clearly bad input, not a real age
+  return age;
 }
 
 // ── Helper: create + store an email-verification token ────────────────────────
@@ -77,11 +103,18 @@ async function issueEmailVerificationToken(userId: string) {
 
 // ── POST /auth/register ────────────────────────────────────────────────────────
 async function register(req: Request, res: Response) {
-  const { email, handle, password, displayName } = req.body;
+  const { email, handle, password, displayName, date_of_birth } = req.body;
   if (!email || !handle || !password || !displayName) {
     return fail(res, 400, "email, handle, password, and displayName are all required");
   }
   if (password.length < 8) return fail(res, 400, "Password must be at least 8 characters");
+
+  // I-13/I-14: required at signup, computed server-side, fail-closed — a
+  // missing or unparseable date of birth is treated as a minor rather than
+  // silently defaulting to adult.
+  if (!date_of_birth) return fail(res, 400, "date_of_birth is required");
+  const age = computeAge(date_of_birth);
+  if (age === null) return fail(res, 400, "date_of_birth must be a valid, real, past date");
 
   const dupe = await prisma.users.findFirst({ where: { OR: [{ email }, { handle }] }, select: { id: true } });
   if (dupe) return fail(res, 409, "Email or handle already in use");
@@ -100,6 +133,8 @@ async function register(req: Request, res: Response) {
       avatarInitials: initials || "VY",
       isFoundingMember: isFounding,
       foundingRank,
+      birthday: new Date(date_of_birth),
+      isMinor: age < 18,
     },
   });
 
