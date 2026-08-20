@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { ScreenHeader, PrimaryButton, Ic, ic } from "../ui/index.jsx";
@@ -24,6 +24,59 @@ export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) 
   const [language, setLanguage] = useState(defaultLang);
   const [loading, setLoading] = useState(false);
   const max = 500;
+
+  // V-13/V-14 — @mention and #hashtag autocomplete. `trigger` holds where the
+  // active @/# token starts in `content` so a selected suggestion can
+  // replace exactly that token, not the whole field.
+  const textareaRef = useRef(null);
+  const [trigger, setTrigger] = useState(null); // { type: "user"|"hashtag", start, query }
+  const [suggestions, setSuggestions] = useState([]);
+
+  // Looks backward from the cursor for an unclosed @word or #word — the
+  // same convention every mention/hashtag composer uses: the trigger must
+  // start at the beginning of the text or right after whitespace, so
+  // "email@x.com" or "C#" mid-word never opens the dropdown.
+  const detectTrigger = (text, cursor) => {
+    const before = text.slice(0, cursor);
+    const match = before.match(/(?:^|\s)([@#])(\w*)$/);
+    if (!match) return null;
+    const symbol = match[1];
+    const query = match[2];
+    const start = before.length - query.length - 1;
+    return { type: symbol === "@" ? "user" : "hashtag", start, query };
+  };
+
+  const onContentChange = e => {
+    const next = e.target.value.slice(0, max);
+    setContent(next);
+    const nextTrigger = detectTrigger(next, e.target.selectionStart);
+    setTrigger(nextTrigger);
+    if (!nextTrigger || !nextTrigger.query) setSuggestions([]);
+  };
+
+  // Only reaches here once trigger.query is non-empty (see onContentChange
+  // above) — the effect's own job is strictly "fetch for the current query
+  // after a short debounce," not clearing state on every keystroke.
+  useEffect(() => {
+    if (!trigger || !trigger.query) return;
+    const handle = setTimeout(() => {
+      api.get(`/search/autocomplete?q=${encodeURIComponent(trigger.query)}&type=${trigger.type}`)
+        .then(({ suggestions: s }) => setSuggestions(s || []))
+        .catch(() => setSuggestions([]));
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [trigger]);
+
+  const applySuggestion = s => {
+    const symbol = trigger.type === "user" ? "@" : "#";
+    const before = content.slice(0, trigger.start);
+    const after = content.slice(trigger.start + 1 + trigger.query.length);
+    const inserted = `${before}${symbol}${s.value} ${after}`.slice(0, max);
+    setContent(inserted);
+    setTrigger(null);
+    setSuggestions([]);
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
 
   const share = async () => {
     if (!content.trim()) return;
@@ -92,8 +145,9 @@ export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) 
           </div>
 
           <div style={{ position:"relative" }}>
-            <textarea dir="auto"
-              value={content} onChange={e=>setContent(e.target.value.slice(0, max))}
+            <textarea dir="auto" ref={textareaRef}
+              value={content} onChange={onContentChange}
+              onBlur={() => setTimeout(() => setTrigger(null), 150)} // let a suggestion click land first
               placeholder="What's on your mind? Share a vibe with the community…"
               rows={4}
               style={{
@@ -107,6 +161,33 @@ export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) 
               color: content.length > max*0.9 ? "var(--coral)" : "var(--text3)",
               fontFamily:"var(--mono)",
             }}>{max - content.length}</div>
+
+            {trigger && suggestions.length > 0 && (
+              <div style={{
+                position:"absolute", left:0, right:0, top:"100%", marginTop:6, zIndex:10,
+                background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:"var(--radius-md)",
+                boxShadow:"var(--shadow-card)", overflow:"hidden", maxHeight:220, overflowY:"auto",
+              }}>
+                {suggestions.map(s => (
+                  <button key={s.value} onMouseDown={e => { e.preventDefault(); applySuggestion(s); }} style={{
+                    display:"flex", alignItems:"center", gap:8, width:"100%", padding:"10px 12px",
+                    textAlign:"left", background:"transparent", color:"var(--text)", fontSize:14,
+                  }}>
+                    {trigger.type === "user" ? (
+                      <>
+                        <span style={{ fontWeight:700 }}>@{s.value}</span>
+                        <span style={{ color:"var(--text3)", fontSize:12.5 }}>{s.label}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span style={{ fontWeight:700 }}>#{s.value}</span>
+                        <span style={{ color:"var(--text3)", fontSize:12.5, marginLeft:"auto" }}>{s.count}</span>
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
         <div style={{ padding:16, borderTop:"1px solid var(--border2)" }}>

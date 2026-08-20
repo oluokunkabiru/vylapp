@@ -42,9 +42,24 @@ async function search(req: AuthedRequest, res: Response) {
 }
 
 // ── GET /search/autocomplete?q=... ───────────────────────────────────────
+// V-13/V-14 — the composer's @mention and #hashtag autocomplete. `type`
+// defaults to "user" so the one existing caller (if any) keeps working
+// unchanged; the composer passes it explicitly for either trigger.
 async function autocomplete(req: AuthedRequest, res: Response) {
   const q = String(req.query.q || "").trim();
+  const type = (req.query.type as string) || "user";
   if (!q) return ok(res, { suggestions: [] });
+
+  if (type === "hashtag") {
+    const tags = await prisma.hashtags.findMany({
+      where: { tag: { startsWith: q.toLowerCase() } },
+      orderBy: { vibesCount: "desc" },
+      take: 8,
+      select: { tag: true, vibesCount: true },
+    });
+    return ok(res, { suggestions: tags.map(t => ({ type: "hashtag", value: t.tag, label: `#${t.tag}`, count: t.vibesCount })) });
+  }
+
   const users: { handle: string; display_name: string; verified: boolean }[] = await prisma.$queryRaw`
     SELECT handle, display_name, verified FROM users WHERE handle ILIKE ${`${q}%`} LIMIT 8
   `;
