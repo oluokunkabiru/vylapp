@@ -92,7 +92,7 @@ export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) 
           </div>
 
           <div style={{ position:"relative" }}>
-            <textarea
+            <textarea dir="auto"
               value={content} onChange={e=>setContent(e.target.value.slice(0, max))}
               placeholder="What's on your mind? Share a vibe with the community…"
               rows={4}
@@ -102,7 +102,7 @@ export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) 
                 fontSize:14.5, outline:"none", resize:"none",
               }}
             />
-            <div style={{
+            <div className="vy-composer-counter" style={{
               position:"absolute", bottom:8, right:12, fontSize:12,
               color: content.length > max*0.9 ? "var(--coral)" : "var(--text3)",
               fontFamily:"var(--mono)",

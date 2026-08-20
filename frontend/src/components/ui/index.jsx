@@ -4,11 +4,11 @@
 import { useState } from "react";
 
 // ── SVG icon (single path) ────────────────────────────────────────────────
-export function Ic({ d, s = 22, c = "currentColor", f = "none", sw = 2 }) {
+export function Ic({ d, s = 22, c = "currentColor", f = "none", sw = 2, className }) {
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" fill={f} stroke={c}
       strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
-      style={{ flexShrink: 0, display:"block" }}>
+      className={className} style={{ flexShrink: 0, display:"block" }}>
       <path d={d} />
     </svg>
   );
@@ -137,14 +137,14 @@ export function GhostButton({ children, onClick, style: sx }) {
 }
 
 // ── 44px tap-target icon button ───────────────────────────────────────────
-export function TapIcon({ d, c = "var(--text)", f, size = 24, onClick, label, badge }) {
+export function TapIcon({ d, c = "var(--text)", f, size = 24, onClick, label, badge, directional = false }) {
   return (
     <button onClick={onClick} aria-label={label} style={{
       width:44, height:44, borderRadius:"50%", background:"none",
       display:"flex", alignItems:"center", justifyContent:"center",
       position:"relative", flexShrink:0,
     }}>
-      <Ic d={d} s={size} c={c} f={f} />
+      <Ic d={d} s={size} c={c} f={f} className={directional ? "vy-dir-icon" : undefined} />
       {badge > 0 && (
         <span style={{
           position:"absolute", top:2, right:2, minWidth:16, height:16, borderRadius:8,
@@ -165,7 +165,7 @@ export function ScreenHeader({ title, onBack, right }) {
       borderBottom:"1px solid var(--border2)", position:"sticky", top:0,
       background:"var(--bg)", zIndex:10, minHeight:56,
     }}>
-      {onBack && <TapIcon d={ic.back} size={22} onClick={onBack} label="Go back" />}
+      {onBack && <TapIcon d={ic.back} size={22} onClick={onBack} label="Go back" directional />}
       <div style={{ fontWeight:800, fontSize:18, color:"var(--text)", flex:1 }}>{title}</div>
       {right}
     </div>

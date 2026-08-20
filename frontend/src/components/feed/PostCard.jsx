@@ -160,7 +160,7 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
         </div>
         <HeartBurst show={burst} />
         {vibe.impactBadge && (
-          <div style={{
+          <div className="vy-post-impact-badge" style={{
             position:"absolute", bottom:12, left:12, padding:"5px 12px",
             borderRadius:"var(--radius-pill)", background:"rgba(0,0,0,0.55)",
             backdropFilter:"blur(8px)", fontSize:12, fontWeight:800, color:"#fff", letterSpacing:0.5,

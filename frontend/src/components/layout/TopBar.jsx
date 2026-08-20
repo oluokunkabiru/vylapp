@@ -26,7 +26,7 @@ export default function TopBar({ notifCount, msgCount, lang, setLang }) {
       background:"var(--bg)", zIndex:20, minHeight:56,
     }}>
       <button onClick={()=>navigate(-1)} style={{ background:"none", border:"none", display:"flex", alignItems:"center", justifyContent:"center", width:44, height:44, borderRadius:"50%", flexShrink:0 }}>
-        <Ic d={ic.back} s={22} c="var(--text)" />
+        <Ic d={ic.back} s={22} c="var(--text)" className="vy-dir-icon" />
       </button>
       <div style={{ fontWeight:800, fontSize:18, flex:1 }}>{TITLES[pathname] ? t(TITLES[pathname]) : "Vylapp"}</div>
     </div>

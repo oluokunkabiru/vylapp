@@ -130,6 +130,34 @@ a { color: inherit; text-decoration: none; }
 
 input::placeholder, textarea::placeholder { color: var(--text3); }
 
+/* D-15 — direction is structural, not a text-only concern. Flex rows inherit
+   their start edge from `dir`, so the desktop rails and mobile chrome swap
+   naturally. These rules handle the remaining physical properties and only
+   flip icons whose meaning is directional (not a globe, send, or menu). */
+html[dir="rtl"] .vy-dir-icon { transform: scaleX(-1); }
+html[dir="rtl"] .vy-desktop-main {
+  border-right: 0 !important;
+  border-left: 1px solid var(--border2) !important;
+}
+html[dir="rtl"] .vy-sidebar,
+html[dir="rtl"] .vy-message-list,
+html[dir="rtl"] .auth-brand-panel {
+  border-right: 0 !important;
+  border-left: 1px solid var(--border2) !important;
+}
+html[dir="rtl"] .vy-composer-counter { right: auto !important; left: 12px; }
+html[dir="rtl"] .vy-post-impact-badge { left: auto !important; right: 12px; }
+html[dir="rtl"] .vy-message-bubble--mine {
+  margin-left: 0 !important;
+  margin-right: 8px !important;
+  border-radius: 16px 16px 4px 16px !important;
+}
+html[dir="rtl"] .vy-message-bubble--other {
+  margin-left: 8px !important;
+  margin-right: 0 !important;
+  border-radius: 16px 16px 16px 4px !important;
+}
+
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,

@@ -182,7 +182,7 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%" }}>
       <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderBottom:"1px solid var(--border2)", flexShrink:0 }}>
-        {onBack && <TapIcon d={ic.back} onClick={onBack} label="Back" size={22} />}
+        {onBack && <TapIcon d={ic.back} onClick={onBack} label="Back" size={22} directional />}
         <Avatar user={other} size={36} />
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ fontWeight:800, fontSize:15 }}>{other?.displayName || convo?.name}</div>
@@ -208,7 +208,7 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
               <div key={key} style={{ display:"flex", flexDirection:"column", alignItems:mine?"flex-end":"flex-start", marginBottom:8 }}>
                 <div style={{ display:"flex", justifyContent:mine?"flex-end":"flex-start", width:"100%" }}>
                   {!mine && <Avatar user={m.sender} size={28} />}
-                  <div style={{
+                  <div className={`vy-message-bubble ${mine ? "vy-message-bubble--mine" : "vy-message-bubble--other"}`} style={{
                     maxWidth:"72%", padding:"10px 14px", borderRadius:mine?"16px 16px 4px 16px":"16px 16px 16px 4px",
                     background: mine ? "var(--grad)" : "var(--bg3)",
                     color:"var(--text)", fontSize:14.5, lineHeight:1.45,
@@ -230,7 +230,7 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
       </div>
 
       <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderTop:"1px solid var(--border2)", flexShrink:0 }}>
-        <input
+        <input dir="auto"
           value={draft} onChange={e=>setDraft(e.target.value)}
           onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); send(); } }}
           placeholder="Type a message…"
@@ -246,7 +246,7 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
           border:"none", display:"flex", alignItems:"center", justifyContent:"center",
           cursor: draft.trim() ? "pointer" : "default",
         }}>
-          <Ic d={ic.send} s={18} c={draft.trim()?"#fff":"var(--text3)"} />
+          <Ic d={ic.send} s={18} c={draft.trim()?"#fff":"var(--text3)"} className="vy-dir-icon" />
         </button>
       </div>
     </div>
@@ -321,7 +321,7 @@ export default function Messages({ lang, onClearBadge }) {
 
   return (
     <div style={{ display:"flex", height:"calc(100vh - 56px)" }}>
-      <div style={{ width:320, borderRight:"1px solid var(--border2)", display:"flex", flexDirection:"column" }}>
+      <div className="vy-message-list" style={{ width:320, borderRight:"1px solid var(--border2)", display:"flex", flexDirection:"column" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px", borderBottom:"1px solid var(--border2)" }}>
           <span style={{ fontWeight:800, fontSize:18 }}>Messages</span>
           {newGroupButton}

@@ -125,7 +125,7 @@ export default function LessonViewer() {
   return (
     <div style={{ padding:"16px 16px 40px" }}>
       <Link to={`/learn/courses/${id}`} style={{ display:"inline-flex", alignItems:"center", gap:6, color:"var(--text2)", fontSize:13, fontWeight:700, marginBottom:16, textDecoration:"none" }}>
-        <Ic d={ic.back} s={16} c="var(--text2)" /> Back to course
+        <Ic d={ic.back} s={16} c="var(--text2)" className="vy-dir-icon" /> Back to course
       </Link>
 
       <h1 style={{ fontSize:19, fontWeight:900, marginBottom:16 }}>{lesson.title}</h1>

@@ -53,7 +53,7 @@ function FullscreenSpinner() {
 // ── Outer gate: unauthenticated visitors never reach the inner (vibes) app ──
 function AuthGate() {
   return (
-    <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
+    <div className="vy-app-shell" style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
       <main style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<Landing />} />
@@ -171,7 +171,7 @@ function InnerApp() {
             notifCount={notifCount} msgCount={msgCount}
             lang={lang} setLang={setLanguage}
           />
-          <main style={{ flex:1, maxWidth:480, borderRight:"1px solid var(--border2)", minHeight:"100vh" }}>
+          <main className="vy-desktop-main" style={{ flex:1, maxWidth:480, borderRight:"1px solid var(--border2)", minHeight:"100vh" }}>
             {mainContent}
           </main>
           <RightRail lang={lang} />

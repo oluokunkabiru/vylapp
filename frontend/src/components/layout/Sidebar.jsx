@@ -26,7 +26,7 @@ export default function Sidebar({ onCreateClick, notifCount, msgCount, lang, set
   const nav = isAdmin ? [...NAV, { to:"/admin", icon:ic.lock, label:"nav.admin" }] : NAV;
 
   return (
-    <div style={{
+    <div className="vy-sidebar" style={{
       width:260, padding:"20px 12px", display:"flex", flexDirection:"column",
       borderRight:"1px solid var(--border2)", flexShrink:0, position:"sticky", top:0, height:"100vh",
     }}>

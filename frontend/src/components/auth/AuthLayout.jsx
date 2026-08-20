@@ -71,7 +71,7 @@ export function AuthStatusBadge({ tone = "success", symbol = "✓" }) {
 
 export default function AuthLayout({ title, subtitle, children, footer }) {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg)" }}>
+    <div className="vy-auth-layout" style={{ minHeight: "100vh", display: "flex", background: "var(--bg)" }}>
       <div className="auth-brand-panel" style={{
         flex: "0 0 38%",
         maxWidth: 440,
