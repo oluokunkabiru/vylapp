@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { api } from "../../lib/api.js";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { ScreenHeader, PrimaryButton, Ic, ic } from "../ui/index.jsx";
 import { LANGUAGES, COMMON_LANGUAGE_CODES } from "../../lib/languages.js";
@@ -27,18 +28,24 @@ function loadDraft() {
 // V-12 — the composer's own default: the reading language the person has
 // already chosen (TopBar), not always English. A Yoruba reader writing a
 // Yoruba post shouldn't have to correct the declaration every time.
-export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) {
+//
+// V-16 — onCreated fires immediately with a client-built, optimistic vibe
+// (marked _pending) rather than waiting for the server, and the modal
+// closes right away: "the post appears in the feed instantly." onSettled
+// then either finalizes it (swaps in the real server vibe) or rolls it
+// back (removes it + an error toast) once the request actually resolves.
+export default function CreateModal({ onClose, onCreated, onSettled, defaultLang = "en" }) {
+  const { user: me } = useAuth();
   const toast = useToast();
   const [draft] = useState(loadDraft); // lazy initializer — reads localStorage exactly once, on mount
   const [content, setContent] = useState(draft?.content || "");
   const [cat, setCat] = useState(draft?.cat || "TECH_VIBES");
   const [language, setLanguage] = useState(draft?.language || defaultLang);
-  const [loading, setLoading] = useState(false);
   const max = 500;
 
   useEffect(() => {
     if (draft?.content) toast("Draft restored");
-    // Runs once on mount only — draft is captured before first render via useRef.
+    // Runs once on mount only — draft is captured before first render via the lazy useState above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -102,16 +109,26 @@ export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) 
 
   const share = async () => {
     if (!content.trim()) return;
-    setLoading(true);
+    const tags = [...content.matchAll(/#(\w+)/g)].map(m => m[1].toLowerCase());
+    const tempId = `optimistic-${Date.now()}`;
+    const pendingVibe = {
+      id: tempId, content: content.trim(), category: cat, tags, language,
+      createdAt: new Date().toISOString(),
+      author: me ? { handle: me.handle, displayName: me.displayName, avatarColor: me.avatarColor, avatarInitials: me.avatarInitials, avatarUrl: me.avatarUrl, verified: me.verified } : null,
+      counts: { likes: 0, replies: 0, reposts: 0 },
+      viewer: {},
+      _pending: true,
+    };
+    onCreated?.(pendingVibe);
+    onClose();
     try {
-      const tags = [...content.matchAll(/#(\w+)/g)].map(m => m[1].toLowerCase());
       const { vibe } = await api.post("/vibes", { content: content.trim(), category: cat, tags, language });
       localStorage.removeItem(DRAFT_KEY);
-      toast("Your vibe is live ✓");
-      onCreated?.(vibe);
-      onClose();
-    } catch (e) { toast(e.message, "error"); }
-    finally { setLoading(false); }
+      onSettled?.(tempId, vibe);
+    } catch (e) {
+      onSettled?.(tempId, null);
+      toast(`Couldn't post: ${e.message}`, "error");
+    }
   };
 
   return (
@@ -214,7 +231,7 @@ export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) 
           </div>
         </div>
         <div style={{ padding:16, borderTop:"1px solid var(--border2)" }}>
-          <PrimaryButton full onClick={share} loading={loading} disabled={!content.trim()}>Share Vibe</PrimaryButton>
+          <PrimaryButton full onClick={share} disabled={!content.trim()}>Share Vibe</PrimaryButton>
         </div>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { StoriesBar, StoryViewer } from "../components/feed/StoriesBar.jsx";
 import PostCard from "../components/feed/PostCard.jsx";
 import { Spinner, Empty, ErrorState, SkeletonPostCard } from "../components/ui/index.jsx";
 
-export default function Home({ lang, newVibe }) {
+export default function Home({ lang, newVibe, vibeSettle }) {
   const [vibes, setVibes] = useState([]);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -14,13 +14,24 @@ export default function Home({ lang, newVibe }) {
   const [storyUser, setStoryUser] = useState(null);
   const sentinelRef = useRef(null);
 
-  // A post made via the global "+" composer lands here — deduped by id so
-  // a later refetch (e.g. after a language switch) that already contains
-  // it doesn't double it up.
+  // A post made via the global "+" composer lands here immediately — it's
+  // the optimistic, still-_pending vibe (V-16), not the confirmed one.
+  // Deduped by id so a later refetch (e.g. after a language switch) that
+  // already contains it doesn't double it up.
   useEffect(() => {
     if (!newVibe) return;
     setVibes(v => v.some(x => x.id === newVibe.id) ? v : [newVibe, ...v]);
   }, [newVibe]);
+
+  // Reconciles the pending vibe above once the request actually resolves:
+  // `final` present → swap the temp entry for the real, server-confirmed
+  // one (clears _pending); `final` null → the post failed, remove it —
+  // the visible rollback half of the optimistic-publish contract.
+  useEffect(() => {
+    if (!vibeSettle) return;
+    const { tempId, final } = vibeSettle;
+    setVibes(v => final ? v.map(x => x.id === tempId ? final : x) : v.filter(x => x.id !== tempId));
+  }, [vibeSettle]);
 
   const loadVibes = useCallback(async (p = 0) => {
     if (p === 0) setLoading(true); else setLoadingMore(true);

@@ -79,13 +79,15 @@ function InnerApp() {
   const [lang, setLang] = useState(() => user?.uiLanguage || localStorage.getItem("vyl_lang") || user?.contentLanguages?.[0] || "en");
   const [notifCount, setNotifCount] = useState(0);
   const [msgCount, setMsgCount] = useState(0);
-  // V-16-adjacent: the global "+" composer used to post successfully (toast
-  // and all) but the new vibe never reached Home's feed — onCreated was a
-  // no-op, so the only way to see your own post was a manual refresh. Home
-  // is a separate component instance behind a <Route>, so there's no direct
-  // handle to its state; passed down as a prop instead, and Home dedupes by
-  // id so a later refetch that already contains it doesn't double it up.
+  // V-16 — the global "+" composer posts optimistically: onCreated fires
+  // with a client-built pending vibe the instant "Share" is tapped, and
+  // onSettled reconciles it once the request actually resolves (swaps in
+  // the real vibe, or rolls it back on failure). Home is a separate
+  // component instance behind a <Route>, so there's no direct handle to
+  // its state; both flow down as props instead. Home dedupes justCreated
+  // by id so a later refetch that already contains it doesn't double it up.
   const [justCreated, setJustCreated] = useState(null);
+  const [vibeSettle, setVibeSettle] = useState(null);
 
   useEffect(() => { localStorage.setItem("vyl_lang", lang); }, [lang]);
 
@@ -133,7 +135,7 @@ function InnerApp() {
   const mainContent = (
     <Routes>
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/" element={<Home {...commonProps} newVibe={justCreated} />} />
+      <Route path="/" element={<Home {...commonProps} newVibe={justCreated} vibeSettle={vibeSettle} />} />
       <Route path="/explore" element={<Explore />} />
       <Route path="/spaces" element={<SpacesPage />} />
       <Route path="/learn" element={<LearnHome />} />
@@ -184,6 +186,7 @@ function InnerApp() {
         <CreateModal
           onClose={() => setCreateOpen(false)}
           onCreated={vibe => setJustCreated(vibe)}
+          onSettled={(tempId, final) => setVibeSettle({ tempId, final })}
           defaultLang={lang}
         />
       )}

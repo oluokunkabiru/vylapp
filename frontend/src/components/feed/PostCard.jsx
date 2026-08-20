@@ -124,9 +124,14 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
   // reveal toggles between original and translated text.
   const captionLang = showingTranslation ? lang : (vibe.language || "en");
   const timeAgo = vibe.createdAt ? timeString(vibe.createdAt) : "";
+  // V-16 — the optimistic, not-yet-confirmed state: dimmed and
+  // non-interactive (its id is a client-side placeholder, not a real vibe
+  // id, so any like/comment/bookmark/share tap would just 404) until
+  // Home's settle effect either finalizes or rolls it back.
+  const isPending = !!vibe._pending;
 
   return (
-    <article style={{ borderBottom:"1px solid var(--border2)", paddingBottom:14 }}>
+    <article style={{ borderBottom:"1px solid var(--border2)", paddingBottom:14, opacity: isPending ? 0.6 : 1, transition:"opacity var(--duration-base) var(--ease-standard)" }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px" }}>
         <Avatar user={vibe.author} size={38} />
@@ -137,14 +142,16 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
             <CategoryPill category={vibe.category} />
-            <span style={{ color:"var(--text3)", fontSize:12 }}>· {timeAgo}</span>
+            <span style={{ color:"var(--text3)", fontSize:12 }}>
+              {isPending ? "Posting…" : `· ${timeAgo}`}
+            </span>
           </div>
         </div>
-        <TapIcon d={ic.dotsH} size={20} c="var(--text2)" label="More options" onClick={() => toast("Options coming soon")} />
+        {!isPending && <TapIcon d={ic.dotsH} size={20} c="var(--text2)" label="More options" onClick={() => toast("Options coming soon")} />}
       </div>
 
       {/* Media */}
-      <div onDoubleClick={onDoubleTap} style={{
+      <div onDoubleClick={isPending ? undefined : onDoubleTap} style={{ pointerEvents: isPending ? "none" : "auto",
         position:"relative", width:"100%", aspectRatio:"4/5",
         background:`radial-gradient(circle at 50% 38%, rgba(255,255,255,0.10), transparent 55%), ${grad}`,
         display:"flex", alignItems:"center", justifyContent:"center",
@@ -175,7 +182,7 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
       )}
 
       {/* Actions */}
-      <div style={{ display:"flex", alignItems:"center", padding:"6px 8px 0" }}>
+      <div style={{ display:"flex", alignItems:"center", padding:"6px 8px 0", pointerEvents: isPending ? "none" : "auto" }}>
         <TapIcon d={ic.heart} f={liked ? "var(--coral)" : "none"} c={liked ? "var(--coral)" : "var(--text)"} onClick={toggleLike} label="Like" />
         <TapIcon d={ic.comment} c="var(--text)" label="Comment" onClick={loadReplies} />
         <TapIcon d={ic.send} c="var(--text)" label="Share" onClick={shareVibe} />
