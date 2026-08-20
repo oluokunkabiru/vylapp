@@ -13,6 +13,11 @@ router.use(requireAuth);
 // ── GET /messages/conversations ──────────────────────────────────────────
 router.get("/conversations", asyncHandler(messagingController.listConversations));
 
+// ── GET /messages/requests — C-13: DMs from people who don't follow you ──
+router.get("/requests", asyncHandler(messagingController.listRequests));
+router.post("/conversations/:id/accept", asyncHandler(messagingController.acceptRequest));
+router.post("/conversations/:id/decline", asyncHandler(messagingController.declineRequest));
+
 // ── POST /messages/conversations/dm — get or create a 1:1 conversation ───
 router.post("/conversations/dm", asyncHandler(messagingController.getOrCreateDm));
 

@@ -20,7 +20,7 @@ function shapeConversation(row: any) {
   };
 }
 
-// ── GET /messages/conversations ──────────────────────────────────────────
+// ── GET /messages/conversations — the main inbox, requests excluded ──────
 // Kept as raw SQL: a self-join to find "the other DM participant" plus
 // NULLS LAST ordering doesn't translate cleanly to the query builder, and
 // this exact query is already correct/battle-tested — no behavior risk
@@ -34,10 +34,52 @@ async function listConversations(req: AuthedRequest, res: Response) {
      JOIN conversations c ON c.id = cm.conversation_id
      LEFT JOIN conversation_members ocm ON ocm.conversation_id = c.id AND ocm.user_id != ${req.user.id} AND c.type = 'dm'
      LEFT JOIN users ou ON ou.id = ocm.user_id
-     WHERE cm.user_id = ${req.user.id} AND cm.left_at IS NULL
+     WHERE cm.user_id = ${req.user.id} AND cm.left_at IS NULL AND cm.status = 'active'
      ORDER BY c.last_message_at DESC NULLS LAST LIMIT 50
   `;
   return ok(res, { conversations: rows.map(shapeConversation) });
+}
+
+// ── GET /messages/requests — C-13: DMs from people who don't follow you ──
+async function listRequests(req: AuthedRequest, res: Response) {
+  const rows: any[] = await prisma.$queryRaw`
+    SELECT c.*, cm.unread_count,
+       ou.id as other_user_id, ou.handle as other_handle, ou.display_name as other_display_name,
+       ou.avatar_color as other_avatar_color, ou.avatar_initials as other_avatar_initials, ou.verified as other_verified
+     FROM conversation_members cm
+     JOIN conversations c ON c.id = cm.conversation_id
+     LEFT JOIN conversation_members ocm ON ocm.conversation_id = c.id AND ocm.user_id != ${req.user.id} AND c.type = 'dm'
+     LEFT JOIN users ou ON ou.id = ocm.user_id
+     WHERE cm.user_id = ${req.user.id} AND cm.left_at IS NULL AND cm.status = 'requested'
+     ORDER BY c.last_message_at DESC NULLS LAST LIMIT 50
+  `;
+  return ok(res, { requests: rows.map(shapeConversation) });
+}
+
+// ── POST /messages/conversations/:id/accept — moves a request into the inbox ─
+async function acceptRequest(req: AuthedRequest, res: Response) {
+  const member = await prisma.conversationMembers.findUnique({
+    where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
+  });
+  if (!member || member.leftAt || member.status !== "requested") return fail(res, 404, "No pending request for this conversation");
+  await prisma.conversationMembers.update({
+    where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
+    data: { status: "active" },
+  });
+  return ok(res, { accepted: true });
+}
+
+// ── POST /messages/conversations/:id/decline — hides it, doesn't notify the sender ─
+async function declineRequest(req: AuthedRequest, res: Response) {
+  const member = await prisma.conversationMembers.findUnique({
+    where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
+  });
+  if (!member || member.leftAt || member.status !== "requested") return fail(res, 404, "No pending request for this conversation");
+  await prisma.conversationMembers.update({
+    where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
+    data: { leftAt: new Date() },
+  });
+  return ok(res, { declined: true });
 }
 
 // ── POST /messages/conversations/dm — get or create a 1:1 conversation ───
@@ -54,9 +96,20 @@ async function getOrCreateDm(req: AuthedRequest, res: Response) {
   `;
   if (existing.length) return ok(res, { conversationId: existing[0].id, created: false });
 
+  // C-13: a stranger's first message lands in the recipient's requests
+  // inbox, not their main one — "not a stranger" means the recipient
+  // already follows the sender back, same rule as most platforms use.
+  const recipientFollowsSender = await prisma.connections.findUnique({
+    where: { followerId_followingId: { followerId: userId, followingId: req.user.id } },
+    select: { followerId: true },
+  });
+
   const conv = await prisma.conversations.create({ data: { type: "dm", createdBy: req.user.id } });
   await prisma.conversationMembers.createMany({
-    data: [{ conversationId: conv.id, userId: req.user.id }, { conversationId: conv.id, userId }],
+    data: [
+      { conversationId: conv.id, userId: req.user.id, status: "active" },
+      { conversationId: conv.id, userId, status: recipientFollowsSender ? "active" : "requested" },
+    ],
   });
   return ok(res, { conversationId: conv.id, created: true }, 201);
 }
@@ -166,6 +219,15 @@ async function sendMessage(req: AuthedRequest, res: Response) {
   });
   if (!member || member.leftAt) return fail(res, 403, "Not a member of this conversation");
 
+  // C-13: replying to a request is a stronger signal than tapping "accept" —
+  // treat it as one, so the conversation moves to the inbox automatically.
+  if (member.status === "requested") {
+    await prisma.conversationMembers.update({
+      where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
+      data: { status: "active" },
+    });
+  }
+
   const cleanContent = content.trim();
   const language = await LanguageDetector.detect(cleanContent, "en");
   const msg = await prisma.messages.create({
@@ -227,4 +289,4 @@ async function sendMessage(req: AuthedRequest, res: Response) {
   return ok(res, { message: { id: msg.id, content: msg.content, language: msg.language, contentType: msg.contentType, createdAt: msg.createdAt } }, 201);
 }
 
-export = { listConversations, getOrCreateDm, createGroup, addMember, leaveGroup, listMessages, sendMessage };
+export = { listConversations, listRequests, acceptRequest, declineRequest, getOrCreateDm, createGroup, addMember, leaveGroup, listMessages, sendMessage };

@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { getSocket } from "../lib/socket.js";
 import { Avatar, Spinner, Empty, TapIcon, ic, Ic } from "../components/ui/index.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { isRtl } from "../lib/languages.js";
 
 function timeAgo(ts) {
   if (!ts) return "";
@@ -12,6 +13,32 @@ function timeAgo(ts) {
   if (d < 3600000) return `${Math.floor(d/60000)}m`;
   if (d < 86400000) return `${Math.floor(d/3600000)}h`;
   return `${Math.floor(d/86400000)}d`;
+}
+
+// C-13 — a stranger's first DM lands here, not in the main inbox, until
+// accepted (explicitly, or implicitly by replying — see sendMessage on
+// the backend). Decline just hides it; the sender is never told.
+function RequestList({ requests, onAccept, onDecline }) {
+  return (
+    <div style={{ flex:1, overflowY:"auto" }}>
+      {requests.map(c => {
+        const other = c.otherUser;
+        return (
+          <div key={c.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 16px", borderBottom:"1px solid var(--border2)" }}>
+            <Avatar user={other} size={48} />
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontWeight:800, fontSize:15 }}>{other?.displayName || c.name || "Someone"}</div>
+              <div style={{ fontSize:13.5, color:"var(--text2)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.lastMessagePreview || "No messages yet"}</div>
+            </div>
+            <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+              <button onClick={()=>onAccept(c.id)} style={{ padding:"6px 12px", borderRadius:"var(--radius-pill)", background:"var(--grad)", color:"#fff", fontWeight:700, fontSize:12.5 }}>Accept</button>
+              <button onClick={()=>onDecline(c.id)} style={{ padding:"6px 12px", borderRadius:"var(--radius-pill)", border:"1px solid var(--border)", background:"transparent", color:"var(--text2)", fontWeight:700, fontSize:12.5 }}>Decline</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function ConversationList({ convos, active, onSelect }) {
@@ -204,11 +231,17 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
             const hasTranslation = !!m.translation;
             const original = showOriginal.has(key);
             const text = (hasTranslation && !original) ? m.translation.text : m.content;
+            // Design doc: "a conversation where two people write in different
+            // scripts and each reads in their own is the most powerful
+            // demonstration your product has." The bubble text was never
+            // carrying lang/dir, so mixed-script conversations rendered with
+            // no per-script line-height (D-02/D-04) and no bidi correctness.
+            const shownLang = (hasTranslation && !original) ? lang : (m.language || "en");
             return (
               <div key={key} style={{ display:"flex", flexDirection:"column", alignItems:mine?"flex-end":"flex-start", marginBottom:8 }}>
                 <div style={{ display:"flex", justifyContent:mine?"flex-end":"flex-start", width:"100%" }}>
                   {!mine && <Avatar user={m.sender} size={28} />}
-                  <div className={`vy-message-bubble ${mine ? "vy-message-bubble--mine" : "vy-message-bubble--other"}`} style={{
+                  <div lang={shownLang} dir={isRtl(shownLang) ? "rtl" : "ltr"} className={`vy-message-bubble ${mine ? "vy-message-bubble--mine" : "vy-message-bubble--other"}`} style={{
                     maxWidth:"72%", padding:"10px 14px", borderRadius:mine?"16px 16px 4px 16px":"16px 16px 16px 4px",
                     background: mine ? "var(--grad)" : "var(--bg3)",
                     color:"var(--text)", fontSize:14.5, lineHeight:1.45,
@@ -255,7 +288,10 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
 
 export default function Messages({ lang, onClearBadge }) {
   const { user } = useAuth();
+  const toast = useToast();
   const [convos, setConvos] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [tab, setTab] = useState("chats"); // "chats" | "requests"
   const [active, setActive] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
@@ -271,10 +307,28 @@ export default function Messages({ lang, onClearBadge }) {
     return api.get("/messages/conversations").then(({ conversations: c }) => { setConvos(c||[]); onClearBadge?.(); });
   }, [onClearBadge]);
 
+  const loadRequests = useCallback(() => {
+    return api.get("/messages/requests").then(({ requests: r }) => setRequests(r||[])).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!user) return;
-    loadConvos().catch(() => {}).finally(() => setLoading(false));
-  }, [user, loadConvos]);
+    Promise.all([loadConvos().catch(() => {}), loadRequests()]).finally(() => setLoading(false));
+  }, [user, loadConvos, loadRequests]);
+
+  const acceptRequest = async id => {
+    try {
+      await api.post(`/messages/conversations/${id}/accept`);
+      await Promise.all([loadConvos(), loadRequests()]);
+      toast("Request accepted");
+    } catch (e) { toast(e.message, "error"); }
+  };
+  const declineRequest = async id => {
+    try {
+      await api.post(`/messages/conversations/${id}/decline`);
+      setRequests(r => r.filter(c => c.id !== id));
+    } catch (e) { toast(e.message, "error"); }
+  };
 
   const onGroupCreated = (conversationId, name) => {
     setGroupModalOpen(false);
@@ -299,6 +353,29 @@ export default function Messages({ lang, onClearBadge }) {
     </button>
   );
 
+  // C-13 — kept as simple pills rather than the shared Tabs primitive: this
+  // needs a badge count on "Requests", which Tabs doesn't support.
+  const tabRow = (
+    <div style={{ display:"flex", gap:8, padding:"0 16px 12px" }}>
+      {[["chats","Chats"], ["requests", requests.length ? `Requests · ${requests.length}` : "Requests"]].map(([k,l]) => (
+        <button key={k} onClick={()=>setTab(k)} style={{
+          padding:"6px 14px", borderRadius:"var(--radius-pill)", fontSize:13, fontWeight:700,
+          border:`1px solid ${tab===k ? "var(--violet)" : "var(--border)"}`,
+          background: tab===k ? "var(--violet-dim)" : "transparent",
+          color: tab===k ? "var(--violet-lt)" : "var(--text2)",
+        }}>{l}</button>
+      ))}
+    </div>
+  );
+
+  const listBody = tab === "requests"
+    ? (requests.length === 0
+        ? <Empty emoji="✅" title="No pending requests" sub="Messages from people who don't follow you land here." />
+        : <RequestList requests={requests} onAccept={acceptRequest} onDecline={declineRequest} />)
+    : (convos.length === 0
+        ? <Empty emoji="💬" title="No conversations yet" sub="Go to a profile and start a DM, or create a group." />
+        : <ConversationList convos={convos} active={active} onSelect={setActive} />);
+
   // Desktop: split pane; mobile: list or chat
   if (isMobile) {
     if (active) return (
@@ -313,7 +390,8 @@ export default function Messages({ lang, onClearBadge }) {
           <span style={{ fontWeight:800, fontSize:18 }}>Messages</span>
           {newGroupButton}
         </div>
-        {convos.length === 0 ? <Empty emoji="💬" title="No conversations yet" sub="Go to a profile and start a DM, or create a group." /> : <ConversationList convos={convos} active={active} onSelect={setActive} />}
+        {tabRow}
+        {listBody}
         {groupModalOpen && <NewGroupModal onClose={()=>setGroupModalOpen(false)} onCreated={onGroupCreated} />}
       </div>
     );
@@ -322,11 +400,14 @@ export default function Messages({ lang, onClearBadge }) {
   return (
     <div style={{ display:"flex", height:"calc(100vh - 56px)" }}>
       <div className="vy-message-list" style={{ width:320, borderRight:"1px solid var(--border2)", display:"flex", flexDirection:"column" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px", borderBottom:"1px solid var(--border2)" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 16px 12px" }}>
           <span style={{ fontWeight:800, fontSize:18 }}>Messages</span>
           {newGroupButton}
         </div>
-        {convos.length === 0 ? <Empty emoji="💬" title="No conversations" sub="Start a DM from someone's profile, or create a group." /> : <ConversationList convos={convos} active={active} onSelect={setActive} />}
+        {tabRow}
+        <div style={{ borderTop:"1px solid var(--border2)", flex:1, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          {listBody}
+        </div>
       </div>
       <div style={{ flex:1, display:"flex", flexDirection:"column" }}>
         {active ? <ChatWindow convo={active} lang={lang} onLeft={onLeftGroup} /> : <Empty emoji="💬" title="Pick a conversation" sub="Select a conversation on the left." />}
