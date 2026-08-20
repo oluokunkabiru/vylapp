@@ -188,7 +188,18 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
 
         <div style={{ marginTop:4, fontSize:14, lineHeight:1.55 }}>
           <span style={{ fontWeight:800 }}>@{vibe.author?.handle}</span>{" "}
-          <span lang={captionLang} dir={isRtl(captionLang) ? "rtl" : "ltr"} style={{ color:"var(--text)" }}>{caption}</span>
+          {/* A keyed element deliberately remounts on each change so the
+              reveal is a clear fold/unfold transition, rather than text
+              silently swapping under the reader's eye. */}
+          <span
+            key={`${vibe.id}-${showingTranslation ? "translation" : "original"}`}
+            className="vy-translation-reveal"
+            lang={captionLang}
+            dir={isRtl(captionLang) ? "rtl" : "ltr"}
+            aria-live="polite"
+            aria-atomic="true"
+            style={{ color:"var(--text)" }}
+          >{caption}</span>
         </div>
 
         {/* Provenance — makes translation visible as it happens, not just
@@ -249,7 +260,7 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
         {user && (
           <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:10 }}>
             <Avatar user={user} size={28} />
-            <input
+            <input dir="auto"
               value={draft} onChange={e=>setDraft(e.target.value)}
               onKeyDown={e=>{ if(e.key==="Enter") submitReply(); }}
               placeholder="Add a comment…"

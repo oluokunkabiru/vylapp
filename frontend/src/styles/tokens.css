@@ -183,6 +183,17 @@ textarea:focus-visible {
 @keyframes slideUp { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
 @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
 @keyframes storyProgress { from { width:0%; } to { width:100%; } }
+/* D-21 — translation changes are intentionally legible: the new text folds
+   open from its top edge rather than appearing as an unexplained replacement.
+   `key` on the caption element restarts this animation when toggled. */
+@keyframes translationReveal {
+  from { opacity: 0; clip-path: inset(0 0 100% 0); transform: translateY(-0.25em); }
+  to { opacity: 1; clip-path: inset(0 0 0 0); transform: translateY(0); }
+}
+.vy-translation-reveal {
+  display: inline;
+  animation: translationReveal var(--duration-base) var(--ease-decelerate) both;
+}
 
 /* Auth layout — split panel on wide screens, single column on narrow ones */
 .auth-brand-panel { display: none; }
