@@ -49,6 +49,7 @@ export const ic = {
   book:     "M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15z",
   lock:     "M5 11h14v10H5V11zM8 11V7a4 4 0 018 0v4",
   play:     "M6 3l14 9-14 9V3z",
+  settings: "M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82A1.65 1.65 0 003 13.09V13a2 2 0 010-2v-.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z",
 };
 
 // ── Avatar ────────────────────────────────────────────────────────────────
@@ -244,6 +245,39 @@ export function SkeletonPostCard() {
         <Skeleton width="90%" height={14} />
         <Skeleton width="60%" height={14} />
       </div>
+    </div>
+  );
+}
+
+// ── Toggle switch — was duplicated locally in Autopilot.jsx; Settings needs
+// the identical thing for account/privacy preferences, so promoted here
+// rather than copy-pasting a third instance.
+export function Toggle({ on, onChange, label, sub, disabled }) {
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:14, opacity: disabled ? 0.6 : 1 }}>
+      <button
+        onClick={() => !disabled && onChange(!on)}
+        disabled={disabled}
+        aria-label={label}
+        style={{
+          width:52, height:30, borderRadius:15, border:"none", cursor: disabled ? "default" : "pointer",
+          background: on ? "var(--grad)" : "var(--bg4)",
+          position:"relative", transition:"background var(--duration-fast) var(--ease-standard)", flexShrink:0,
+          boxShadow: on ? "var(--shadow-violet)" : "none",
+        }}
+      >
+        <span style={{
+          position:"absolute", top:3, left: on ? 24 : 3,
+          width:24, height:24, borderRadius:"50%", background:"#fff",
+          transition:"left var(--duration-fast) var(--ease-standard)", boxShadow:"0 2px 6px rgba(0,0,0,0.35)",
+        }} />
+      </button>
+      {(label || sub) && (
+        <div>
+          {label && <div style={{ fontWeight:700, fontSize:14.5 }}>{label}</div>}
+          {sub && <div style={{ color:"var(--text2)", fontSize:12.5, marginTop:2 }}>{sub}</div>}
+        </div>
+      )}
     </div>
   );
 }

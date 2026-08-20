@@ -43,6 +43,7 @@ import Autopilot from "./pages/Autopilot.jsx";
 import CreatorEarnings from "./pages/CreatorEarnings.jsx";
 import RavenLeaderboard from "./pages/RavenLeaderboard.jsx";
 import Onboarding from "./pages/Onboarding.jsx";
+import Settings from "./pages/Settings.jsx";
 
 import { Spinner } from "./components/ui/index.jsx";
 
@@ -142,6 +143,7 @@ function InnerApp() {
       <Route path="/messages" element={<Messages lang={lang} onClearBadge={()=>setMsgCount(0)} />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/profile/:handle" element={<Profile />} />
+      <Route path="/settings" element={<Settings lang={lang} setLang={setLanguage} />} />
       <Route path="/autopilot" element={<Autopilot />} />
       <Route path="/creator" element={<CreatorEarnings />} />
       <Route path="/raven" element={<RavenLeaderboard />} />

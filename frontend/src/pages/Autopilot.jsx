@@ -3,7 +3,7 @@ import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import {
-  Ic, ic, Spinner, Empty, PrimaryButton, GhostButton, numFmt,
+  Ic, ic, Spinner, Empty, PrimaryButton, GhostButton, numFmt, Toggle,
 } from "../components/ui/index.jsx";
 
 // ── Category config ────────────────────────────────────────────────────────
@@ -117,34 +117,6 @@ function RunRow({ run }) {
           fontSize: 11, fontWeight: 800, marginTop: 3,
           color: statusColor,
         }}>{run.status}</div>
-      </div>
-    </div>
-  );
-}
-
-// ── Toggle switch ──────────────────────────────────────────────────────────
-function Toggle({ on, onChange, label, sub }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-      <button
-        onClick={() => onChange(!on)}
-        aria-label={label}
-        style={{
-          width: 52, height: 30, borderRadius: 15, border: "none", cursor: "pointer",
-          background: on ? "var(--grad)" : "var(--bg4)",
-          position: "relative", transition: "background 0.22s", flexShrink: 0,
-          boxShadow: on ? "var(--shadow-violet)" : "none",
-        }}
-      >
-        <span style={{
-          position: "absolute", top: 3, left: on ? 24 : 3,
-          width: 24, height: 24, borderRadius: "50%", background: "#fff",
-          transition: "left 0.22s", boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
-        }} />
-      </button>
-      <div>
-        <div style={{ fontWeight: 700, fontSize: 14.5 }}>{label}</div>
-        {sub && <div style={{ color: "var(--text2)", fontSize: 12.5, marginTop: 2 }}>{sub}</div>}
       </div>
     </div>
   );

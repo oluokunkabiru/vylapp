@@ -43,6 +43,7 @@ function publicUser(row: any) {
     currentCountry: row.current_country, currentCity: row.current_city, heritageCountries: row.heritage_countries,
     isFoundingMember: row.is_founding_member, foundingRank: row.founding_rank,
     isMinor: row.is_minor,
+    privateAccount: row.private_account, allowDms: row.allow_dms,
   };
 }
 
@@ -61,6 +62,7 @@ function toSnakeUser(u: any) {
     current_country: u.currentCountry, current_city: u.currentCity, heritage_countries: u.heritageCountries,
     is_founding_member: u.isFoundingMember, founding_rank: u.foundingRank,
     is_minor: u.isMinor,
+    private_account: u.privateAccount, allow_dms: u.allowDms,
   };
 }
 

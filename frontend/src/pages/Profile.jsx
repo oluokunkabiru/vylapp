@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
-import { Avatar, VerifiedBadge, PrimaryButton, GhostButton, Spinner, Empty, Ic, ic, numFmt, Tabs } from "../components/ui/index.jsx";
+import { Avatar, VerifiedBadge, PrimaryButton, GhostButton, TapIcon, Spinner, Empty, Ic, ic, numFmt, Tabs } from "../components/ui/index.jsx";
 
 const CAT_GRADS = { TECH_VIBES:"linear-gradient(135deg,#38BDF8,#7C3AED)", GLOBAL_CONNECT:"linear-gradient(135deg,#10F5A0,#2DD4BF)", CREATIVE_LEARN:"linear-gradient(135deg,#FFB830,#FF6B6B)", HUMAN_POTENTIAL:"linear-gradient(135deg,#A78BFA,#7C3AED)", SPACES_INVITE:"linear-gradient(135deg,#FF6B6B,#FFB830)", GENERAL:"linear-gradient(135deg,#7C3AED,#2DD4BF)" };
 const CAT_EMOJI = { TECH_VIBES:"⚡", GLOBAL_CONNECT:"🌍", CREATIVE_LEARN:"🎨", HUMAN_POTENTIAL:"🧠", SPACES_INVITE:"🎙️", GENERAL:"✦" };
@@ -12,6 +12,7 @@ export default function Profile() {
   const { handle } = useParams();
   const { user: me, logout } = useAuth();
   const toast = useToast();
+  const navigate = useNavigate();
   const isMe = !handle || handle === me?.handle;
   const [profile, setProfile] = useState(isMe ? me : null);
   const [vibes, setVibes] = useState([]);
@@ -97,6 +98,7 @@ export default function Profile() {
           <div style={{ display:"flex", gap:8, flexShrink:0 }}>
             {isMe ? (
               <>
+                <TapIcon d={ic.settings} onClick={() => navigate("/settings")} label="Settings" />
                 <GhostButton onClick={()=>setEditMode(e=>!e)}>{editMode?"Cancel":"Edit"}</GhostButton>
                 <GhostButton onClick={logout}>Log out</GhostButton>
               </>

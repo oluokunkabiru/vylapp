@@ -17,6 +17,7 @@ function publicUser(row: any, viewerFollows?: boolean) {
     vibesCount: row.vibesCount, connectionsCount: row.connectionsCount, followingCount: row.followingCount,
     spacesHosted: row.spacesHosted, createdAt: row.createdAt,
     uiLanguage: row.language,
+    privateAccount: row.privateAccount, allowDms: row.allowDms,
     viewerFollows: viewerFollows ?? undefined,
   };
 }
@@ -57,7 +58,7 @@ async function getByHandle(req: Request, res: Response) {
 const ALLOWED_ME_FIELDS: Record<string, string> = {
   display_name: "displayName", bio: "bio", location: "location", website: "website",
   avatar_color: "avatarColor", avatar_url: "avatarUrl", banner_url: "bannerUrl", private_account: "privateAccount",
-  ui_language: "language",
+  ui_language: "language", allow_dms: "allowDms",
 };
 
 async function updateMe(req: AuthedRequest, res: Response) {
