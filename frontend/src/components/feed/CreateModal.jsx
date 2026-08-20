@@ -14,16 +14,38 @@ const CATS = [
 const CAT_COLORS = { TECH_VIBES:"var(--sky)", GLOBAL_CONNECT:"var(--green)", CREATIVE_LEARN:"var(--amber)", HUMAN_POTENTIAL:"var(--purple)", SPACES_INVITE:"var(--coral)" };
 const COMPOSER_LANGUAGES = COMMON_LANGUAGE_CODES.map(code => LANGUAGES.find(l => l.code === code));
 
+// V-15 — survives the app/tab being killed, not just this component
+// unmounting: localStorage rather than component state, and deliberately
+// NOT cleared just because the composer was closed without posting
+// (closing is not the same as discarding — only a successful post or an
+// explicit discard should lose someone's words).
+const DRAFT_KEY = "vyl_draft_vibe";
+function loadDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY)) || null; } catch { return null; }
+}
+
 // V-12 — the composer's own default: the reading language the person has
 // already chosen (TopBar), not always English. A Yoruba reader writing a
 // Yoruba post shouldn't have to correct the declaration every time.
 export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) {
   const toast = useToast();
-  const [content, setContent] = useState("");
-  const [cat, setCat] = useState("TECH_VIBES");
-  const [language, setLanguage] = useState(defaultLang);
+  const [draft] = useState(loadDraft); // lazy initializer — reads localStorage exactly once, on mount
+  const [content, setContent] = useState(draft?.content || "");
+  const [cat, setCat] = useState(draft?.cat || "TECH_VIBES");
+  const [language, setLanguage] = useState(draft?.language || defaultLang);
   const [loading, setLoading] = useState(false);
   const max = 500;
+
+  useEffect(() => {
+    if (draft?.content) toast("Draft restored");
+    // Runs once on mount only — draft is captured before first render via useRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!content.trim()) { localStorage.removeItem(DRAFT_KEY); return; }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, cat, language }));
+  }, [content, cat, language]);
 
   // V-13/V-14 — @mention and #hashtag autocomplete. `trigger` holds where the
   // active @/# token starts in `content` so a selected suggestion can
@@ -84,6 +106,7 @@ export default function CreateModal({ onClose, onCreated, defaultLang = "en" }) 
     try {
       const tags = [...content.matchAll(/#(\w+)/g)].map(m => m[1].toLowerCase());
       const { vibe } = await api.post("/vibes", { content: content.trim(), category: cat, tags, language });
+      localStorage.removeItem(DRAFT_KEY);
       toast("Your vibe is live ✓");
       onCreated?.(vibe);
       onClose();
