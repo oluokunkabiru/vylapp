@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { AuthedRequest } from "../types/express";
 import respond from "../utils/respond";
 import prisma from "../config/prisma";
+import TranslationEngine from "../services/translationEngine";
 
 const { ok, fail } = respond;
 
@@ -15,6 +16,7 @@ function publicUser(row: any, viewerFollows?: boolean) {
     verificationTier: row.verificationTier, isCreator: row.isCreator,
     vibesCount: row.vibesCount, connectionsCount: row.connectionsCount, followingCount: row.followingCount,
     spacesHosted: row.spacesHosted, createdAt: row.createdAt,
+    uiLanguage: row.language,
     viewerFollows: viewerFollows ?? undefined,
   };
 }
@@ -55,6 +57,7 @@ async function getByHandle(req: Request, res: Response) {
 const ALLOWED_ME_FIELDS: Record<string, string> = {
   display_name: "displayName", bio: "bio", location: "location", website: "website",
   avatar_color: "avatarColor", avatar_url: "avatarUrl", banner_url: "bannerUrl", private_account: "privateAccount",
+  ui_language: "language",
 };
 
 async function updateMe(req: AuthedRequest, res: Response) {
@@ -63,6 +66,12 @@ async function updateMe(req: AuthedRequest, res: Response) {
     const col = key.replace(/[A-Z]/g, c => "_" + c.toLowerCase());
     if (!(col in ALLOWED_ME_FIELDS)) continue;
     data[ALLOWED_ME_FIELDS[col]] = val;
+  }
+  if (data.language !== undefined) {
+    const validCodes = new Set(TranslationEngine.LANGUAGES.map((language: { code: string }) => language.code));
+    if (typeof data.language !== "string" || !validCodes.has(data.language)) {
+      return fail(res, 400, "ui_language must be a supported language code");
+    }
   }
   if (!Object.keys(data).length) return fail(res, 400, "No valid fields to update");
   const user = await prisma.users.update({ where: { id: req.user.id }, data });

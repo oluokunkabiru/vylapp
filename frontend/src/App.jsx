@@ -70,13 +70,12 @@ function AuthGate() {
 
 // ── Inner app: only ever rendered once a user is authenticated ─────────────
 function InnerApp() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 860);
   const [createOpen, setCreateOpen] = useState(false);
-  // A manual in-session choice (localStorage) wins if one exists; otherwise
-  // honor what onboarding actually captured instead of silently defaulting
-  // to English.
-  const [lang, setLang] = useState(() => localStorage.getItem("vyl_lang") || user?.contentLanguages?.[0] || "en");
+  // The backend is authoritative so a reader's language follows them across
+  // devices. localStorage remains a best-effort pre-login/offline fallback.
+  const [lang, setLang] = useState(() => user?.uiLanguage || localStorage.getItem("vyl_lang") || user?.contentLanguages?.[0] || "en");
   const [notifCount, setNotifCount] = useState(0);
   const [msgCount, setMsgCount] = useState(0);
   // V-16-adjacent: the global "+" composer used to post successfully (toast
@@ -90,6 +89,16 @@ function InnerApp() {
   useEffect(() => { localStorage.setItem("vyl_lang", lang); }, [lang]);
 
   useEffect(() => { i18n.changeLanguage(lang); }, [lang]);
+
+  const setLanguage = useCallback((nextLanguage) => {
+    if (nextLanguage === lang) return;
+    setLang(nextLanguage);
+    // Keep switching instant; a failed sync does not take away the reader's
+    // current session preference, and the next successful change retries it.
+    api.patch("/users/me", { ui_language: nextLanguage })
+      .then(({ user: updatedUser }) => updateUser(updatedUser || { uiLanguage: nextLanguage }))
+      .catch(() => {});
+  }, [lang, updateUser]);
 
   // Keep <html lang>/<html dir> in sync with the reading language so
   // screen readers, spellcheck/translate prompts, and font shaping match
@@ -150,7 +159,7 @@ function InnerApp() {
       {isMobile ? (
         /* MOBILE LAYOUT */
         <>
-          <TopBar notifCount={notifCount} msgCount={msgCount} lang={lang} setLang={setLang} />
+          <TopBar notifCount={notifCount} msgCount={msgCount} lang={lang} setLang={setLanguage} />
           <main style={{ flex:1, overflowY:"auto" }}>{mainContent}</main>
           <BottomNav onCreateClick={() => setCreateOpen(true)} notifCount={notifCount} />
         </>
@@ -160,7 +169,7 @@ function InnerApp() {
           <Sidebar
             onCreateClick={() => setCreateOpen(true)}
             notifCount={notifCount} msgCount={msgCount}
-            lang={lang} setLang={setLang}
+            lang={lang} setLang={setLanguage}
           />
           <main style={{ flex:1, maxWidth:480, borderRight:"1px solid var(--border2)", minHeight:"100vh" }}>
             {mainContent}

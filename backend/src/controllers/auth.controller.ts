@@ -39,7 +39,7 @@ function publicUser(row: any) {
     isCreator: row.is_creator, onboardingStep: row.onboarding_step, onboardingDone: row.onboarding_done,
     interests: row.interests, subscriptionPlan: row.subscription_plan,
     vibesCount: row.vibes_count, connectionsCount: row.connections_count, followingCount: row.following_count,
-    contentLanguages: row.content_language, location: row.location,
+    contentLanguages: row.content_language, uiLanguage: row.language, location: row.location,
     currentCountry: row.current_country, currentCity: row.current_city, heritageCountries: row.heritage_countries,
     isFoundingMember: row.is_founding_member, foundingRank: row.founding_rank,
   };
@@ -56,7 +56,7 @@ function toSnakeUser(u: any) {
     is_creator: u.isCreator, onboarding_step: u.onboardingStep, onboarding_done: u.onboardingDone,
     interests: u.interests, subscription_plan: u.subscriptionPlan,
     vibes_count: u.vibesCount, connections_count: u.connectionsCount, following_count: u.followingCount,
-    content_language: u.contentLanguage, location: u.location,
+    content_language: u.contentLanguage, language: u.language, location: u.location,
     current_country: u.currentCountry, current_city: u.currentCity, heritage_countries: u.heritageCountries,
     is_founding_member: u.isFoundingMember, founding_rank: u.foundingRank,
   };
