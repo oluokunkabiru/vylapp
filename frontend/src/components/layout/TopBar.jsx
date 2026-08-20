@@ -2,25 +2,21 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { VylappWordmark, TapIcon, ic, Ic } from "../ui/index.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { LANGUAGES, COMMON_LANGUAGE_CODES } from "../../lib/languages.js";
+import { useTranslation } from "react-i18next";
 
 const TOPBAR_LANGUAGES = COMMON_LANGUAGE_CODES.map(code => LANGUAGES.find(l => l.code === code));
 
 const TITLES = {
-  "/explore":       "Search",
-  "/spaces":        "Spaces",
-  "/learn":         "Learn",
-  "/profile":       "Profile",
-  "/notifications": "Activity",
-  "/messages":      "Messages",
-  "/autopilot":     "Autopilot",
-  "/creator":       "Creator Earnings",
-  "/raven":         "Raven",
+  "/explore": "nav.search", "/spaces": "nav.spaces", "/learn": "nav.learn",
+  "/profile": "nav.profile", "/notifications": "nav.activity", "/messages": "nav.messages",
+  "/autopilot": "nav.autopilot", "/creator": "page.creatorEarnings", "/raven": "nav.raven",
 };
 
 export default function TopBar({ notifCount, msgCount, lang, setLang }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const isHome = pathname === "/";
 
   if (!isHome) return (
@@ -32,7 +28,7 @@ export default function TopBar({ notifCount, msgCount, lang, setLang }) {
       <button onClick={()=>navigate(-1)} style={{ background:"none", border:"none", display:"flex", alignItems:"center", justifyContent:"center", width:44, height:44, borderRadius:"50%", flexShrink:0 }}>
         <Ic d={ic.back} s={22} c="var(--text)" />
       </button>
-      <div style={{ fontWeight:800, fontSize:18, flex:1 }}>{TITLES[pathname] || "Vylapp"}</div>
+      <div style={{ fontWeight:800, fontSize:18, flex:1 }}>{TITLES[pathname] ? t(TITLES[pathname]) : "Vylapp"}</div>
     </div>
   );
 
@@ -55,8 +51,8 @@ export default function TopBar({ notifCount, msgCount, lang, setLang }) {
         ))}
       </select>
       {user && <>
-        <TapIcon d={ic.bell} onClick={()=>navigate("/notifications")} label="Activity" badge={notifCount} />
-        <TapIcon d={ic.send} onClick={()=>navigate("/messages")} label="Messages" badge={msgCount} />
+        <TapIcon d={ic.bell} onClick={()=>navigate("/notifications")} label={t("nav.activity")} badge={notifCount} />
+        <TapIcon d={ic.send} onClick={()=>navigate("/messages")} label={t("nav.messages")} badge={msgCount} />
       </>}
     </div>
   );

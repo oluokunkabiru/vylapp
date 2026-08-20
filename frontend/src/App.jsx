@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
 import { getSocket } from "./lib/socket.js";
 import { isRtl } from "./lib/languages.js";
+import i18n from "./i18n.js";
 
 import AdminGuard from "./pages/admin/AdminGuard.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
@@ -87,6 +88,8 @@ function InnerApp() {
   const [justCreated, setJustCreated] = useState(null);
 
   useEffect(() => { localStorage.setItem("vyl_lang", lang); }, [lang]);
+
+  useEffect(() => { i18n.changeLanguage(lang); }, [lang]);
 
   // Keep <html lang>/<html dir> in sync with the reading language so
   // screen readers, spellcheck/translate prompts, and font shaping match

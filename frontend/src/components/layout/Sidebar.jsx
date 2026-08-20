@@ -2,26 +2,28 @@ import { Link, useLocation } from "react-router-dom";
 import { Ic, ic, Avatar, VylappWordmark } from "../ui/index.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { LANGUAGES } from "../../lib/languages.js";
+import { useTranslation } from "react-i18next";
 
 const NAV = [
-  { to:"/dashboard",     icon:ic.chart,   label:"Dashboard" },
-  { to:"/",              icon:ic.home,    label:"Feed"      },
-  { to:"/explore",       icon:ic.search,  label:"Search"    },
-  { to:"/spaces",        icon:ic.spaces,  label:"Spaces"    },
-  { to:"/learn",         icon:ic.book,    label:"Learn"     },
-  { to:"/notifications", icon:ic.bell,    label:"Activity"  },
-  { to:"/messages",      icon:ic.send,    label:"Messages"  },
-  { to:"/autopilot",     icon:ic.zap,     label:"Autopilot" },
-  { to:"/creator",       icon:ic.dollar,  label:"Earnings"  },
-  { to:"/raven",         icon:ic.trophy,  label:"Raven"     },
-  { to:"/profile",       icon:ic.user,    label:"Profile"   },
+  { to:"/dashboard",     icon:ic.chart,   label:"nav.dashboard" },
+  { to:"/",              icon:ic.home,    label:"nav.feed"      },
+  { to:"/explore",       icon:ic.search,  label:"nav.search"    },
+  { to:"/spaces",        icon:ic.spaces,  label:"nav.spaces"    },
+  { to:"/learn",         icon:ic.book,    label:"nav.learn"     },
+  { to:"/notifications", icon:ic.bell,    label:"nav.activity"  },
+  { to:"/messages",      icon:ic.send,    label:"nav.messages"  },
+  { to:"/autopilot",     icon:ic.zap,     label:"nav.autopilot" },
+  { to:"/creator",       icon:ic.dollar,  label:"nav.earnings"  },
+  { to:"/raven",         icon:ic.trophy,  label:"nav.raven"     },
+  { to:"/profile",       icon:ic.user,    label:"nav.profile"   },
 ];
 
 export default function Sidebar({ onCreateClick, notifCount, msgCount, lang, setLang }) {
   const { pathname } = useLocation();
   const { user, logout, isAdmin } = useAuth();
+  const { t } = useTranslation();
 
-  const nav = isAdmin ? [...NAV, { to:"/admin", icon:ic.lock, label:"Admin" }] : NAV;
+  const nav = isAdmin ? [...NAV, { to:"/admin", icon:ic.lock, label:"nav.admin" }] : NAV;
 
   return (
     <div style={{
@@ -50,7 +52,7 @@ export default function Sidebar({ onCreateClick, notifCount, msgCount, lang, set
                 }}>{badge}</span>
               )}
             </div>
-            <span style={{ fontWeight:active?700:600, fontSize:14.5, color:active?"var(--text)":"var(--text2)" }}>{item.label}</span>
+            <span style={{ fontWeight:active?700:600, fontSize:14.5, color:active?"var(--text)":"var(--text2)" }}>{t(item.label)}</span>
           </Link>
         );
       })}
@@ -60,7 +62,7 @@ export default function Sidebar({ onCreateClick, notifCount, msgCount, lang, set
         borderRadius:12, background:"none", border:"none", marginTop:4, textAlign:"left",
       }}>
         <Ic d={ic.plus} s={21} c="var(--text2)" />
-        <span style={{ fontWeight:600, fontSize:14.5, color:"var(--text2)" }}>Share</span>
+        <span style={{ fontWeight:600, fontSize:14.5, color:"var(--text2)" }}>{t("nav.share")}</span>
       </button>
 
       <div style={{ flex:1 }} />
@@ -85,7 +87,7 @@ export default function Sidebar({ onCreateClick, notifCount, msgCount, lang, set
             <div style={{ fontWeight:700, fontSize:13.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user.displayName}</div>
             <div style={{ color:"var(--text2)", fontSize:11.5, fontFamily:"var(--mono)" }}>@{user.handle}</div>
           </div>
-          <button onClick={logout} title="Log out" style={{ background:"none", border:"none", color:"var(--text3)", padding:6 }}>
+          <button onClick={logout} title={t("nav.logOut")} style={{ background:"none", border:"none", color:"var(--text3)", padding:6 }}>
             <Ic d={ic.logout} s={17} c="var(--text3)" />
           </button>
         </div>

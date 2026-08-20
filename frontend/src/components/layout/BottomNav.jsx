@@ -2,29 +2,31 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Ic, ic } from "../ui/index.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useTranslation } from "react-i18next";
 
 const PRIMARY_NAV = [
-  { to:"/dashboard", icon:ic.chart,  label:"Dash" },
-  { to:"/",          icon:ic.home,   label:"Feed" },
-  { to:"__create",                   label:"Share" },
-  { to:"/spaces",    icon:ic.spaces, label:"Spaces" },
-  { to:"__more",                     label:"More" },
+  { to:"/dashboard", icon:ic.chart,  label:"nav.dashboard" },
+  { to:"/",          icon:ic.home,   label:"nav.feed" },
+  { to:"__create",                   label:"nav.share" },
+  { to:"/spaces",    icon:ic.spaces, label:"nav.spaces" },
+  { to:"__more",                     label:"nav.more" },
 ];
 
 const MORE_ITEMS = [
-  { to:"/explore",       icon:ic.search, label:"Search",    color:"var(--sky)",        auth:false },
-  { to:"/learn",         icon:ic.book,   label:"Learn",     color:"var(--amber)",      auth:false },
-  { to:"/autopilot",     icon:ic.zap,    label:"Autopilot", color:"var(--violet-lt)",  auth:true  },
-  { to:"/creator",       icon:ic.dollar, label:"Earnings",  color:"var(--green)",      auth:true  },
-  { to:"/notifications", icon:ic.bell,   label:"Activity",  color:"var(--purple)",     auth:true  },
-  { to:"/messages",      icon:ic.send,   label:"Messages",  color:"var(--teal)",       auth:true  },
-  { to:"/profile",       icon:ic.user,   label:"Profile",   color:"var(--coral)",      auth:true  },
+  { to:"/explore",       icon:ic.search, label:"nav.search",    color:"var(--sky)",        auth:false },
+  { to:"/learn",         icon:ic.book,   label:"nav.learn",     color:"var(--amber)",      auth:false },
+  { to:"/autopilot",     icon:ic.zap,    label:"nav.autopilot", color:"var(--violet-lt)",  auth:true  },
+  { to:"/creator",       icon:ic.dollar, label:"nav.earnings",  color:"var(--green)",      auth:true  },
+  { to:"/notifications", icon:ic.bell,   label:"nav.activity",  color:"var(--purple)",     auth:true  },
+  { to:"/messages",      icon:ic.send,   label:"nav.messages",  color:"var(--teal)",       auth:true  },
+  { to:"/profile",       icon:ic.user,   label:"nav.profile",   color:"var(--coral)",      auth:true  },
 ];
 
 export default function BottomNav({ onCreateClick, notifCount }) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
 
   // Check if we're on one of the "more" routes so the More button lights up
@@ -71,7 +73,7 @@ export default function BottomNav({ onCreateClick, notifCount }) {
                   <Ic d={item.icon} s={22} c={item.color} />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 700, color: isActive ? item.color : "var(--text2)" }}>
-                  {item.label}
+                  {t(item.label)}
                 </span>
               </button>
             );
@@ -85,7 +87,7 @@ export default function BottomNav({ onCreateClick, notifCount }) {
             background: "none", border: "1px solid var(--border2)", cursor: "pointer",
           }}>
             <Ic d={ic.logout} s={17} c="var(--coral)" />
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--coral)" }}>Log out</span>
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--coral)" }}>{t("nav.logOut")}</span>
           </button>
         )}
       </div>
@@ -109,7 +111,7 @@ export default function BottomNav({ onCreateClick, notifCount }) {
               }}>
                 <Ic d={ic.plus} s={18} c="#fff" sw={2.5} />
               </div>
-              <span style={{ fontSize: 11, color: "var(--text2)", fontWeight: 700 }}>{item.label}</span>
+              <span style={{ fontSize: 11, color: "var(--text2)", fontWeight: 700 }}>{t(item.label)}</span>
             </button>
           );
 
@@ -134,7 +136,7 @@ export default function BottomNav({ onCreateClick, notifCount }) {
                   ))}
                 </div>
                 <span style={{ fontSize: 11, color: active ? "var(--text)" : "var(--text2)", fontWeight: active ? 800 : 600 }}>
-                  More
+                  {t(item.label)}
                 </span>
                 {notifCount > 0 && (
                   <span style={{
@@ -156,7 +158,7 @@ export default function BottomNav({ onCreateClick, notifCount }) {
             }}>
               <Ic d={item.icon} s={24} c={active ? "var(--text)" : "var(--text2)"} f={active ? "var(--text)" : "none"} />
               <span style={{ fontSize: 11, color: active ? "var(--text)" : "var(--text2)", fontWeight: active ? 800 : 600 }}>
-                {item.label}
+                {t(item.label)}
               </span>
             </Link>
           );

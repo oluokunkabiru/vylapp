@@ -5,6 +5,7 @@ import { useToast } from "../context/ToastContext.jsx";
 import { PrimaryButton } from "../components/ui/index.jsx";
 import AuthLayout, { authInput, authLabel, authLink, authButtonStyle, focusAuthInput, blurAuthInput } from "../components/auth/AuthLayout.jsx";
 import SocialSignInButtons from "../components/auth/SocialSignInButtons.jsx";
+import { useTranslation } from "react-i18next";
 
 const OAUTH_ERROR_MESSAGES = {
   account_suspended: "That account has been suspended.",
@@ -20,6 +21,7 @@ export default function Login() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [form, setForm] = useState({ emailOrHandle: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
 
   // Surfaces failures redirected back from the OAuth callback (?oauth_error=...)
   // — strip the param right after so a refresh doesn't re-show the toast.
@@ -36,16 +38,16 @@ export default function Login() {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.emailOrHandle || !form.password) {
-      toast("Please fill in all fields", "error");
+      toast(t("auth.fillAllFields"), "error");
       return;
     }
     setLoading(true);
     try {
       await login(form.emailOrHandle, form.password);
-      toast("Welcome back");
+      toast(t("auth.welcomeBack"));
       navigate("/");
     } catch (err) {
-      toast(err.message || "Invalid credentials", "error");
+      toast(err.message || t("auth.invalidCredentials"), "error");
     } finally {
       setLoading(false);
     }
@@ -53,15 +55,15 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Sign in"
+      title={t("auth.signIn")}
       subtitle="Log in to vibe, learn, and connect with the community."
       footer={
-        <>New to Vylapp? <Link to="/register" style={authLink}>Create an account</Link></>
+        <>{t("auth.newToVylapp")} <Link to="/register" style={authLink}>{t("auth.createAccount")}</Link></>
       }
     >
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          <label style={authLabel}>Email or handle</label>
+          <label style={authLabel}>{t("auth.emailOrHandle")}</label>
           <input
             type="text"
             placeholder="name@example.com or username"
@@ -76,9 +78,9 @@ export default function Login() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <label style={authLabel}>Password</label>
+          <label style={authLabel}>{t("auth.password")}</label>
             <Link to="/forgot-password" style={{ ...authLink, fontSize: 12.5 }}>
-              Forgot password?
+              {t("auth.forgotPassword")}
             </Link>
           </div>
           <input
@@ -95,7 +97,7 @@ export default function Login() {
 
         <div style={{ marginTop: 6 }}>
           <PrimaryButton full loading={loading} disabled={loading} style={authButtonStyle}>
-            Log In
+            {t("auth.logIn")}
           </PrimaryButton>
         </div>
       </form>
