@@ -282,6 +282,37 @@ export function Toggle({ on, onChange, label, sub, disabled }) {
   );
 }
 
+// ── Menu (D-10) — a small dropdown anchored under its trigger. First real
+// use site is PostCard's "…" button (V-18: Edit/Delete), which previously
+// just toasted "Options coming soon" for every post with no way out.
+export function Menu({ trigger, items }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position:"relative" }}>
+      <span onClick={() => setOpen(o => !o)}>{trigger}</span>
+      {open && (
+        <>
+          {/* Full-screen, invisible — closes the menu on any outside tap
+              without needing a document-level listener. */}
+          <div onClick={() => setOpen(false)} style={{ position:"fixed", inset:0, zIndex:20 }} />
+          <div style={{
+            position:"absolute", right:0, top:"100%", marginTop:4, zIndex:21, minWidth:160,
+            background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:"var(--radius-md)",
+            boxShadow:"var(--shadow-card)", overflow:"hidden",
+          }}>
+            {items.map(it => (
+              <button key={it.label} onClick={() => { setOpen(false); it.onClick(); }} style={{
+                display:"block", width:"100%", padding:"11px 14px", textAlign:"left",
+                background:"transparent", color: it.danger ? "var(--coral)" : "var(--text)", fontSize:14, fontWeight:600,
+              }}>{it.label}</button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Tabs (D-10) — segmented nav shared across Profile/Learn/Creator/Raven,
 // which each rolled their own before this. Hierarchy from weight/colour/the
 // underline, never from uppercase (D-05) — labels render exactly as given,

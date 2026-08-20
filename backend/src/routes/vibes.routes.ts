@@ -21,6 +21,9 @@ router.get("/:id", optionalAuth, asyncHandler(vibesController.getOne));
 // ── POST /vibes — create a vibe (post / reply / quote) ───────────────────
 router.post("/", requireAuth, requirePermission("vibes.create"), asyncHandler(vibesController.create));
 
+// ── PATCH /vibes/:id — V-18: edit own vibe, sets a permanent "edited" marker ─
+router.patch("/:id", requireAuth, requirePermission("vibes.update.own"), asyncHandler(vibesController.update));
+
 // ── DELETE /vibes/:id ──────────────────────────────────────────────────────
 router.delete("/:id", requireAuth, requireAnyPermission("vibes.delete.own", "vibes.delete.any"), asyncHandler(vibesController.remove));
 

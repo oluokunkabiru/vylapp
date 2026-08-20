@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
-import { Avatar, VerifiedBadge, CategoryPill, TapIcon, ic, Ic, numFmt } from "../ui/index.jsx";
+import { Avatar, VerifiedBadge, CategoryPill, TapIcon, ic, Ic, numFmt, Menu } from "../ui/index.jsx";
 import { LANG_NAMES, isRtl } from "../../lib/languages.js";
 
 const CAT_GRADS = {
@@ -26,7 +26,7 @@ function HeartBurst({ show }) {
   );
 }
 
-export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
+export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted }) {
   const { user } = useAuth();
   const toast = useToast();
   const [vibe, setVibe] = useState(initialVibe);
@@ -35,6 +35,30 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
   const [likeCount, setLikeCount] = useState(vibe.counts?.likes ?? 0);
   const [burst, setBurst] = useState(false);
   const [draft, setDraft] = useState("");
+  // V-18 — edit with a visible marker, not a silent rewrite.
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState("");
+  const isMine = !!user && user.handle === vibe.author?.handle;
+
+  const startEdit = () => { setEditText(vibe.content); setIsEditing(true); };
+  const cancelEdit = () => setIsEditing(false);
+  const saveEdit = async () => {
+    if (!editText.trim()) return;
+    try {
+      const { vibe: updated } = await api.patch(`/vibes/${vibe.id}`, { content: editText.trim(), language: vibe.language });
+      setVibe(v => ({ ...v, ...updated }));
+      setIsEditing(false);
+      toast("Vibe updated ✓");
+    } catch (e) { toast(e.message, "error"); }
+  };
+  const deleteVibe = async () => {
+    if (!window.confirm("Delete this vibe? This can't be undone.")) return;
+    try {
+      await api.delete(`/vibes/${vibe.id}`);
+      onDeleted?.(vibe.id);
+      toast("Vibe deleted");
+    } catch (e) { toast(e.message, "error"); }
+  };
   const [replies, setReplies] = useState([]);
   const [showReplies, setShowReplies] = useState(false);
   // Auto-translation arrives already attached to the vibe (see GET /vibes/feed)
@@ -143,11 +167,23 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
           <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
             <CategoryPill category={vibe.category} />
             <span style={{ color:"var(--text3)", fontSize:12 }}>
-              {isPending ? "Posting…" : `· ${timeAgo}`}
+              {isPending ? "Posting…" : `· ${timeAgo}${vibe.isEdited ? " · edited" : ""}`}
             </span>
           </div>
         </div>
-        {!isPending && <TapIcon d={ic.dotsH} size={20} c="var(--text2)" label="More options" onClick={() => toast("Options coming soon")} />}
+        {!isPending && (
+          isMine ? (
+            <Menu
+              trigger={<TapIcon d={ic.dotsH} size={20} c="var(--text2)" label="More options" />}
+              items={[
+                { label:"Edit", onClick: startEdit },
+                { label:"Delete", danger:true, onClick: deleteVibe },
+              ]}
+            />
+          ) : (
+            <TapIcon d={ic.dotsH} size={20} c="var(--text2)" label="More options" onClick={() => toast("Options coming soon")} />
+          )
+        )}
       </div>
 
       {/* Media */}
@@ -193,21 +229,34 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip }) {
       <div style={{ padding:"2px 16px 0" }}>
         <div style={{ fontWeight:800, fontSize:14 }}>{numFmt(likeCount)} people like this</div>
 
-        <div style={{ marginTop:4, fontSize:14, lineHeight:1.55 }}>
-          <span style={{ fontWeight:800 }}>@{vibe.author?.handle}</span>{" "}
-          {/* A keyed element deliberately remounts on each change so the
-              reveal is a clear fold/unfold transition, rather than text
-              silently swapping under the reader's eye. */}
-          <span
-            key={`${vibe.id}-${showingTranslation ? "translation" : "original"}`}
-            className="vy-translation-reveal"
-            lang={captionLang}
-            dir={isRtl(captionLang) ? "rtl" : "ltr"}
-            aria-live="polite"
-            aria-atomic="true"
-            style={{ color:"var(--text)" }}
-          >{caption}</span>
-        </div>
+        {isEditing ? (
+          <div style={{ marginTop:6 }}>
+            <textarea
+              dir="auto" value={editText} onChange={e=>setEditText(e.target.value.slice(0,500))} rows={3}
+              style={{ width:"100%", padding:10, borderRadius:12, border:"1px solid var(--border2)", background:"var(--bg3)", color:"var(--text)", fontSize:14, outline:"none", resize:"none", fontFamily:"var(--font)" }}
+            />
+            <div style={{ display:"flex", gap:8, marginTop:6 }}>
+              <button onClick={saveEdit} style={{ padding:"6px 14px", borderRadius:"var(--radius-pill)", background:"var(--grad)", color:"#fff", fontWeight:700, fontSize:13 }}>Save</button>
+              <button onClick={cancelEdit} style={{ padding:"6px 14px", borderRadius:"var(--radius-pill)", border:"1px solid var(--border)", background:"transparent", color:"var(--text2)", fontWeight:700, fontSize:13 }}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginTop:4, fontSize:14, lineHeight:1.55 }}>
+            <span style={{ fontWeight:800 }}>@{vibe.author?.handle}</span>{" "}
+            {/* A keyed element deliberately remounts on each change so the
+                reveal is a clear fold/unfold transition, rather than text
+                silently swapping under the reader's eye. */}
+            <span
+              key={`${vibe.id}-${showingTranslation ? "translation" : "original"}`}
+              className="vy-translation-reveal"
+              lang={captionLang}
+              dir={isRtl(captionLang) ? "rtl" : "ltr"}
+              aria-live="polite"
+              aria-atomic="true"
+              style={{ color:"var(--text)" }}
+            >{caption}</span>
+          </div>
+        )}
 
         {/* Provenance — makes translation visible as it happens, not just
             available behind a button. This is the one place in the feed

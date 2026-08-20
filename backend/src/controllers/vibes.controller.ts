@@ -23,7 +23,7 @@ const VIBE_FIELDS = `
   v.reply_to, v.repost_of, v.quote_of, v.is_paid_content,
   v.event_title, v.event_time, v.event_reminded_count, v.event_interested_count,
   v.likes_count, v.reposts_count, v.replies_count, v.views_count, v.bookmarks_count,
-  v.is_autopilot, v.impact_badge, v.created_at,
+  v.is_autopilot, v.impact_badge, v.created_at, v.is_edited,
   u.handle, u.display_name, u.avatar_color, u.avatar_initials, u.avatar_url, u.verified, u.role_tag
 `;
 
@@ -43,6 +43,7 @@ function shapeVibe(row: any, viewerState?: any) {
     isAutopilot: row.is_autopilot,
     impactBadge: row.impact_badge,
     createdAt: row.created_at,
+    isEdited: !!row.is_edited,
     author: {
       id: row.user_id, handle: row.handle, displayName: row.display_name,
       avatarColor: row.avatar_color, avatarInitials: row.avatar_initials, avatarUrl: row.avatar_url,
@@ -216,6 +217,46 @@ async function create(req: AuthedRequest, res: Response) {
   }, 201);
 }
 
+// ── PATCH /vibes/:id — V-18: edit with a permanent, visible marker ────────
+async function update(req: AuthedRequest, res: Response) {
+  const { content, language: declaredLanguage } = req.body;
+  if (!content?.trim()) return fail(res, 400, "content is required");
+  if (content.length > 500) return fail(res, 400, "content must be 500 characters or fewer");
+
+  const existing = await prisma.vibes.findUnique({ where: { id: req.params.id }, select: { userId: true, isDeleted: true } });
+  if (!existing || existing.isDeleted) return fail(res, 404, "Vibe not found");
+  // Strictly own-only — unlike delete, there's no "edit any" permission in
+  // the RBAC seed data. Rewriting someone else's words isn't a moderation
+  // action; removing them is.
+  if (existing.userId !== req.user.id) return fail(res, 403, "You can only edit your own vibes");
+
+  const moderation = await ModerationEngine.analyzeContent(content);
+  if (moderation.action === "remove" || moderation.action === "remove_and_support") {
+    return fail(res, 422, `Post blocked: ${moderation.label}`, { moderation });
+  }
+
+  const tags = [...content.matchAll(/#(\w+)/g)].map(m => m[1].toLowerCase());
+  const language = (typeof declaredLanguage === "string" && TranslationEngine.getLang(declaredLanguage))
+    ? declaredLanguage
+    : await LanguageDetector.detect(content, "en");
+
+  const vibe = await prisma.vibes.update({
+    where: { id: req.params.id },
+    data: { content: content.trim(), tags, language, isEdited: true, isSensitive: moderation.action === "flag_for_review" },
+  });
+
+  return ok(res, {
+    vibe: shapeVibe({
+      user_id: vibe.userId, content: vibe.content, category: vibe.category, tags: vibe.tags, language: vibe.language,
+      reply_to: vibe.replyTo, repost_of: vibe.repostOf, quote_of: vibe.quoteOf, is_paid_content: vibe.isPaidContent,
+      event_title: vibe.eventTitle, event_time: vibe.eventTime, event_reminded_count: vibe.eventRemindedCount, event_interested_count: vibe.eventInterestedCount,
+      likes_count: vibe.likesCount, reposts_count: vibe.repostsCount, replies_count: vibe.repliesCount, views_count: vibe.viewsCount, bookmarks_count: vibe.bookmarksCount,
+      is_autopilot: vibe.isAutopilot, impact_badge: vibe.impactBadge, created_at: vibe.createdAt, id: vibe.id, is_edited: vibe.isEdited,
+      handle: req.user.handle, display_name: req.user.displayName,
+    }),
+  });
+}
+
 // ── DELETE /vibes/:id ──────────────────────────────────────────────────────
 async function remove(req: AuthedRequest, res: Response) {
   const vibe = await prisma.vibes.findUnique({ where: { id: req.params.id }, select: { userId: true } });
@@ -301,5 +342,5 @@ async function myBookmarks(req: AuthedRequest, res: Response) {
 
 export = {
   shapeVibe, VIBE_FIELDS,
-  feed, categoryFeed, getOne, create, remove, like, unlike, repost, unrepost, bookmark, unbookmark, myBookmarks,
+  feed, categoryFeed, getOne, create, update, remove, like, unlike, repost, unrepost, bookmark, unbookmark, myBookmarks,
 };

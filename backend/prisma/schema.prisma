@@ -2126,6 +2126,9 @@ model Vibes {
   isSensitive                        Boolean              @default(false) @map("is_sensitive")
   isDeleted                          Boolean              @default(false) @map("is_deleted")
   deletedAt                          DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  // V-18: the visible marker itself. Set once and never cleared — an edited
+  // post stays marked edited forever, it doesn't un-mark on a later edit.
+  isEdited                           Boolean              @default(false) @map("is_edited")
   moderationNote                     String?              @map("moderation_note")
   createdAt                          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                          DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)

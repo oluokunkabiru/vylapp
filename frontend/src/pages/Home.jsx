@@ -71,6 +71,12 @@ export default function Home({ lang, newVibe, vibeSettle }) {
     setVibes(v => [vibe, ...v]);
   }, []);
 
+  // V-18 — a deleted post disappears from the feed it's actually showing
+  // in, not just on the server.
+  const onVibeDeleted = useCallback(id => {
+    setVibes(v => v.filter(x => x.id !== id));
+  }, []);
+
   // D-11 five-state standard for this screen: loading (skeleton, shaped
   // like the content — D-09) → error (retry) → empty → offline (not yet
   // distinguished from generic error — see plan) → success.
@@ -90,7 +96,7 @@ export default function Home({ lang, newVibe, vibeSettle }) {
       {vibes.length === 0
         ? <Empty emoji="✦" title="No vibes yet" sub="Be the first — share something with the community!" />
         : vibes.map((vibe, i) => (
-            <PostCard key={vibe.id} vibe={vibe} lang={lang} firstTip={i === 0} onVibeCreated={onVibeCreated} />
+            <PostCard key={vibe.id} vibe={vibe} lang={lang} firstTip={i === 0} onVibeCreated={onVibeCreated} onDeleted={onVibeDeleted} />
           ))
       }
       {loadingMore && <div style={{ display:"flex", justifyContent:"center", padding:24 }}><Spinner /></div>}
