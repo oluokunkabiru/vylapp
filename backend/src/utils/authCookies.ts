@@ -43,12 +43,25 @@ function baseCookieOpts() {
 // never read a cookie set by a different origin no matter its flags, so
 // the double-submit pattern needs the token available some other way for
 // the frontend to echo back as X-CSRF-Token.
+// BUG FOUND LIVE (real browser session, not curl): the refresh cookie used
+// to be scoped to path=/auth. That's correct only when the browser's
+// request URL for the refresh call is literally /auth/refresh — true in
+// production (frontend calls the backend directly), but false in local dev,
+// where Vite's proxy means the browser-visible request path is
+// /api/auth/refresh. Cookie path-matching happens client-side against the
+// visible URL, before any server-side proxy rewrite, so the browser
+// correctly (per spec) withheld the cookie — "Missing refresh token" on
+// every /auth/refresh call in dev, meaning silent refresh silently never
+// worked locally and every session force-logged-out after 15 minutes.
+// path=/ (matching the access/CSRF cookies already) fixes it in both
+// environments; the httpOnly flag is what actually protects the token, not
+// this path scope, so there's no security loss.
 function setAuthCookies(res: Response, tokens: { accessToken: string; refreshToken: string }): string {
   const opts = baseCookieOpts();
   const csrfToken = crypto.randomHex(24);
 
   res.cookie(ACCESS_COOKIE, tokens.accessToken, { ...opts, path: "/", maxAge: ACCESS_MAX_AGE_MS });
-  res.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...opts, path: "/auth", maxAge: REFRESH_MAX_AGE_MS });
+  res.cookie(REFRESH_COOKIE, tokens.refreshToken, { ...opts, path: "/", maxAge: REFRESH_MAX_AGE_MS });
   res.cookie(CSRF_COOKIE, csrfToken, { ...opts, httpOnly: false, path: "/", maxAge: REFRESH_MAX_AGE_MS });
   return csrfToken;
 }
@@ -60,9 +73,12 @@ function setAccessCookie(res: Response, accessToken: string) {
 }
 
 function clearAuthCookies(res: Response) {
+  // clearCookie only removes a cookie whose stored path matches exactly —
+  // must mirror setAuthCookies' path for every cookie, or logout silently
+  // fails to clear it (the same class of bug this file just fixed above).
   const opts = baseCookieOpts();
   res.clearCookie(ACCESS_COOKIE, { ...opts, path: "/" });
-  res.clearCookie(REFRESH_COOKIE, { ...opts, path: "/auth" });
+  res.clearCookie(REFRESH_COOKIE, { ...opts, path: "/" });
   res.clearCookie(CSRF_COOKIE, { ...opts, httpOnly: false, path: "/" });
 }
 

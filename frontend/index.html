@@ -10,11 +10,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Sora covers Latin/Cyrillic only. The script-specific families below are
          fallbacks in the --font stack (tokens.css) so translated/native content
-         in Arabic, Hindi, Chinese, and Amharic renders with a real, tested
-         typeface instead of silently falling back to the OS default. Noto Sans
-         (plain) also backstops Yoruba/Hausa Latin Extended diacritics that
-         Sora's glyph set doesn't guarantee. -->
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&family=Noto+Sans:wght@400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700;800&family=Noto+Sans+SC:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600;700;800&display=swap" rel="stylesheet" />
+         in Arabic, Hindi, Chinese, Japanese, Korean, and Amharic renders with a
+         real, tested typeface instead of silently falling back to the OS
+         default. Noto Sans (plain) also backstops Yoruba/Hausa Latin Extended
+         diacritics that Sora's glyph set doesn't guarantee.
+         Found live: the onboarding language picker offers ~60 languages
+         (languages.js), but this stack only ever covered a handful of them —
+         Korean (한국어) rendered as tofu boxes in a real browser check.
+         Added Noto Sans JP/KR; Japanese happened to render via an OS fallback
+         in that one test environment, which isn't something to rely on. -->
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&family=Noto+Sans:wght@400;600;700;800&family=Noto+Sans+Arabic:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700;800&family=Noto+Sans+SC:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;600;700;800&family=Noto+Sans+KR:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
