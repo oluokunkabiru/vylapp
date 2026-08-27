@@ -25,6 +25,14 @@ const PATTERN_BANK: PatternRule[] = [
   { pattern: /\b(nataka\s+kufa|sina\s+thamani|niue)\b/i, lang: "sw", cat: "SELF_HARM", weight: 0.85 },
   { pattern: /\b(je\s+veux\s+mourir|suicide)\b/i, lang: "fr", cat: "SELF_HARM", weight: 0.85 },
   { pattern: /\b(quiero\s+morir|suicidio)\b/i, lang: "es", cat: "SELF_HARM", weight: 0.85 },
+  // S-13: Arabic had zero pattern coverage despite being a core supported
+  // language — every Arabic SELF_HARM/HARASSMENT phrase fell through to
+  // layer2 (Claude API), which is a no-op without ANTHROPIC_API_KEY (T-06).
+  // No \b here: JS's ASCII-only \w treats Arabic letters as non-word chars,
+  // so \b never anchors around them the way it does for the Latin patterns
+  // above — a bare substring match is what actually works for this script.
+  { pattern: /(أريد أن أموت|أريد الموت|لا أريد العيش|لا يستحق العيش|الانتحار|انتحار)/, lang: "ar", cat: "SELF_HARM", weight: 0.85 },
+  { pattern: /(سأقتلك|سأؤذيك|سأدمرك|سأجدك)/, lang: "ar", cat: "HARASSMENT", weight: 0.80 },
   { pattern: /\b(kill|hurt|destroy|rape)\s+(you|her|him|them|all)\b/i, lang: "en", cat: "HARASSMENT", weight: 0.80 },
   { pattern: /\b(i\s+know\s+where\s+you\s+live|i'll\s+find\s+you)\b/i, lang: "en", cat: "HARASSMENT", weight: 0.85 },
   { pattern: /\b(n[i1*]gg[e3]r|f[a@]gg[o0]t)\b/i, lang: "en", cat: "HATE_SPEECH", weight: 0.99 },
