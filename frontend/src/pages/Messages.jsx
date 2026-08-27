@@ -173,7 +173,11 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
     socket.emit("conversation:join", convo.id);
     const onMsg = (data) => {
       if (data.conversationId === convo.id) {
-        setMessages(m => [...m, { ...data.message, sender: { id: data.message.senderId } }]);
+        // Found live: sending a message both appends it locally (below) AND
+        // the server broadcasts it back over the socket to every member of
+        // the conversation, including the sender — without this guard the
+        // sender saw their own message twice. Dedupe by id.
+        setMessages(m => m.some(x => x.id === data.message.id) ? m : [...m, { ...data.message, sender: { id: data.message.senderId } }]);
       }
     };
     socket.on("message:new", onMsg);
@@ -189,7 +193,9 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
     setSending(true);
     try {
       const { message } = await api.post(`/messages/conversations/${convo.id}/messages`, { content: text });
-      setMessages(m => [...m, { ...message, sender: { id: user.id, displayName: user.displayName } }]);
+      // Guards the same way the socket handler above does — the socket
+      // broadcast and this response can arrive in either order.
+      setMessages(m => m.some(x => x.id === message.id) ? m : [...m, { ...message, sender: { id: user.id, displayName: user.displayName } }]);
     } catch (e) { toast(e.message, "error"); setDraft(text); }
     finally { setSending(false); }
   };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Ic, ic } from "../ui/index.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -29,6 +29,12 @@ export default function BottomNav({ onCreateClick, notifCount }) {
   const { t } = useTranslation();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  // Defense-in-depth alongside the translateY fix below: any navigation
+  // that isn't a MORE_ITEM tap or the backdrop click (browser back/forward,
+  // a deep link) should still close the drawer rather than leave it open
+  // over whatever page comes next.
+  useEffect(() => { setMoreOpen(false); }, [pathname]);
+
   // Check if we're on one of the "more" routes so the More button lights up
   const moreRoutes = MORE_ITEMS.map(m => m.to);
   const onMoreRoute = moreRoutes.some(r => pathname.startsWith(r));
@@ -46,12 +52,23 @@ export default function BottomNav({ onCreateClick, notifCount }) {
         />
       )}
 
-      {/* More drawer panel */}
+      {/* More drawer panel — found live: a hardcoded `bottom: -260` "closed"
+          offset doesn't scale with the drawer's own content height. On a
+          short viewport the panel is taller than 260px, so its top edge
+          stayed inside the visible viewport even while "closed", and with
+          pointer-events left enabled it silently ate clicks meant for
+          whatever was underneath (found via the messages composer input
+          being unclickable/untypable with nothing visibly wrong on screen).
+          translateY(100%) always clears the panel by exactly its own
+          height regardless of content size, and pointer-events:none is a
+          second, independent guarantee closed means closed. */}
       <div style={{
-        position: "fixed", left: 0, right: 0, bottom: moreOpen ? 70 : -260,
+        position: "fixed", left: 0, right: 0, bottom: 70,
         background: "var(--bg2)", borderTop: "1px solid var(--border2)",
         borderRadius: "20px 20px 0 0", zIndex: 30, padding: "16px 12px 8px",
-        transition: "bottom 0.28s cubic-bezier(0.4,0,0.2,1)",
+        transform: moreOpen ? "translateY(0)" : "translateY(120%)",
+        pointerEvents: moreOpen ? "auto" : "none",
+        transition: "transform 0.28s cubic-bezier(0.4,0,0.2,1)",
         boxShadow: "0 -8px 32px rgba(0,0,0,0.4)",
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: "var(--border2)", margin: "0 auto 16px" }} />
