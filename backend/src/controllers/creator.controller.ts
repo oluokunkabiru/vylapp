@@ -9,6 +9,18 @@ import prisma from "../config/prisma";
 const { ok, fail } = respond;
 const { isBoosted } = ravenRoutes;
 
+// S-26: no monetisation or payouts for minor accounts — checked at every
+// entry point that turns a user into (or acts as) a paid creator, since
+// isCreator/creatorProfiles rows can otherwise be reached independently.
+async function blockIfMinor(userId: string, res: Response): Promise<boolean> {
+  const user = await prisma.users.findUnique({ where: { id: userId }, select: { isMinor: true } });
+  if (user?.isMinor) {
+    fail(res, 403, "Minor accounts cannot access creator monetisation");
+    return true;
+  }
+  return false;
+}
+
 // The frontend (CreatorEarnings.jsx, Dashboard.jsx) reads these two shapes in
 // snake_case directly off API responses — preserve that instead of leaking
 // Prisma's camelCase model shape through unshaped.
@@ -47,6 +59,7 @@ async function getProfile(req: AuthedRequest, res: Response) {
 
 // ── POST /creator/profile — become a creator / update profile ───────────
 async function upsertProfile(req: AuthedRequest, res: Response) {
+  if (await blockIfMinor(req.user.id, res)) return;
   const { bioExtended, categories, socialLinks, payoutSchedule } = req.body;
   await prisma.users.update({ where: { id: req.user.id }, data: { isCreator: true } });
   const profile = await prisma.creatorProfiles.upsert({
@@ -70,6 +83,7 @@ async function upsertProfile(req: AuthedRequest, res: Response) {
 
 // ── POST /creator/:userId/tiers — create a subscription tier ─────────────
 async function createTier(req: AuthedRequest, res: Response) {
+  if (await blockIfMinor(req.user.id, res)) return;
   const { name, description, priceUsd, billingPeriod, perks } = req.body;
   if (!name || !priceUsd) return fail(res, 400, "name and priceUsd are required");
   const tier = await prisma.creatorSubscriptionTiers.create({
@@ -214,6 +228,7 @@ async function earnings(req: AuthedRequest, res: Response) {
 
 // ── POST /creator/me/payout-request ───────────────────────────────────────
 async function payoutRequest(req: AuthedRequest, res: Response) {
+  if (await blockIfMinor(req.user.id, res)) return;
   const profile = await prisma.creatorProfiles.findUnique({ where: { userId: req.user.id }, select: { pendingBalanceUsd: true } });
   if (!profile || Number(profile.pendingBalanceUsd) < 10) {
     return fail(res, 400, "Balance below the $10 payout minimum");

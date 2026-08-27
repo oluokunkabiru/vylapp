@@ -42,6 +42,13 @@ async function list(req: AuthedRequest, res: Response) {
 async function create(req: AuthedRequest, res: Response) {
   const { title, description, category, tags, isVideo, scheduledFor, ticketPriceUsd } = req.body;
   if (!title?.trim()) return fail(res, 400, "title is required");
+
+  // S-25: minor accounts can join/listen to Spaces but can't host one —
+  // hosting means moderating a live, unscripted audience, which isn't
+  // something a minor account is allowed to be responsible for.
+  const host = await prisma.users.findUnique({ where: { id: req.user.id }, select: { isMinor: true } });
+  if (host?.isMinor) return fail(res, 403, "Minor accounts cannot host Spaces");
+
   const space = await prisma.spaces.create({
     data: {
       hostId: req.user.id,
