@@ -144,7 +144,17 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
     if (isTranslationAvailable) { setShowOriginal(s => !s); return; }
     setTranslating(true);
     try {
-      const { text } = await api.post(`/translate/vibes/${vibe.id}`, { toLang: lang });
+      const { text, method } = await api.post(`/translate/vibes/${vibe.id}`, { toLang: lang });
+      // Found live: the engine's organic-dictionary fallback returns the
+      // ORIGINAL text unchanged with method:"untranslated" when it has no
+      // AI key and no dictionary entry for this phrase — this used to be
+      // set as the "translation" regardless, so the UI claimed "Translated
+      // from X" and showed a correction affordance over text that was
+      // never actually translated. Be honest about the miss instead.
+      if (method === "untranslated" || method === "passthrough") {
+        toast("No translation available for this yet", "error");
+        return;
+      }
       setManualTranslatedText(text);
       setShowOriginal(false);
     } catch (e) { toast("Translation unavailable", "error"); }
