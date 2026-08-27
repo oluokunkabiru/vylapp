@@ -16,9 +16,13 @@ async function search(req: AuthedRequest, res: Response) {
   const results: { users: any[]; vibes: any[]; hashtags: any[] } = { users: [], vibes: [], hashtags: [] };
 
   if (type === "all" || type === "users") {
+    // S-23: minors aren't discoverable through general search. This only
+    // removes them from anonymous/keyword search results — someone who
+    // already follows a minor account can still reach it directly (their
+    // own profile page, follower list, an existing conversation).
     const rows: any[] = await prisma.$queryRaw`
       SELECT id, handle, display_name, bio, avatar_color, avatar_initials, verified, connections_count
-       FROM users WHERE (handle ILIKE ${`%${q}%`} OR display_name ILIKE ${`%${q}%`}) AND deleted_at IS NULL LIMIT 20
+       FROM users WHERE (handle ILIKE ${`%${q}%`} OR display_name ILIKE ${`%${q}%`}) AND deleted_at IS NULL AND is_minor = FALSE LIMIT 20
     `;
     results.users = SearchEngine.rank(q, rows, { handle: 3, display_name: 2.5, bio: 1.5 }).slice(0, 10);
   }
@@ -60,8 +64,10 @@ async function autocomplete(req: AuthedRequest, res: Response) {
     return ok(res, { suggestions: tags.map(t => ({ type: "hashtag", value: t.tag, label: `#${t.tag}`, count: t.vibesCount })) });
   }
 
+  // S-23 applies here too — a minor shouldn't turn up as an @mention
+  // suggestion for someone who isn't already following them.
   const users: { handle: string; display_name: string; verified: boolean }[] = await prisma.$queryRaw`
-    SELECT handle, display_name, verified FROM users WHERE handle ILIKE ${`${q}%`} LIMIT 8
+    SELECT handle, display_name, verified FROM users WHERE handle ILIKE ${`${q}%`} AND is_minor = FALSE LIMIT 8
   `;
   return ok(res, { suggestions: users.map(r => ({ type: "user", value: r.handle, label: r.display_name, verified: r.verified })) });
 }

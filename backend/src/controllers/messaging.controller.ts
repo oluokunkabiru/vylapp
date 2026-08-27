@@ -88,6 +88,9 @@ async function getOrCreateDm(req: AuthedRequest, res: Response) {
   if (!userId) return fail(res, 400, "userId is required");
   if (userId === req.user.id) return fail(res, 400, "Cannot DM yourself");
 
+  const recipient = await prisma.users.findUnique({ where: { id: userId }, select: { isMinor: true } });
+  if (!recipient) return fail(res, 404, "User not found");
+
   const existing: { id: string }[] = await prisma.$queryRaw`
     SELECT c.id FROM conversations c
      JOIN conversation_members m1 ON m1.conversation_id = c.id AND m1.user_id = ${req.user.id}
@@ -103,6 +106,13 @@ async function getOrCreateDm(req: AuthedRequest, res: Response) {
     where: { followerId_followingId: { followerId: userId, followingId: req.user.id } },
     select: { followerId: true },
   });
+
+  // S-22: a minor doesn't get a softer "requests" inbox for this the way an
+  // adult would — a first-time message from someone they don't already
+  // follow back is refused outright, not queued for them to review later.
+  if (recipient.isMinor && !recipientFollowsSender) {
+    return fail(res, 403, "This account only accepts messages from people they already follow back");
+  }
 
   const conv = await prisma.conversations.create({ data: { type: "dm", createdBy: req.user.id } });
   await prisma.conversationMembers.createMany({

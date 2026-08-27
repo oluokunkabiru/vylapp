@@ -28,10 +28,13 @@ async function discover(req: AuthedRequest, res: Response) {
   const country = String(req.query.country || "").toUpperCase();
   if (!/^[A-Z]{2}$/.test(country)) return fail(res, 400, "country must be a 2-letter country code");
 
+  // S-23 — same rule as search: minors aren't surfaced through general
+  // discovery, only reachable directly once someone already knows them.
   const users = await prisma.users.findMany({
     where: {
       deletedAt: null,
       id: { not: req.user.id },
+      isMinor: false,
       OR: [{ currentCountry: country }, { heritageCountries: { has: country } }],
     },
     orderBy: { connectionsCount: "desc" },
