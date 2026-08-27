@@ -26,13 +26,16 @@ async function createReport(req: AuthedRequest, res: Response) {
   // Auto-analyze if it's content we can read directly
   let analysis = null;
   if (vibeId) {
-    const vibe = await prisma.vibes.findUnique({ where: { id: vibeId }, select: { content: true } });
+    const vibe = await prisma.vibes.findUnique({ where: { id: vibeId }, select: { content: true, userId: true } });
     if (vibe) {
-      const reportCount = await prisma.reports.count({ where: { reportedVibeId: vibeId } });
+      const [reportCount, author] = await Promise.all([
+        prisma.reports.count({ where: { reportedVibeId: vibeId } }),
+        prisma.users.findUnique({ where: { id: vibe.userId }, select: { isMinor: true } }),
+      ]);
       // Original route never awaited this (analyzeContent is async) — analysis
       // was always an unresolved Promise, so the auto-remove-on-repeated-reports
       // branch below never actually ran. Fixed here; see commit message.
-      analysis = await ModerationEngine.analyzeContent(vibe.content, { report_count: reportCount });
+      analysis = await ModerationEngine.analyzeContent(vibe.content, { report_count: reportCount, is_minor: author?.isMinor });
       if (analysis.action === "remove" || analysis.action === "remove_and_support") {
         await prisma.vibes.update({
           where: { id: vibeId },

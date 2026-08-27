@@ -8,6 +8,7 @@ export interface AuthUser {
   id: string;
   handle: string;
   displayName: string;
+  isMinor: boolean;
 }
 
 export interface ResolvedPermissions {

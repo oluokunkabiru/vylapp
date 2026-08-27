@@ -46,13 +46,13 @@ async function authenticate(req: Request, res: Response, next: NextFunction) {
 
     const user = await prisma.users.findFirst({
       where: { id: result.payload.sub, deletedAt: null },
-      select: { id: true, handle: true, displayName: true, isSuspended: true, isDeactivated: true },
+      select: { id: true, handle: true, displayName: true, isSuspended: true, isDeactivated: true, isMinor: true },
     });
     if (!user) return fail(res, 401, "User no longer exists");
     if (user.isSuspended) return fail(res, 403, "Account suspended");
     if (user.isDeactivated) return fail(res, 403, "Account deactivated");
 
-    req.user = { id: user.id, handle: user.handle, displayName: user.displayName };
+    req.user = { id: user.id, handle: user.handle, displayName: user.displayName, isMinor: user.isMinor };
 
     // Resolve permissions (cache-first — typically zero DB queries)
     const resolved = await rbac.resolveUserPermissions(user.id);
@@ -92,13 +92,13 @@ async function optionalAuth(req: Request, res: Response, next: NextFunction) {
     }
     const user = await prisma.users.findFirst({
       where: { id: result.payload.sub, deletedAt: null, isSuspended: false },
-      select: { id: true, handle: true, displayName: true },
+      select: { id: true, handle: true, displayName: true, isMinor: true },
     });
     if (!user) {
       setAnonymous();
       return next();
     }
-    req.user = { id: user.id, handle: user.handle, displayName: user.displayName };
+    req.user = { id: user.id, handle: user.handle, displayName: user.displayName, isMinor: user.isMinor };
     const resolved = await rbac.resolveUserPermissions(user.id);
     req.userPermissions = resolved;
     req.can = (perm: string, opts: CanOptions = {}) => _checkPerm(resolved, perm, opts);

@@ -201,7 +201,7 @@ async function applyEducator(req: AuthedRequest, res: Response) {
   const cleanBio = clamp(bio, 20, 2000, "Bio");
   if (!Array.isArray(subjects) || subjects.length === 0) throw Object.assign(new Error("At least one subject required"), { status: 400 });
 
-  const mod = await ModerationEngine.analyzeContent(cleanBio);
+  const mod = await ModerationEngine.analyzeContent(cleanBio, { is_minor: req.user.isMinor });
   if (mod.action !== "allow") return res.status(422).json({ ok: false, error: { message: "Content flagged: " + mod.label } });
 
   const existing = await prisma.educatorProfiles.findUnique({ where: { userId: req.user.id }, select: { id: true } });
@@ -222,7 +222,7 @@ async function createCourse(req: AuthedRequest, res: Response) {
   const cleanTitle = clamp(title, 5, 200, "Title");
   const cleanDesc = clamp(description, 20, 5000, "Description");
 
-  const mod = await ModerationEngine.analyzeContent(`${cleanTitle} ${cleanDesc}`);
+  const mod = await ModerationEngine.analyzeContent(`${cleanTitle} ${cleanDesc}`, { is_minor: req.user.isMinor });
   if (mod.action !== "allow") return res.status(422).json({ ok: false, error: { message: "Content flagged: " + mod.label } });
 
   const course = await prisma.courses.create({
@@ -384,7 +384,7 @@ async function rateCourse(req: AuthedRequest, res: Response) {
   if (!enrolled) return res.status(403).json({ ok: false, error: { message: "Must complete the course before rating" } });
 
   if (review) {
-    const mod = await ModerationEngine.analyzeContent(review);
+    const mod = await ModerationEngine.analyzeContent(review, { is_minor: req.user.isMinor });
     if (mod.action !== "allow") return res.status(422).json({ ok: false, error: { message: "Review content flagged: " + mod.label } });
   }
 

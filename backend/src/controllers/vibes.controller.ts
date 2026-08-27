@@ -152,7 +152,7 @@ async function create(req: AuthedRequest, res: Response) {
   if (!content?.trim()) return fail(res, 400, "content is required");
   if (content.length > 500) return fail(res, 400, "content must be 500 characters or fewer");
 
-  const moderation = await ModerationEngine.analyzeContent(content);
+  const moderation = await ModerationEngine.analyzeContent(content, { is_minor: req.user.isMinor });
   if (moderation.action === "remove" || moderation.action === "remove_and_support") {
     return fail(res, 422, `Post blocked: ${moderation.label}`, { moderation });
   }
@@ -230,7 +230,7 @@ async function update(req: AuthedRequest, res: Response) {
   // action; removing them is.
   if (existing.userId !== req.user.id) return fail(res, 403, "You can only edit your own vibes");
 
-  const moderation = await ModerationEngine.analyzeContent(content);
+  const moderation = await ModerationEngine.analyzeContent(content, { is_minor: req.user.isMinor });
   if (moderation.action === "remove" || moderation.action === "remove_and_support") {
     return fail(res, 422, `Post blocked: ${moderation.label}`, { moderation });
   }

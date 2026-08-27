@@ -109,6 +109,7 @@ interface ModerationContext {
   report_count?: number;
   account_age_days?: number;
   previous_violations?: number;
+  is_minor?: boolean;
 }
 
 const ModerationEngine = {
@@ -122,6 +123,10 @@ const ModerationEngine = {
     if ((context.report_count || 0) > 3) confidence = Math.min(1, confidence + 0.20);
     if ((context.account_age_days ?? Infinity) < 1) confidence = Math.min(1, confidence + 0.15);
     if ((context.previous_violations || 0) > 2) confidence = Math.min(1, confidence + 0.10);
+    // S-27: stricter thresholds for minor-authored content — the same
+    // borderline text should be more likely to get flagged/removed when
+    // a minor wrote it, not just when the account is new or reported.
+    if (context.is_minor) confidence = Math.min(1, confidence + 0.20);
 
     if (confidence > 0.85) {
       const cat = CATEGORIES[topCategory];
@@ -150,6 +155,7 @@ const ModerationEngine = {
     if ((context.report_count || 0) > 3) confidence = Math.min(1, confidence + 0.20);
     if ((context.account_age_days ?? Infinity) < 1) confidence = Math.min(1, confidence + 0.15);
     if ((context.previous_violations || 0) > 2) confidence = Math.min(1, confidence + 0.10);
+    if (context.is_minor) confidence = Math.min(1, confidence + 0.20);
     const cat = CATEGORIES[topCategory];
     const action = confidence > 0.85 ? cat.action : confidence > 0.6 ? "flag_for_review" : "allow";
     return { category: topCategory, label: cat.label, confidence: parseFloat(confidence.toFixed(3)), severity: cat.severity, action, flags, method: "pattern_sync", language: detectedLang, requires_human_review: confidence > 0.5 && confidence < 0.85 };

@@ -121,7 +121,7 @@ async function createThread(req: AuthedRequest, res: Response) {
   // populated on req.user by auth middleware (dead field, same category as
   // the isAdmin/vibes.routes bug — not something this migration re-scopes
   // to fix, since it'd require computing real account age at auth time).
-  const mod = await ModerationEngine.analyzeContent(`${title}\n${body}`, { account_age_days: undefined });
+  const mod = await ModerationEngine.analyzeContent(`${title}\n${body}`, { account_age_days: undefined, is_minor: req.user.isMinor });
   const autoStatus: ThreadStatus = mod.action === "allow" ? "active" : mod.confidence > 0.85 ? "removed" : "pending";
 
   if (mod.action === "remove" || mod.action === "remove_and_support") {
@@ -172,7 +172,7 @@ async function createReply(req: AuthedRequest, res: Response) {
   }
 
   // Moderation
-  const mod = await ModerationEngine.analyzeContent(body);
+  const mod = await ModerationEngine.analyzeContent(body, { is_minor: req.user.isMinor });
   if (mod.action === "remove" || mod.action === "remove_and_support") {
     if (mod.category === "SELF_HARM") return res.status(200).json({ ok: true, data: { support: true } });
     return res.status(422).json({ ok: false, error: { message: `Content blocked: ${mod.label}` } });
