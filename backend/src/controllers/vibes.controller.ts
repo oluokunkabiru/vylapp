@@ -23,7 +23,7 @@ const VIBE_FIELDS = `
   v.reply_to, v.repost_of, v.quote_of, v.is_paid_content,
   v.event_title, v.event_time, v.event_reminded_count, v.event_interested_count,
   v.likes_count, v.reposts_count, v.replies_count, v.views_count, v.bookmarks_count,
-  v.is_autopilot, v.impact_badge, v.created_at, v.is_edited,
+  v.is_autopilot, v.impact_badge, v.created_at, v.is_edited, v.is_sensitive,
   u.handle, u.display_name, u.avatar_color, u.avatar_initials, u.avatar_url, u.verified, u.role_tag
 `;
 
@@ -78,10 +78,14 @@ async function feed(req: AuthedRequest, res: Response) {
   const page = parseInt((req.query.page as string) || "0", 10);
   const pageSize = Math.min(parseInt((req.query.pageSize as string) || "20", 10), 50);
 
-  // Pull a candidate window (latest 100 non-reply vibes) for in-memory ranking.
+  // S-28: adult/flagged content filtered at source for minors, not just
+  // hidden client-side — the is_sensitive flag is exactly the flag_for_review
+  // moderation outcome set at post time, so this excludes it from the
+  // candidate window before ranking ever sees it.
+  const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
-     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL
+     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL ${sensitiveClause}
      ORDER BY v.created_at DESC LIMIT 100
   `);
 
@@ -112,9 +116,10 @@ async function feed(req: AuthedRequest, res: Response) {
 
 // ── GET /vibes/category/:category — category feed (Explore filter chips) ─
 async function categoryFeed(req: AuthedRequest, res: Response) {
+  const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
-     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL AND v.category = $1
+     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL AND v.category = $1 ${sensitiveClause}
      ORDER BY v.created_at DESC LIMIT 50
   `, req.params.category);
   const withState = await attachViewerState(rows, req.user?.id);
@@ -130,9 +135,13 @@ async function getOne(req: AuthedRequest, res: Response) {
     req.params.id
   );
   if (!rows.length) return fail(res, 404, "Vibe not found");
+  // S-28: a minor can't route around the feed filter by opening a sensitive
+  // vibe's direct link — treat it the same as not existing for them.
+  if (req.user?.isMinor && rows[0].is_sensitive) return fail(res, 404, "Vibe not found");
 
+  const replyClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
   const replies: any[] = await prisma.$queryRawUnsafe(
-    `SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id WHERE v.reply_to = $1 AND v.is_deleted = FALSE ORDER BY v.created_at ASC LIMIT 100`,
+    `SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id WHERE v.reply_to = $1 AND v.is_deleted = FALSE ${replyClause} ORDER BY v.created_at ASC LIMIT 100`,
     req.params.id
   );
 

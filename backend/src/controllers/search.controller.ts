@@ -27,10 +27,17 @@ async function search(req: AuthedRequest, res: Response) {
     results.users = SearchEngine.rank(q, rows, { handle: 3, display_name: 2.5, bio: 1.5 }).slice(0, 10);
   }
   if (type === "all" || type === "vibes") {
-    results.vibes = await prisma.$queryRaw`
-      SELECT v.id, v.content, v.tags, v.likes_count, u.handle FROM vibes v JOIN users u ON u.id = v.user_id
-       WHERE v.content ILIKE ${`%${q}%`} AND v.is_deleted = FALSE ORDER BY v.created_at DESC LIMIT 20
-    `;
+    // S-28: same is_sensitive source-filter as the feed — a minor shouldn't
+    // be able to reach flagged content just by searching for it instead.
+    results.vibes = req.user?.isMinor
+      ? await prisma.$queryRaw`
+          SELECT v.id, v.content, v.tags, v.likes_count, u.handle FROM vibes v JOIN users u ON u.id = v.user_id
+           WHERE v.content ILIKE ${`%${q}%`} AND v.is_deleted = FALSE AND v.is_sensitive = FALSE ORDER BY v.created_at DESC LIMIT 20
+        `
+      : await prisma.$queryRaw`
+          SELECT v.id, v.content, v.tags, v.likes_count, u.handle FROM vibes v JOIN users u ON u.id = v.user_id
+           WHERE v.content ILIKE ${`%${q}%`} AND v.is_deleted = FALSE ORDER BY v.created_at DESC LIMIT 20
+        `;
   }
   if (type === "all" || type === "hashtags") {
     results.hashtags = await prisma.$queryRaw`
