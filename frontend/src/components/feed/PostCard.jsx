@@ -151,6 +151,10 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
       // set as the "translation" regardless, so the UI claimed "Translated
       // from X" and showed a correction affordance over text that was
       // never actually translated. Be honest about the miss instead.
+      if (method === "disabled") {
+        toast("Translation is turned off in this environment", "error");
+        return;
+      }
       if (method === "untranslated" || method === "passthrough") {
         toast("No translation available for this yet", "error");
         return;

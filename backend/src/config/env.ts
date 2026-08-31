@@ -24,6 +24,10 @@ const env = {
   // The single primary origin — used anywhere a single concrete URL is
   // needed (OAuth redirects, email links). Always the first entry.
   clientOrigin: clientOriginList[0] || "*",
+  // Content translation can be disabled independently of UI localization,
+  // language detection, moderation, and other Anthropic-backed features.
+  // Default-on preserves existing deployments that predate this switch.
+  translationEnabled: (process.env.TRANSLATION_ENABLED || "true").toLowerCase() !== "false",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
   mailHost: process.env.MAIL_HOST || "127.0.0.1",
   mailPort: parseInt(process.env.MAIL_PORT || "1025", 10),

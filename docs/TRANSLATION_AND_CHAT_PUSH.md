@@ -30,13 +30,23 @@ across vibes/forum/messages as one platform-wide budget. Anonymous
 **Env vars:**
 
 ```env
-# backend/.env — leave blank to run fully offline, zero external calls
+# backend/.env
+# false: always return original-language content, including when cached
+TRANSLATION_ENABLED=true
+
+# leave blank to run the organic dictionary only, with zero external calls
 ANTHROPIC_API_KEY=
 ```
 
-That's the only variable this feature needs. There is no separate
-translation-provider config — Claude is used for both moderation and
-translation via the same key.
+Set `TRANSLATION_ENABLED=false` to turn off content translation across Vibes,
+forums, and messages. Language detection, source-language metadata, RTL/script
+rendering, interface localization, moderation, and other Anthropic-backed
+features remain available. Cached translations are also suppressed while the
+switch is off; they become available again when it is changed back to `true`.
+Restart/recreate the backend after changing this value.
+
+There is no separate translation-provider config — Claude is used for both
+moderation and translation via the same key.
 
 **Supported languages:** the full picker list lives in one place —
 `backend/src/services/translationEngine.ts`'s `LANGUAGES` array — and is

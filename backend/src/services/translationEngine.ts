@@ -238,6 +238,7 @@ const TranslationEngine = {
   // still understands fine (it knows ISO codes and language names alike).
   async translate(text: string, fromLang: string, toLang: string, context = "post", { allowAI = true }: { allowAI?: boolean } = {}) {
     if (fromLang === toLang) return { text, method: "passthrough" };
+    if (!env.translationEnabled) return { text, method: "disabled" };
 
     const cached = await getCachedTranslation(text, toLang).catch(() => null);
     if (cached) {
@@ -264,7 +265,9 @@ const TranslationEngine = {
   // vibe_translations so the AI-quality path only runs once per popular
   // post, not once per viewer.
   async translateVibesForViewer(vibes: any[], targetLang: string | undefined, userId?: string | null) {
-    if (!targetLang) return vibes;
+    // Short-circuit before reading the per-vibe cache: disabling translation
+    // must show original content even when an older translation is cached.
+    if (!env.translationEnabled || !targetLang) return vibes;
     const candidates = vibes.filter(v => v.language && v.language !== targetLang && v.content);
     if (!candidates.length) return vibes;
 
@@ -311,7 +314,9 @@ const TranslationEngine = {
   ) {
     const textKey = opts.textKey || "content";
     const translationKey = opts.translationKey || "translation";
-    if (!targetLang) return items;
+    // As above, do not attach cached forum/message translations while the
+    // environment switch is off.
+    if (!env.translationEnabled || !targetLang) return items;
     const candidates = items.filter(it => it.language && it.language !== targetLang && it[textKey]);
     if (!candidates.length) return items;
 
