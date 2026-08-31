@@ -62,6 +62,7 @@ services:
     volumes:
       - ./backend/src:/app/src       # hot-reload in dev; remove :ro in production
       - ./backend/prisma:/app/prisma # so new migrations are picked up without a rebuild
+      - media_data:/app/storage/media
     depends_on:
       postgres:
         condition: service_healthy
@@ -168,3 +169,4 @@ volumes:
   frontend_node_modules:
   prometheus_data:
   grafana_data:
+  media_data:

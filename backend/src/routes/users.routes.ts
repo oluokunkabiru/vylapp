@@ -36,5 +36,6 @@ router.delete("/:id/block", requireAuth, asyncHandler(usersController.unblock));
 
 // ── POST /users/:id/mute ─────────────────────────────────────────────────
 router.post("/:id/mute", requireAuth, asyncHandler(usersController.mute));
+router.delete("/:id/mute", requireAuth, asyncHandler(usersController.unmute));
 
 export = { router, publicUser: usersController.publicUser };

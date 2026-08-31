@@ -44,6 +44,7 @@ function shapeVibe(row: any, viewerState?: any) {
     impactBadge: row.impact_badge,
     createdAt: row.created_at,
     isEdited: !!row.is_edited,
+    media: row.media || [],
     author: {
       id: row.user_id, handle: row.handle, displayName: row.display_name,
       avatarColor: row.avatar_color, avatarInitials: row.avatar_initials, avatarUrl: row.avatar_url,
@@ -51,6 +52,36 @@ function shapeVibe(row: any, viewerState?: any) {
     },
     viewer: viewerState || undefined,
   };
+}
+
+function shapeVibeMedia(row: any) {
+  return {
+    id: row.id,
+    mediaType: row.mediaType,
+    url: row.url,
+    thumbnailUrl: row.thumbnailUrl,
+    width: row.width,
+    height: row.height,
+    durationMs: row.durationMs,
+    sizeBytes: row.sizeBytes == null ? null : Number(row.sizeBytes),
+    altText: row.altText,
+  };
+}
+
+async function attachMediaToVibes(vibes: any[]) {
+  if (!vibes.length) return vibes;
+  const rows = await prisma.vibeMedia.findMany({
+    where: { vibeId: { in: vibes.map(v => v.id) } },
+    orderBy: [{ vibeId: "asc" }, { sortOrder: "asc" }],
+  });
+  const byVibe = new Map<string, any[]>();
+  for (const row of rows) {
+    const list = byVibe.get(row.vibeId) || [];
+    list.push(shapeVibeMedia(row));
+    byVibe.set(row.vibeId, list);
+  }
+  for (const vibe of vibes) vibe.media = byVibe.get(vibe.id) || [];
+  return vibes;
 }
 
 async function attachViewerState(rows: any[], userId?: string | null) {
@@ -83,11 +114,15 @@ async function feed(req: AuthedRequest, res: Response) {
   // moderation outcome set at post time, so this excludes it from the
   // candidate window before ranking ever sees it.
   const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
+  const relationshipClause = req.user ? `
+    AND NOT EXISTS (SELECT 1 FROM user_mutes um WHERE um.muter_id = $1 AND um.muted_id = v.user_id)
+    AND NOT EXISTS (SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id = $1 AND ub.blocked_id = v.user_id) OR (ub.blocked_id = $1 AND ub.blocker_id = v.user_id))
+  ` : "";
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
-     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL ${sensitiveClause}
+     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL ${sensitiveClause} ${relationshipClause}
      ORDER BY v.created_at DESC LIMIT 100
-  `);
+  `, ...(req.user ? [req.user.id] : []));
 
   let userProfile: { interests: string[]; is_pro: boolean; followingIds: string[] } = { interests: [], is_pro: false, followingIds: [] };
   if (req.user) {
@@ -105,6 +140,7 @@ async function feed(req: AuthedRequest, res: Response) {
   const ranked = FeedEngine.rankFeed(rows, userProfile, { page, pageSize });
   const withState = await attachViewerState(ranked, req.user?.id);
   const shaped = withState.map(({ row, state }) => shapeVibe(row, state));
+  await attachMediaToVibes(shaped);
   await translateVibesForViewer(shaped, req.query.lang as string, req.user?.id);
   // B1: additive field so the caller can tell "stop paginating" from "this
   // page happens to be empty" without guessing from array length. Computed
@@ -117,13 +153,18 @@ async function feed(req: AuthedRequest, res: Response) {
 // ── GET /vibes/category/:category — category feed (Explore filter chips) ─
 async function categoryFeed(req: AuthedRequest, res: Response) {
   const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
+  const relationshipClause = req.user ? `
+    AND NOT EXISTS (SELECT 1 FROM user_mutes um WHERE um.muter_id = $2 AND um.muted_id = v.user_id)
+    AND NOT EXISTS (SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id = $2 AND ub.blocked_id = v.user_id) OR (ub.blocked_id = $2 AND ub.blocker_id = v.user_id))
+  ` : "";
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
-     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL AND v.category = $1 ${sensitiveClause}
+     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL AND v.category = $1 ${sensitiveClause} ${relationshipClause}
      ORDER BY v.created_at DESC LIMIT 50
-  `, req.params.category);
+  `, req.params.category, ...(req.user ? [req.user.id] : []));
   const withState = await attachViewerState(rows, req.user?.id);
   const shaped = withState.map(({ row, state }) => shapeVibe(row, state));
+  await attachMediaToVibes(shaped);
   await translateVibesForViewer(shaped, req.query.lang as string, req.user?.id);
   return ok(res, { vibes: shaped });
 }
@@ -152,18 +193,32 @@ async function getOne(req: AuthedRequest, res: Response) {
 
   const withState = await attachViewerState([rows[0], ...replies], req.user?.id);
   const [main, ...rest] = withState;
-  return ok(res, { vibe: shapeVibe(main.row, main.state), replies: rest.map(({ row, state }) => shapeVibe(row, state)) });
+  const shaped = [shapeVibe(main.row, main.state), ...rest.map(({ row, state }) => shapeVibe(row, state))];
+  await attachMediaToVibes(shaped);
+  return ok(res, { vibe: shaped[0], replies: shaped.slice(1) });
 }
 
 // ── POST /vibes — create a vibe (post / reply / quote) ───────────────────
 async function create(req: AuthedRequest, res: Response) {
-  const { content, category, tags, replyTo, quoteOf, eventTitle, eventTime, language: declaredLanguage } = req.body;
-  if (!content?.trim()) return fail(res, 400, "content is required");
-  if (content.length > 500) return fail(res, 400, "content must be 500 characters or fewer");
+  const { content, category, tags, replyTo, quoteOf, eventTitle, eventTime, mediaIds, language: declaredLanguage } = req.body;
+  const cleanContent = typeof content === "string" ? content.trim() : "";
+  const uniqueMediaIds = Array.isArray(mediaIds) ? [...new Set(mediaIds.filter((id: unknown) => typeof id === "string"))] as string[] : [];
+  if (!cleanContent && !uniqueMediaIds.length) return fail(res, 400, "content or media is required");
+  if (cleanContent.length > 500) return fail(res, 400, "content must be 500 characters or fewer");
+  if (uniqueMediaIds.length > 4) return fail(res, 400, "A vibe can contain at most 4 media items");
 
-  const moderation = await ModerationEngine.analyzeContent(content, { is_minor: req.user.isMinor });
-  if (moderation.action === "remove" || moderation.action === "remove_and_support") {
-    return fail(res, 422, `Post blocked: ${moderation.label}`, { moderation });
+  const mediaAssets = uniqueMediaIds.length ? await prisma.mediaAssets.findMany({
+    where: { id: { in: uniqueMediaIds }, uploadedBy: req.user.id, mediaType: { in: ["image", "video"] } },
+  }) : [];
+  if (mediaAssets.length !== uniqueMediaIds.length) return fail(res, 400, "One or more media uploads are invalid or do not belong to you");
+  mediaAssets.sort((a, b) => uniqueMediaIds.indexOf(a.id) - uniqueMediaIds.indexOf(b.id));
+
+  let moderation: any = { action: "allow", label: null };
+  if (cleanContent) {
+    moderation = await ModerationEngine.analyzeContent(cleanContent, { is_minor: req.user.isMinor });
+    if (moderation.action === "remove" || moderation.action === "remove_and_support") {
+      return fail(res, 422, `Post blocked: ${moderation.label}`, { moderation });
+    }
   }
 
   // T-10: what the author says the post is written in wins over the
@@ -174,21 +229,37 @@ async function create(req: AuthedRequest, res: Response) {
   // than getting stored verbatim.
   const language = (typeof declaredLanguage === "string" && TranslationEngine.getLang(declaredLanguage))
     ? declaredLanguage
-    : await LanguageDetector.detect(content, "en");
+    : cleanContent ? await LanguageDetector.detect(cleanContent, "en") : "en";
 
-  const vibe = await prisma.vibes.create({
-    data: {
-      userId: req.user.id,
-      content: content.trim(),
-      category: category || "GENERAL",
-      tags: tags || [],
-      replyTo: replyTo || null,
-      quoteOf: quoteOf || null,
-      eventTitle: eventTitle || null,
-      eventTime: eventTime || null,
-      isSensitive: moderation.action === "flag_for_review",
-      language,
-    },
+  const vibe = await prisma.$transaction(async tx => {
+    const created = await tx.vibes.create({
+      data: {
+        userId: req.user.id,
+        content: cleanContent,
+        category: category || "GENERAL",
+        tags: tags || [],
+        replyTo: replyTo || null,
+        quoteOf: quoteOf || null,
+        eventTitle: eventTitle || null,
+        eventTime: eventTime || null,
+        isSensitive: moderation.action === "flag_for_review",
+        language,
+      },
+    });
+    if (mediaAssets.length) {
+      await tx.vibeMedia.createMany({ data: mediaAssets.map((asset, sortOrder) => ({
+        vibeId: created.id,
+        mediaType: asset.mediaType,
+        url: asset.url,
+        thumbnailUrl: asset.thumbnailUrl,
+        width: asset.width,
+        height: asset.height,
+        durationMs: asset.durationMs,
+        sizeBytes: asset.sizeBytes,
+        sortOrder,
+      })) });
+    }
+    return created;
   });
 
   // Update hashtag registry
@@ -214,16 +285,16 @@ async function create(req: AuthedRequest, res: Response) {
 
   // shapeVibe expects the snake_case row shape $queryRaw produces elsewhere
   // in this file, not Prisma's camelCase create() result — map explicitly.
-  return ok(res, {
-    vibe: shapeVibe({
+  const shaped = shapeVibe({
       user_id: vibe.userId, content: vibe.content, category: vibe.category, tags: vibe.tags, language: vibe.language,
       reply_to: vibe.replyTo, repost_of: vibe.repostOf, quote_of: vibe.quoteOf, is_paid_content: vibe.isPaidContent,
       event_title: vibe.eventTitle, event_time: vibe.eventTime, event_reminded_count: vibe.eventRemindedCount, event_interested_count: vibe.eventInterestedCount,
       likes_count: vibe.likesCount, reposts_count: vibe.repostsCount, replies_count: vibe.repliesCount, views_count: vibe.viewsCount, bookmarks_count: vibe.bookmarksCount,
       is_autopilot: vibe.isAutopilot, impact_badge: vibe.impactBadge, created_at: vibe.createdAt, id: vibe.id,
       handle: req.user.handle, display_name: req.user.displayName,
-    }),
-  }, 201);
+  });
+  await attachMediaToVibes([shaped]);
+  return ok(res, { vibe: shaped }, 201);
 }
 
 // ── PATCH /vibes/:id — V-18: edit with a permanent, visible marker ────────
@@ -254,16 +325,16 @@ async function update(req: AuthedRequest, res: Response) {
     data: { content: content.trim(), tags, language, isEdited: true, isSensitive: moderation.action === "flag_for_review" },
   });
 
-  return ok(res, {
-    vibe: shapeVibe({
+  const shaped = shapeVibe({
       user_id: vibe.userId, content: vibe.content, category: vibe.category, tags: vibe.tags, language: vibe.language,
       reply_to: vibe.replyTo, repost_of: vibe.repostOf, quote_of: vibe.quoteOf, is_paid_content: vibe.isPaidContent,
       event_title: vibe.eventTitle, event_time: vibe.eventTime, event_reminded_count: vibe.eventRemindedCount, event_interested_count: vibe.eventInterestedCount,
       likes_count: vibe.likesCount, reposts_count: vibe.repostsCount, replies_count: vibe.repliesCount, views_count: vibe.viewsCount, bookmarks_count: vibe.bookmarksCount,
       is_autopilot: vibe.isAutopilot, impact_badge: vibe.impactBadge, created_at: vibe.createdAt, id: vibe.id, is_edited: vibe.isEdited,
       handle: req.user.handle, display_name: req.user.displayName,
-    }),
   });
+  await attachMediaToVibes([shaped]);
+  return ok(res, { vibe: shaped });
 }
 
 // ── DELETE /vibes/:id ──────────────────────────────────────────────────────
@@ -302,22 +373,24 @@ async function unlike(req: AuthedRequest, res: Response) {
 
 // ── POST /vibes/:id/repost  &  DELETE ─────────────────────────────────────
 async function repost(req: AuthedRequest, res: Response) {
-  await prisma.vibeReposts.upsert({
+  const existing = await prisma.vibeReposts.findUnique({
     where: { userId_vibeId: { userId: req.user.id, vibeId: req.params.id } },
-    create: { userId: req.user.id, vibeId: req.params.id },
-    update: {},
   });
-  const vibe = await prisma.vibes.findUnique({ where: { id: req.params.id }, select: { userId: true } });
-  if (vibe && vibe.userId !== req.user.id) {
+  if (!existing) {
+    await prisma.vibeReposts.create({ data: { userId: req.user.id, vibeId: req.params.id } });
+  }
+  const vibe = await prisma.vibes.findUnique({ where: { id: req.params.id }, select: { userId: true, repostsCount: true } });
+  if (!existing && vibe && vibe.userId !== req.user.id) {
     const body = NotificationEngine.formatBody("repost", req.user.displayName);
     await prisma.notifications.create({ data: { userId: vibe.userId, actorId: req.user.id, type: "repost", vibeId: req.params.id, body } });
   }
-  return ok(res, { reposted: true });
+  return ok(res, { reposted: true, repostsCount: vibe?.repostsCount });
 }
 
 async function unrepost(req: AuthedRequest, res: Response) {
   await prisma.vibeReposts.deleteMany({ where: { userId: req.user.id, vibeId: req.params.id } });
-  return ok(res, { reposted: false });
+  const vibe = await prisma.vibes.findUnique({ where: { id: req.params.id }, select: { repostsCount: true } });
+  return ok(res, { reposted: false, repostsCount: vibe?.repostsCount });
 }
 
 // ── POST /vibes/:id/bookmark  &  DELETE ───────────────────────────────────
@@ -346,7 +419,9 @@ async function myBookmarks(req: AuthedRequest, res: Response) {
      WHERE b.user_id = $1 ORDER BY b.created_at DESC LIMIT 50
   `, req.user.id);
   const withState = await attachViewerState(rows, req.user.id);
-  return ok(res, { vibes: withState.map(({ row, state }) => shapeVibe(row, state)) });
+  const shaped = withState.map(({ row, state }) => shapeVibe(row, state));
+  await attachMediaToVibes(shaped);
+  return ok(res, { vibes: shaped });
 }
 
 export = {

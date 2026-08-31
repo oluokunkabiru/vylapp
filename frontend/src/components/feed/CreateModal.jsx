@@ -41,18 +41,21 @@ export default function CreateModal({ onClose, onCreated, onSettled, defaultLang
   const [content, setContent] = useState(draft?.content || "");
   const [cat, setCat] = useState(draft?.cat || "TECH_VIBES");
   const [language, setLanguage] = useState(draft?.language || defaultLang);
+  const [media, setMedia] = useState(Array.isArray(draft?.media) ? draft.media : []);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
   const max = 500;
 
   useEffect(() => {
-    if (draft?.content) toast("Draft restored");
+    if (draft?.content || draft?.media?.length) toast("Draft restored");
     // Runs once on mount only — draft is captured before first render via the lazy useState above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!content.trim()) { localStorage.removeItem(DRAFT_KEY); return; }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, cat, language }));
-  }, [content, cat, language]);
+    if (!content.trim() && !media.length) { localStorage.removeItem(DRAFT_KEY); return; }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, cat, language, media }));
+  }, [content, cat, language, media]);
 
   // V-13/V-14 — @mention and #hashtag autocomplete. `trigger` holds where the
   // active @/# token starts in `content` so a selected suggestion can
@@ -107,8 +110,36 @@ export default function CreateModal({ onClose, onCreated, onSettled, defaultLang
     requestAnimationFrame(() => textareaRef.current?.focus());
   };
 
+  const addMedia = async event => {
+    const files = [...(event.target.files || [])].slice(0, Math.max(0, 4 - media.length));
+    event.target.value = "";
+    if (!files.length) return;
+    setUploading(true);
+    const uploaded = [];
+    try {
+      for (const file of files) {
+        const form = new FormData();
+        form.append("file", file);
+        const { media: item } = await api.upload("/media/upload", form);
+        uploaded.push(item);
+      }
+      setMedia(current => [...current, ...uploaded].slice(0, 4));
+      toast(`${uploaded.length} media item${uploaded.length === 1 ? "" : "s"} ready`);
+    } catch (e) {
+      await Promise.all(uploaded.map(item => api.delete(`/media/${item.id}`).catch(() => {})));
+      toast(`Upload failed: ${e.message}`, "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeMedia = async item => {
+    setMedia(current => current.filter(mediaItem => mediaItem.id !== item.id));
+    await api.delete(`/media/${item.id}`).catch(() => {});
+  };
+
   const share = async () => {
-    if (!content.trim()) return;
+    if ((!content.trim() && !media.length) || uploading) return;
     const tags = [...content.matchAll(/#(\w+)/g)].map(m => m[1].toLowerCase());
     const tempId = `optimistic-${Date.now()}`;
     const pendingVibe = {
@@ -116,13 +147,14 @@ export default function CreateModal({ onClose, onCreated, onSettled, defaultLang
       createdAt: new Date().toISOString(),
       author: me ? { handle: me.handle, displayName: me.displayName, avatarColor: me.avatarColor, avatarInitials: me.avatarInitials, avatarUrl: me.avatarUrl, verified: me.verified } : null,
       counts: { likes: 0, replies: 0, reposts: 0 },
+      media,
       viewer: {},
       _pending: true,
     };
     onCreated?.(pendingVibe);
     onClose();
     try {
-      const { vibe } = await api.post("/vibes", { content: content.trim(), category: cat, tags, language });
+      const { vibe } = await api.post("/vibes", { content: content.trim(), category: cat, tags, language, mediaIds: media.map(item => item.id) });
       localStorage.removeItem(DRAFT_KEY);
       onSettled?.(tempId, vibe);
     } catch (e) {
@@ -142,19 +174,33 @@ export default function CreateModal({ onClose, onCreated, onSettled, defaultLang
       }}>
         <ScreenHeader title="Share a Vibe" onBack={onClose} />
         <div style={{ padding:16, overflowY:"auto", flex:1 }}>
-          {/* Media — upload pipeline (V-22 onward) doesn't exist yet, so this
-              is honest about that instead of looking clickable and doing
-              nothing (the previous version had no onClick at all). */}
+          <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm" multiple hidden onChange={addMedia} />
           <div
-            onClick={() => toast("Photo and video uploads are coming soon")}
+            onClick={() => !uploading && media.length < 4 && fileInputRef.current?.click()}
             style={{
               aspectRatio:"4/3", borderRadius:18, border:"2px dashed var(--border)",
               display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-              gap:10, marginBottom:16, background:"var(--bg3)", cursor:"pointer",
+              gap:10, marginBottom: media.length ? 10 : 16, background:"var(--bg3)", cursor: uploading ? "wait" : "pointer",
             }}>
             <Ic d={ic.image} s={36} c="var(--text2)" />
-            <span style={{ color:"var(--text2)", fontSize:14, fontWeight:600 }}>Tap to add photo or video</span>
+            <span style={{ color:"var(--text2)", fontSize:14, fontWeight:600 }}>
+              {uploading ? "Processing media…" : media.length >= 4 ? "Maximum 4 items" : "Tap to add photo or video"}
+            </span>
+            <span style={{ color:"var(--text3)", fontSize:11.5 }}>Photos are metadata-stripped; videos are re-encoded</span>
           </div>
+
+          {media.length > 0 && (
+            <div style={{ display:"grid", gridTemplateColumns:`repeat(${Math.min(media.length, 2)}, 1fr)`, gap:8, marginBottom:16 }}>
+              {media.map(item => (
+                <div key={item.id} style={{ position:"relative", aspectRatio:"1/1", borderRadius:12, overflow:"hidden", background:"var(--bg3)" }}>
+                  {item.mediaType === "video"
+                    ? <video src={item.url} poster={item.thumbnailUrl || undefined} muted playsInline style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    : <img src={item.url} alt="Upload preview" style={{ width:"100%", height:"100%", objectFit:"cover" }} />}
+                  <button onClick={() => removeMedia(item)} aria-label="Remove media" style={{ position:"absolute", top:6, right:6, width:28, height:28, borderRadius:"50%", background:"rgba(0,0,0,.7)", color:"#fff", fontSize:16 }}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ fontSize:13, fontWeight:700, color:"var(--text2)", marginBottom:8 }}>Language</div>
           {/* V-12 — declared, not just detected. Pre-set to the reader's
@@ -231,7 +277,7 @@ export default function CreateModal({ onClose, onCreated, onSettled, defaultLang
           </div>
         </div>
         <div style={{ padding:16, borderTop:"1px solid var(--border2)" }}>
-          <PrimaryButton full onClick={share} disabled={!content.trim()}>Share Vibe</PrimaryButton>
+          <PrimaryButton full onClick={share} disabled={uploading || (!content.trim() && !media.length)}>{uploading ? "Processing…" : "Share Vibe"}</PrimaryButton>
         </div>
       </div>
     </div>

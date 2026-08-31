@@ -259,7 +259,7 @@ These are known gaps, tracked honestly. They are not bugs — they are unbuilt f
 
 **High:**
 - Stripe Connect — schema-only, no actual money movement
-- Media upload endpoint — avatar/banner columns exist, no storage backend
+- Production media storage — local authenticated upload/processing is implemented; move media to object storage/CDN with signed direct uploads before a multi-instance deployment
 - Transactional email — no account verification, password reset, or digest emails
 - Android certificate pinning values are placeholders
 - Kotlin BLE GATT read/write implementation is incomplete (channel defined, native code placeholder)

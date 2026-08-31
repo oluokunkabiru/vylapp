@@ -32,11 +32,12 @@ export function registerLogoutHandler(fn) { _onLogout = fn; }
 
 async function rawFetch(path, opts = {}) {
   const method = (opts.method || "GET").toUpperCase();
+  const isFormData = typeof FormData !== "undefined" && opts.body instanceof FormData;
   const res = await fetch(BASE + path, {
     ...opts,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...(method !== "GET" && _csrfToken ? { "X-CSRF-Token": _csrfToken } : {}),
       ...opts.headers,
     },
@@ -60,7 +61,7 @@ export async function request(method, path, body) {
   if (status === 401 && path !== "/auth/login" && path !== "/auth/register") {
     const refreshed = await refreshOnce();
     if (refreshed) {
-      ({ status, json } = await rawFetch(path, {
+      ({ json } = await rawFetch(path, {
         method,
         body: body ? JSON.stringify(body) : undefined,
       }));
@@ -73,10 +74,22 @@ export async function request(method, path, body) {
   return json?.data ?? json;
 }
 
+export async function upload(path, formData) {
+  let { status, json } = await rawFetch(path, { method: "POST", body: formData });
+  if (status === 401) {
+    const refreshed = await refreshOnce();
+    if (refreshed) ({ json } = await rawFetch(path, { method: "POST", body: formData }));
+    else _onLogout?.();
+  }
+  if (!json?.ok && json?.error) throw new Error(json.error.message || "Upload failed");
+  return json?.data ?? json;
+}
+
 export const api = {
   get:    (path)        => request("GET",    path),
   post:   (path, body)  => request("POST",   path, body),
   patch:  (path, body)  => request("PATCH",  path, body),
   put:    (path, body)  => request("PUT",    path, body),
   delete: (path)        => request("DELETE", path),
+  upload,
 };

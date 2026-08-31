@@ -1,8 +1,19 @@
-# ── Base Stage ────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS base
+# ── Runtime base ──────────────────────────────────────────────────────────────
+# Debian's FFmpeg package is used rather than relying on a host binary. This
+# keeps video re-encoding identical in development and production.
+FROM node:20-bookworm-slim AS runtime-base
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# ── Base Stage ────────────────────────────────────────────────────────────────
+FROM runtime-base AS base
 COPY package*.json ./
-RUN npm install
+RUN npm config set fetch-retries 5 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && npm ci
 
 # ── Development Stage ─────────────────────────────────────────────────────────
 # src/ is bind-mounted over this at runtime (see docker-compose.yml), so the
@@ -43,10 +54,13 @@ RUN npx prisma generate && npm run build
 # dist/db/*.js — no tsx required, it's a devDependency not present in this
 # stage's node_modules. Each phase gets its own echo marker so the sequence
 # is easy to follow in the platform's deploy log stream.
-FROM node:20-alpine AS production
+FROM runtime-base AS production
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm config set fetch-retries 5 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY prisma ./prisma
 COPY prisma.config.ts ./

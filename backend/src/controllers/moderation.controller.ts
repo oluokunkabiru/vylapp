@@ -11,6 +11,10 @@ const { ok, fail } = respond;
 async function createReport(req: AuthedRequest, res: Response) {
   const { reason, detail, vibeId, userId, spaceId, messageId } = req.body;
   if (!reason) return fail(res, 400, "reason is required");
+  if (!Object.values(ReportReason).includes(reason as ReportReason)) return fail(res, 400, "invalid report reason");
+  const targets = [vibeId, userId, spaceId, messageId].filter(Boolean);
+  if (targets.length !== 1) return fail(res, 400, "exactly one report target is required");
+  if (typeof detail === "string" && detail.length > 1000) return fail(res, 400, "detail must be 1000 characters or fewer");
   const report = await prisma.reports.create({
     data: {
       reporterId: req.user.id,

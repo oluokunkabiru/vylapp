@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { api } from "../lib/api.js";
-import { Ic, ic, CategoryPill, Spinner, Empty } from "../components/ui/index.jsx";
+import { Ic, ic, Empty } from "../components/ui/index.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 
 const CATS = [
@@ -38,10 +38,10 @@ export default function Explore() {
         const data = await api.get(`/search?q=${encodeURIComponent(query)}`);
         setResults(data.results || { users:[], vibes:[], hashtags:[] });
         setSearching(true);
-      } catch {}
+      } catch { toast("Search failed. Try again.", "error"); }
       finally { setLoading(false); }
     }, 320);
-  }, [query]);
+  }, [query, toast]);
 
   const display = cat === "all" ? gridVibes : gridVibes.filter(v => v.category === cat);
 
@@ -142,10 +142,16 @@ export default function Explore() {
             <div key={v.id || i} style={{
               aspectRatio:"1/1", background:CAT_GRADS[v.category]||CAT_GRADS.GENERAL,
               display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:30, cursor:"pointer",
+              fontSize:30, cursor:"pointer", position:"relative", overflow:"hidden",
             }} onClick={()=>toast("Full vibe view coming soon")}>
-              {CAT_EMOJI[v.category]||"✦"}
-              {i % 5 === 0 && (
+              {v.media?.[0]
+                ? v.media[0].mediaType === "video"
+                  ? v.media[0].thumbnailUrl
+                    ? <img src={v.media[0].thumbnailUrl} alt="" loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                    : <video src={v.media[0].url} muted preload="metadata" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                  : <img src={v.media[0].url} alt={v.content || "Vibe media"} loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                : CAT_EMOJI[v.category]||"✦"}
+              {v.media?.[0]?.mediaType === "video" && (
                 <div style={{ position:"absolute", top:6, right:6 }}>
                   <Ic d={ic.spaces} s={14} c="#fff" />
                 </div>

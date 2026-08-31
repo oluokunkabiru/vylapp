@@ -6,12 +6,13 @@ import { Spinner, Empty, ErrorState, SkeletonPostCard } from "../components/ui/i
 
 export default function Home({ lang, newVibe, vibeSettle }) {
   const [vibes, setVibes] = useState([]);
-  const [page, setPage] = useState(0);
+  const [, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState(false);
-  const [storyUser, setStoryUser] = useState(null);
+  const [storyGroup, setStoryGroup] = useState(null);
+  const [storiesVersion, setStoriesVersion] = useState(0);
   const sentinelRef = useRef(null);
 
   // A post made via the global "+" composer lands here immediately — it's
@@ -77,6 +78,11 @@ export default function Home({ lang, newVibe, vibeSettle }) {
     setVibes(v => v.filter(x => x.id !== id));
   }, []);
 
+  const onAuthorHidden = useCallback(authorId => {
+    setVibes(v => v.filter(x => x.author?.id !== authorId));
+    setStoriesVersion(version => version + 1);
+  }, []);
+
   // D-11 five-state standard for this screen: loading (skeleton, shaped
   // like the content — D-09) → error (retry) → empty → offline (not yet
   // distinguished from generic error — see plan) → success.
@@ -92,11 +98,11 @@ export default function Home({ lang, newVibe, vibeSettle }) {
 
   return (
     <>
-      <StoriesBar onOpenStory={setStoryUser} />
+      <StoriesBar key={storiesVersion} onOpenStory={setStoryGroup} />
       {vibes.length === 0
         ? <Empty emoji="✦" title="No vibes yet" sub="Be the first — share something with the community!" />
         : vibes.map((vibe, i) => (
-            <PostCard key={vibe.id} vibe={vibe} lang={lang} firstTip={i === 0} onVibeCreated={onVibeCreated} onDeleted={onVibeDeleted} />
+            <PostCard key={vibe.id} vibe={vibe} lang={lang} firstTip={i === 0} onVibeCreated={onVibeCreated} onDeleted={onVibeDeleted} onHidden={onAuthorHidden} />
           ))
       }
       {loadingMore && <div style={{ display:"flex", justifyContent:"center", padding:24 }}><Spinner /></div>}
@@ -106,7 +112,13 @@ export default function Home({ lang, newVibe, vibeSettle }) {
           You're all caught up ✓
         </div>
       )}
-      {storyUser && <StoryViewer user={storyUser} onClose={() => setStoryUser(null)} />}
+      {storyGroup && (
+        <StoryViewer
+          group={storyGroup}
+          onClose={() => setStoryGroup(null)}
+          onChanged={() => setStoriesVersion(version => version + 1)}
+        />
+      )}
     </>
   );
 }

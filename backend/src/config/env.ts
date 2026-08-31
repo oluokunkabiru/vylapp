@@ -1,4 +1,5 @@
 import "dotenv/config";
+import path from "path";
 
 function get(name: string, fallback?: string): string {
   const v = process.env[name] ?? fallback;
@@ -29,6 +30,8 @@ const env = {
   // Default-on preserves existing deployments that predate this switch.
   translationEnabled: (process.env.TRANSLATION_ENABLED || "true").toLowerCase() !== "false",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
+  mediaStoragePath: process.env.MEDIA_STORAGE_PATH || path.join(process.cwd(), "storage", "media"),
+  mediaPublicBaseUrl: (process.env.MEDIA_PUBLIC_BASE_URL || `${process.env.API_BASE_URL || `http://localhost:${parseInt(process.env.PORT || "4000", 10)}`}/media`).replace(/\/$/, ""),
   mailHost: process.env.MAIL_HOST || "127.0.0.1",
   mailPort: parseInt(process.env.MAIL_PORT || "1025", 10),
   // "ssl" -> implicit TLS on connect (typically port 465)

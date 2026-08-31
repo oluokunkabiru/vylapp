@@ -26,18 +26,24 @@ function HeartBurst({ show }) {
   );
 }
 
-export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted }) {
+export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted, onHidden }) {
   const { user } = useAuth();
   const toast = useToast();
   const [vibe, setVibe] = useState(initialVibe);
   const [liked, setLiked] = useState(vibe.viewer?.liked ?? false);
   const [saved, setSaved] = useState(vibe.viewer?.saved ?? false);
+  const [reposted, setReposted] = useState(vibe.viewer?.reposted ?? false);
   const [likeCount, setLikeCount] = useState(vibe.counts?.likes ?? 0);
+  const [repostCount, setRepostCount] = useState(vibe.counts?.reposts ?? 0);
   const [burst, setBurst] = useState(false);
   const [draft, setDraft] = useState("");
   // V-18 — edit with a visible marker, not a silent rewrite.
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("spam");
+  const [reportDetail, setReportDetail] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
   const isMine = !!user && user.handle === vibe.author?.handle;
 
   const startEdit = () => { setEditText(vibe.content); setIsEditing(true); };
@@ -119,6 +125,52 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
     } catch { setSaved(wasSaved); }
   };
 
+  const toggleRepost = async () => {
+    if (!user) { toast("Sign in to repost vibes", "error"); return; }
+    const wasReposted = reposted;
+    setReposted(!wasReposted);
+    setRepostCount(count => Math.max(0, count + (wasReposted ? -1 : 1)));
+    try {
+      const result = wasReposted
+        ? await api.delete(`/vibes/${vibe.id}/repost`)
+        : await api.post(`/vibes/${vibe.id}/repost`);
+      if (typeof result.repostsCount === "number") setRepostCount(result.repostsCount);
+      toast(wasReposted ? "Repost removed" : "Reposted ✓");
+    } catch (error) {
+      setReposted(wasReposted);
+      setRepostCount(count => Math.max(0, count + (wasReposted ? 1 : -1)));
+      toast(error.message, "error");
+    }
+  };
+
+  const muteAuthor = async () => {
+    try {
+      await api.post(`/users/${vibe.author.id}/mute`);
+      onHidden?.(vibe.author.id);
+      toast(`Muted @${vibe.author.handle}`);
+    } catch (error) { toast(error.message, "error"); }
+  };
+
+  const blockAuthor = async () => {
+    if (!window.confirm(`Block @${vibe.author.handle}? You will no longer see each other's content.`)) return;
+    try {
+      await api.post(`/users/${vibe.author.id}/block`);
+      onHidden?.(vibe.author.id);
+      toast(`Blocked @${vibe.author.handle}`);
+    } catch (error) { toast(error.message, "error"); }
+  };
+
+  const submitReport = async () => {
+    setReportBusy(true);
+    try {
+      await api.post("/moderation/reports", { reason: reportReason, detail: reportDetail.trim() || undefined, vibeId: vibe.id });
+      setReportOpen(false);
+      setReportDetail("");
+      toast("Report submitted for review");
+    } catch (error) { toast(error.message, "error"); }
+    finally { setReportBusy(false); }
+  };
+
   const submitReply = async () => {
     const text = draft.trim();
     if (!text || !user) return;
@@ -137,7 +189,7 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
       const { replies: r } = await api.get(`/vibes/${vibe.id}`);
       setReplies(r || []);
       setShowReplies(true);
-    } catch {}
+    } catch { toast("Couldn't load replies", "error"); }
   };
 
   const doTranslate = async () => {
@@ -161,7 +213,7 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
       }
       setManualTranslatedText(text);
       setShowOriginal(false);
-    } catch (e) { toast("Translation unavailable", "error"); }
+    } catch { toast("Translation unavailable", "error"); }
     finally { setTranslating(false); }
   };
 
@@ -213,26 +265,37 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
               ]}
             />
           ) : (
-            <TapIcon d={ic.dotsH} size={20} c="var(--text2)" label="More options" onClick={() => toast("Options coming soon")} />
+            <Menu
+              trigger={<TapIcon d={ic.dotsH} size={20} c="var(--text2)" label="More options" />}
+              items={[
+                { label:"Report post", onClick: () => setReportOpen(true) },
+                { label:`Mute @${vibe.author?.handle}`, onClick: muteAuthor },
+                { label:`Block @${vibe.author?.handle}`, danger:true, onClick: blockAuthor },
+              ]}
+            />
           )
         )}
       </div>
 
-      {/* Media */}
-      <div onDoubleClick={isPending ? undefined : onDoubleTap} style={{ pointerEvents: isPending ? "none" : "auto",
-        position:"relative", width:"100%", aspectRatio:"4/5",
-        background:`radial-gradient(circle at 50% 38%, rgba(255,255,255,0.10), transparent 55%), ${grad}`,
-        display:"flex", alignItems:"center", justifyContent:"center",
-        cursor:"pointer", userSelect:"none",
-      }}>
-        <div style={{
-          width:88, height:88, borderRadius:"50%",
-          background:"rgba(255,255,255,0.14)", backdropFilter:"blur(6px)",
-          border:"1px solid rgba(255,255,255,0.22)",
-          display:"flex", alignItems:"center", justifyContent:"center",
-        }}>
-          <span style={{ fontSize:36 }}>{emoji}</span>
-        </div>
+      {/* Processed media, or the category artwork for text-only vibes. */}
+      <div onDoubleClick={isPending ? undefined : onDoubleTap} style={{ pointerEvents: isPending ? "none" : "auto", position:"relative", width:"100%", cursor:"pointer", userSelect:"none" }}>
+        {vibe.media?.length ? (
+          <div style={{ display:"grid", gridTemplateColumns: vibe.media.length === 1 ? "1fr" : "1fr 1fr", gap:2, background:"var(--bg3)" }}>
+            {vibe.media.map((item, index) => (
+              <div key={item.id || item.url} style={{ position:"relative", overflow:"hidden", aspectRatio: vibe.media.length === 1 && item.width && item.height ? `${item.width}/${item.height}` : "1/1", maxHeight:620 }}>
+                {item.mediaType === "video"
+                  ? <video src={item.url} poster={item.thumbnailUrl || undefined} controls playsInline preload="metadata" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />
+                  : <img src={item.url} alt={item.altText || `Vibe media ${index + 1}`} loading="lazy" style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }} />}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ aspectRatio:"4/5", background:`radial-gradient(circle at 50% 38%, rgba(255,255,255,0.10), transparent 55%), ${grad}`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ width:88, height:88, borderRadius:"50%", background:"rgba(255,255,255,0.14)", backdropFilter:"blur(6px)", border:"1px solid rgba(255,255,255,0.22)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+              <span style={{ fontSize:36 }}>{emoji}</span>
+            </div>
+          </div>
+        )}
         <HeartBurst show={burst} />
         {vibe.impactBadge && (
           <div className="vy-post-impact-badge" style={{
@@ -253,6 +316,7 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
       <div style={{ display:"flex", alignItems:"center", padding:"6px 8px 0", pointerEvents: isPending ? "none" : "auto" }}>
         <TapIcon d={ic.heart} f={liked ? "var(--coral)" : "none"} c={liked ? "var(--coral)" : "var(--text)"} onClick={toggleLike} label="Like" />
         <TapIcon d={ic.comment} c="var(--text)" label="Comment" onClick={loadReplies} />
+        <TapIcon d={ic.repeat} c={reposted ? "var(--green)" : "var(--text)"} onClick={toggleRepost} label={reposted ? "Undo repost" : "Repost"} />
         <TapIcon d={ic.send} c="var(--text)" label="Share" onClick={shareVibe} />
         <div style={{ flex:1 }} />
         <TapIcon d={ic.bookmark} f={saved ? "var(--text)" : "none"} c="var(--text)" onClick={toggleBookmark} label="Save" />
@@ -260,6 +324,7 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
 
       <div style={{ padding:"2px 16px 0" }}>
         <div style={{ fontWeight:800, fontSize:14 }}>{numFmt(likeCount)} people like this</div>
+        {repostCount > 0 && <div style={{ color:"var(--text2)", fontSize:12.5, marginTop:2 }}>{numFmt(repostCount)} repost{repostCount === 1 ? "" : "s"}</div>}
 
         {isEditing ? (
           <div style={{ marginTop:6 }}>
@@ -386,6 +451,26 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted 
           </div>
         )}
       </div>
+
+      {reportOpen && (
+        <div onClick={() => !reportBusy && setReportOpen(false)} style={{ position:"fixed", inset:0, zIndex:450, background:"rgba(8,7,15,.82)", display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+          <div onClick={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-label="Report post" style={{ width:"100%", maxWidth:400, padding:20, borderRadius:18, background:"var(--bg2)", border:"1px solid var(--border)" }}>
+            <h2 style={{ margin:"0 0 6px", fontSize:19 }}>Report this post</h2>
+            <p style={{ margin:"0 0 16px", color:"var(--text2)", fontSize:13.5 }}>Choose the reason that best describes the problem.</p>
+            <select value={reportReason} onChange={event => setReportReason(event.target.value)} style={{ width:"100%", padding:11, borderRadius:10, background:"var(--bg3)", border:"1px solid var(--border2)", color:"var(--text)", marginBottom:10 }}>
+              <option value="spam">Spam</option><option value="harassment">Harassment</option>
+              <option value="misinformation">Misinformation</option><option value="explicit_content">Explicit content</option>
+              <option value="hate_speech">Hate speech</option><option value="violence">Violence</option>
+              <option value="copyright">Copyright</option><option value="impersonation">Impersonation</option><option value="other">Other</option>
+            </select>
+            <textarea value={reportDetail} onChange={event => setReportDetail(event.target.value.slice(0,1000))} rows={4} placeholder="Add details (optional)" style={{ width:"100%", resize:"vertical", padding:11, borderRadius:10, background:"var(--bg3)", border:"1px solid var(--border2)", color:"var(--text)", fontFamily:"var(--font)" }} />
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:9, marginTop:14 }}>
+              <button disabled={reportBusy} onClick={() => setReportOpen(false)} style={{ padding:"8px 14px", borderRadius:10, background:"transparent", border:"1px solid var(--border)", color:"var(--text2)" }}>Cancel</button>
+              <button disabled={reportBusy} onClick={submitReport} style={{ padding:"8px 14px", borderRadius:10, background:"var(--coral)", color:"#fff", fontWeight:800 }}>{reportBusy ? "Submitting…" : "Submit report"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }

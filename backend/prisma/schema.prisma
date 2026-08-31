@@ -893,21 +893,54 @@ model Lessons {
 }
 
 model MediaAssets {
-  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  uploadedBy String    @map("uploaded_by") @db.Uuid
-  url        String
-  cdnKey     String    @unique @map("cdn_key")
-  mediaType  MediaType @map("media_type")
-  width      Int?
-  height     Int?
-  durationMs Int?      @map("duration_ms")
-  sizeBytes  BigInt    @map("size_bytes")
-  mimeType   String    @map("mime_type")
-  isPublic   Boolean   @default(true) @map("is_public")
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  users      Users     @relation(fields: [uploadedBy], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  uploadedBy   String    @map("uploaded_by") @db.Uuid
+  url          String
+  thumbnailUrl String?   @map("thumbnail_url")
+  cdnKey       String    @unique @map("cdn_key")
+  mediaType    MediaType @map("media_type")
+  width        Int?
+  height       Int?
+  durationMs   Int?      @map("duration_ms")
+  sizeBytes    BigInt    @map("size_bytes")
+  mimeType     String    @map("mime_type")
+  isPublic     Boolean   @default(true) @map("is_public")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  users        Users     @relation(fields: [uploadedBy], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stories      Stories[]
 
   @@map("media_assets")
+}
+
+model Stories {
+  id           String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  mediaAssetId String       @map("media_asset_id") @db.Uuid
+  caption      String?
+  language     String       @default("en")
+  viewsCount   Int          @default(0) @map("views_count")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt    DateTime     @map("expires_at") @db.Timestamptz(6)
+  deletedAt    DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  users        Users        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  mediaAsset   MediaAssets  @relation(fields: [mediaAssetId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  storyViews   StoryViews[]
+
+  @@index([expiresAt], map: "idx_stories_active", where: raw("(deleted_at IS NULL)"))
+  @@index([userId, createdAt(sort: Desc)], map: "idx_stories_user")
+  @@map("stories")
+}
+
+model StoryViews {
+  storyId  String   @map("story_id") @db.Uuid
+  viewerId String   @map("viewer_id") @db.Uuid
+  viewedAt DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+  stories  Stories  @relation(fields: [storyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users    Users    @relation(fields: [viewerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([storyId, viewerId])
+  @@index([viewerId], map: "idx_story_views_viewer")
+  @@map("story_views")
 }
 
 model MessageMedia {
@@ -1879,6 +1912,8 @@ model Users {
   spaceTipsSpaceTipsRecipientIdTousers                        SpaceTips[]                @relation("space_tips_recipient_idTousers")
   spaceTipsSpaceTipsTipperIdTousers                           SpaceTips[]                @relation("space_tips_tipper_idTousers")
   spaces                                                      Spaces[]
+  stories                                                     Stories[]
+  storyViews                                                  StoryViews[]
   superVibesSuperVibesRecipientIdTousers                      SuperVibes[]               @relation("super_vibes_recipient_idTousers")
   superVibesSuperVibesSenderIdTousers                         SuperVibes[]               @relation("super_vibes_sender_idTousers")
   threadReplies                                               ThreadReplies[]

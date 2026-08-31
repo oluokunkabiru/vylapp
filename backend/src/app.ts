@@ -31,6 +31,8 @@ import forumRoutes from "./routes/forum.routes";
 import rbacRoutes from "./routes/rbac.routes";
 import adminRoutes from "./routes/admin.routes";
 import devRoutes from "./routes/dev.routes";
+import mediaRoutes from "./routes/media.routes";
+import storiesRoutes from "./routes/stories.routes";
 
 function createApp() {
   // Cookie-based web auth + credentialed CORS can never work with a wildcard
@@ -60,6 +62,10 @@ function createApp() {
   app.use(rateLimiter());
   app.use(httpLogger);
   app.use(metrics.httpMetrics);
+
+  // Processed uploads use immutable UUID filenames. The API stores absolute
+  // URLs, while this mount serves the bytes from the persistent media volume.
+  app.use("/media", express.static(env.mediaStoragePath, { maxAge: "1y", immutable: true }));
 
   app.get("/", (req, res) => res.json({
     ok: true, message: "Welcome to the Vylapp API — Vibe. Learn. Connect.",
@@ -104,6 +110,8 @@ function createApp() {
   apiRouter.use("/raven",         ravenRoutes);
   apiRouter.use("/learn",         learnRoutes);
   apiRouter.use("/forum",         forumRoutes);
+  apiRouter.use("/media",         mediaRoutes);
+  apiRouter.use("/stories",       storiesRoutes);
   // RBAC management (super_admin / platform_admin only) and the admin
   // dashboard API are versioned the same way for consistency, even though
   // only internal tooling calls them today.

@@ -142,6 +142,7 @@ async function listFollowing(req: Request, res: Response) {
 
 // ── POST /users/:id/block ────────────────────────────────────────────────
 async function block(req: AuthedRequest, res: Response) {
+  if (req.params.id === req.user.id) return fail(res, 400, "Cannot block yourself");
   await prisma.userBlocks.upsert({
     where: { blockerId_blockedId: { blockerId: req.user.id, blockedId: req.params.id } },
     create: { blockerId: req.user.id, blockedId: req.params.id },
@@ -165,6 +166,7 @@ async function unblock(req: AuthedRequest, res: Response) {
 
 // ── POST /users/:id/mute ─────────────────────────────────────────────────
 async function mute(req: AuthedRequest, res: Response) {
+  if (req.params.id === req.user.id) return fail(res, 400, "Cannot mute yourself");
   await prisma.userMutes.upsert({
     where: { muterId_mutedId: { muterId: req.user.id, mutedId: req.params.id } },
     create: { muterId: req.user.id, mutedId: req.params.id },
@@ -173,4 +175,9 @@ async function mute(req: AuthedRequest, res: Response) {
   return ok(res, { muted: true });
 }
 
-export = { publicUser, discover, getByHandle, updateMe, connect, disconnect, listConnections, listFollowing, block, unblock, mute };
+async function unmute(req: AuthedRequest, res: Response) {
+  await prisma.userMutes.deleteMany({ where: { muterId: req.user.id, mutedId: req.params.id } });
+  return ok(res, { muted: false });
+}
+
+export = { publicUser, discover, getByHandle, updateMe, connect, disconnect, listConnections, listFollowing, block, unblock, mute, unmute };
