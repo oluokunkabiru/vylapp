@@ -1,10 +1,79 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
-import { ScreenHeader, Card, Toggle, GhostButton } from "../components/ui/index.jsx";
+import { ScreenHeader, Card, Toggle, GhostButton, PrimaryButton } from "../components/ui/index.jsx";
 import { LANGUAGES } from "../lib/languages.js";
+
+// S (rest) — muted words: content-based filtering, separate from muting a
+// person. Kept as its own small component so Settings itself doesn't grow
+// a second layer of list-management state.
+function MutedWordsSection() {
+  const toast = useToast();
+  const [words, setWords] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+
+  const load = useCallback(() => {
+    api.get("/users/me/muted-words").then(({ words }) => setWords(words)).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const add = async (e) => {
+    e.preventDefault();
+    const word = input.trim();
+    if (!word) return;
+    setAdding(true);
+    try {
+      await api.post("/users/me/muted-words", { word });
+      setInput("");
+      load();
+    } catch (e) {
+      toast(e.message || "Couldn't add that word", "error");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const remove = async (id) => {
+    setWords(w => w.filter(x => x.id !== id)); // optimistic
+    try {
+      await api.delete(`/users/me/muted-words/${id}`);
+    } catch (e) {
+      toast(e.message || "Couldn't remove that word", "error");
+      load();
+    }
+  };
+
+  return (
+    <>
+      <SectionLabel>Muted words</SectionLabel>
+      <Card>
+        <div style={{ color:"var(--text3)", fontSize:12.5, marginBottom:12 }}>
+          Vibes containing any of these words won't show up in your feed. Case-insensitive.
+        </div>
+        <form onSubmit={add} style={{ display:"flex", gap:8, marginBottom: words.length ? 14 : 0 }}>
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder="Add a word or phrase"
+            style={{ flex:1, padding:"10px 12px", borderRadius:10, border:"1.5px solid var(--border)", background:"var(--bg3)", color:"var(--text)", fontSize:14 }}
+          />
+          <PrimaryButton loading={adding} disabled={adding || !input.trim()}>Add</PrimaryButton>
+        </form>
+        {!loading && words.map(w => (
+          <div key={w.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 0", borderTop:"1px solid var(--border2)" }}>
+            <span style={{ fontSize:14 }}>{w.word}</span>
+            <button onClick={() => remove(w.id)} style={{ background:"none", border:"none", color:"var(--text3)", fontSize:12.5, cursor:"pointer", fontWeight:700 }}>Remove</button>
+          </div>
+        ))}
+      </Card>
+    </>
+  );
+}
 
 // I-29 — grouped by what a person is trying to accomplish (language,
 // privacy, account), not by backend table. Every control here is real and
@@ -77,6 +146,8 @@ export default function Settings({ lang, setLang }) {
             sub="Turn off to stop new message requests from non-connections"
           />
         </Card>
+
+        <MutedWordsSection />
 
         <SectionLabel>Account</SectionLabel>
         <Card>

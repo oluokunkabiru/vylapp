@@ -11,6 +11,14 @@ const router = express.Router();
 // Registered before /:handle so "discover" isn't swallowed as a handle lookup.
 router.get("/discover", requireAuth, asyncHandler(usersController.discover));
 
+// ── Muted words (S, rest) — registered before /:handle for the same reason
+// as /discover above; these are all two-or-three-segment paths so they
+// never actually collide with the one-segment /:handle route, but keeping
+// them together up top matches this file's existing convention. ──────────
+router.get("/me/muted-words", requireAuth, asyncHandler(usersController.listMutedWords));
+router.post("/me/muted-words", requireAuth, asyncHandler(usersController.addMutedWord));
+router.delete("/me/muted-words/:id", requireAuth, asyncHandler(usersController.removeMutedWord));
+
 // ── GET /users/:handle ───────────────────────────────────────────────────
 router.get("/:handle", optionalAuth, asyncHandler(usersController.getByHandle));
 

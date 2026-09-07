@@ -114,9 +114,13 @@ async function feed(req: AuthedRequest, res: Response) {
   // moderation outcome set at post time, so this excludes it from the
   // candidate window before ranking ever sees it.
   const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
+  // S (rest): muted words. POSITION(...) rather than ILIKE '%word%' — a
+  // muted word is raw user input and ILIKE would treat any literal % or _
+  // in it as a wildcard; POSITION does a plain substring check instead.
   const relationshipClause = req.user ? `
     AND NOT EXISTS (SELECT 1 FROM user_mutes um WHERE um.muter_id = $1 AND um.muted_id = v.user_id)
     AND NOT EXISTS (SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id = $1 AND ub.blocked_id = v.user_id) OR (ub.blocked_id = $1 AND ub.blocker_id = v.user_id))
+    AND NOT EXISTS (SELECT 1 FROM muted_words mw WHERE mw.user_id = $1 AND POSITION(LOWER(mw.word) IN LOWER(v.content)) > 0)
   ` : "";
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
@@ -156,6 +160,7 @@ async function categoryFeed(req: AuthedRequest, res: Response) {
   const relationshipClause = req.user ? `
     AND NOT EXISTS (SELECT 1 FROM user_mutes um WHERE um.muter_id = $2 AND um.muted_id = v.user_id)
     AND NOT EXISTS (SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id = $2 AND ub.blocked_id = v.user_id) OR (ub.blocked_id = $2 AND ub.blocker_id = v.user_id))
+    AND NOT EXISTS (SELECT 1 FROM muted_words mw WHERE mw.user_id = $2 AND POSITION(LOWER(mw.word) IN LOWER(v.content)) > 0)
   ` : "";
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id

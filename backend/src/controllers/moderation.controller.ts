@@ -94,14 +94,119 @@ async function resolveReport(req: AuthedRequest, res: Response) {
   // actioned. Resolved via the same target-resolution moderationQueue.ts
   // uses for the queue's own target_is_minor join.
   const targetUserId = await ModerationQueue.resolveTargetUserId(report);
-  await prisma.moderationActions.create({
+
+  // Real bug found while wiring A-13/appeals: this endpoint recorded
+  // "removed"/"suspended" as a label on the report and in moderation_actions,
+  // but never actually removed the vibe or suspended the user — an admin
+  // resolving a single report believed the consequence happened; nothing
+  // did. (moderationBulkAction's remove_content branch already did this
+  // correctly — this single-report path just never got the same treatment.)
+  if (actionTaken === "removed" && report.reportedVibeId) {
+    await prisma.vibes.update({
+      where: { id: report.reportedVibeId },
+      data: { isDeleted: true, deletedAt: new Date(), moderationNote: reason },
+    });
+  }
+  if (actionTaken === "suspended" && targetUserId) {
+    await prisma.users.update({
+      where: { id: targetUserId },
+      data: { isSuspended: true, suspendedAt: new Date(), suspendedReason: reason },
+    });
+  }
+
+  const action = await prisma.moderationActions.create({
     data: {
       moderatorId: req.user.id, action: actionTaken || "none", reportId: req.params.id,
       reason: reason || "Resolved via report queue (no action taken)",
       targetUserId, targetVibeId: report.reportedVibeId || null,
     },
   });
-  return ok(res, { resolved: true });
+  return ok(res, { resolved: true, moderationActionId: action.id });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  APPEALS (S, rest) — `ModerationEngine.reviewAppeal()` already existed
+//  with zero callers, and `moderation.appeal.review` was already seeded as
+//  an RBAC permission (referenceData.sql) with nothing gated behind it —
+//  the same "seeded but unconsumed" shape as A-17's feature flags and
+//  V-18's RBAC-permission-with-no-endpoint. This wires both up for real.
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── POST /moderation/appeals — the affected user disputes an action ──────
+async function createAppeal(req: AuthedRequest, res: Response) {
+  const { moderationActionId, reason } = req.body;
+  if (!moderationActionId) return fail(res, 400, "moderationActionId is required");
+  const trimmedReason = String(reason || "").trim();
+  if (trimmedReason.length < 10) return fail(res, 400, "reason must be at least 10 characters — explain why the decision was wrong");
+
+  const action = await prisma.moderationActions.findUnique({ where: { id: moderationActionId }, select: { id: true, targetUserId: true, action: true } });
+  if (!action) return fail(res, 404, "Moderation action not found");
+  // Only the person the action was actually taken against can appeal it —
+  // not the original reporter, not a bystander.
+  if (action.targetUserId !== req.user.id) return fail(res, 403, "You can only appeal an action taken against your own account");
+  if (action.action === "none") return fail(res, 400, "This action took no disciplinary effect — nothing to appeal");
+
+  const existing = await prisma.moderationAppeals.findUnique({ where: { moderationActionId } });
+  if (existing) return fail(res, 409, "This action has already been appealed");
+
+  const appeal = await prisma.moderationAppeals.create({
+    data: { moderationActionId, userId: req.user.id, reason: trimmedReason },
+  });
+  return ok(res, { appeal }, 201);
+}
+
+// ── GET /moderation/appeals — reviewer queue, oldest-pending-first ───────
+async function listAppeals(req: AuthedRequest, res: Response) {
+  const status = ((req.query.status as string) || "pending") as "pending" | "upheld" | "overturned";
+  const appeals = await prisma.moderationAppeals.findMany({
+    where: { status },
+    orderBy: { createdAt: "asc" },
+    take: 50,
+    include: { moderationActions: { select: { action: true, reason: true, targetVibeId: true, createdAt: true } } },
+  });
+  return ok(res, { appeals });
+}
+
+// ── POST /moderation/appeals/:id/review — reviewer decision ──────────────
+// Runs ModerationEngine.reviewAppeal() against a *fresh* analysis of the
+// original content (not a stored confidence/category — none was ever
+// persisted on the moderation_actions row, only the final action string
+// was) so the heuristic has something real to weigh the appeal's evidence
+// against. An OVERTURN automatically reverses a vibe removal (the one
+// side effect that's safe to fully automate); an overturned suspension is
+// recorded but still needs the reviewer to run reinstateUser themselves —
+// unsuspending a real account isn't something to do without a human
+// looking at it, even when the heuristic leans that way.
+async function reviewAppeal(req: AuthedRequest, res: Response) {
+  const appeal = await prisma.moderationAppeals.findUnique({
+    where: { id: req.params.id },
+    include: { moderationActions: true },
+  });
+  if (!appeal) return fail(res, 404, "Appeal not found");
+  if (appeal.status !== "pending") return fail(res, 400, "This appeal has already been reviewed");
+
+  let analysis = { confidence: 0.5, category: "SAFE" };
+  if (appeal.moderationActions.targetVibeId) {
+    const vibe = await prisma.vibes.findUnique({ where: { id: appeal.moderationActions.targetVibeId }, select: { content: true } });
+    if (vibe) analysis = await ModerationEngine.analyzeContent(vibe.content, {});
+  }
+
+  const result = ModerationEngine.reviewAppeal({ evidence: appeal.reason }, analysis);
+  const newStatus = result.decision === "OVERTURN" ? "overturned" : "upheld";
+
+  await prisma.moderationAppeals.update({
+    where: { id: appeal.id },
+    data: { status: newStatus, decision: result.reason, reviewedBy: req.user.id, reviewedAt: new Date() },
+  });
+
+  if (newStatus === "overturned" && appeal.moderationActions.action === "removed" && appeal.moderationActions.targetVibeId) {
+    await prisma.vibes.update({
+      where: { id: appeal.moderationActions.targetVibeId },
+      data: { isDeleted: false, deletedAt: null, moderationNote: `Restored on appeal: ${result.reason}` },
+    });
+  }
+
+  return ok(res, { status: newStatus, decision: result.reason });
 }
 
 // ── GET /moderation/trust-score/:userId ──────────────────────────────────
@@ -119,4 +224,4 @@ async function trustScore(req: AuthedRequest, res: Response) {
   return ok(res, { score });
 }
 
-export = { createReport, listReports, resolveReport, trustScore };
+export = { createReport, listReports, resolveReport, trustScore, createAppeal, listAppeals, reviewAppeal };

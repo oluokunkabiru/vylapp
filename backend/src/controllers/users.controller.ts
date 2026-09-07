@@ -180,4 +180,40 @@ async function unmute(req: AuthedRequest, res: Response) {
   return ok(res, { muted: false });
 }
 
-export = { publicUser, discover, getByHandle, updateMe, connect, disconnect, listConnections, listFollowing, block, unblock, mute, unmute };
+// ════════════════════════════════════════════════════════════════════════════
+//  MUTED WORDS (S, rest) — content-based muting, distinct from mute()/unmute()
+//  above (who you mute). Actual filtering lives in vibes.controller.ts's
+//  feed()/categoryFeed() — this is just the CRUD surface for the list.
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── GET /users/me/muted-words ──────────────────────────────────────────────
+async function listMutedWords(req: AuthedRequest, res: Response) {
+  const words = await prisma.mutedWords.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: "desc" } });
+  return ok(res, { words: words.map(w => ({ id: w.id, word: w.word, language: w.language, createdAt: w.createdAt })) });
+}
+
+// ── POST /users/me/muted-words ─────────────────────────────────────────────
+async function addMutedWord(req: AuthedRequest, res: Response) {
+  const raw = typeof req.body?.word === "string" ? req.body.word.trim().toLowerCase() : "";
+  if (!raw) return fail(res, 400, "word is required");
+  if (raw.length > 100) return fail(res, 400, "word must be 100 characters or fewer");
+  const language = typeof req.body?.language === "string" && req.body.language.trim() ? req.body.language.trim() : null;
+
+  const word = await prisma.mutedWords.upsert({
+    where: { userId_word: { userId: req.user.id, word: raw } },
+    create: { userId: req.user.id, word: raw, language },
+    update: { language },
+  });
+  return ok(res, { word: { id: word.id, word: word.word, language: word.language, createdAt: word.createdAt } }, 201);
+}
+
+// ── DELETE /users/me/muted-words/:id ───────────────────────────────────────
+async function removeMutedWord(req: AuthedRequest, res: Response) {
+  await prisma.mutedWords.deleteMany({ where: { id: req.params.id, userId: req.user.id } });
+  return ok(res, { removed: true });
+}
+
+export = {
+  publicUser, discover, getByHandle, updateMe, connect, disconnect, listConnections, listFollowing, block, unblock, mute, unmute,
+  listMutedWords, addMutedWord, removeMutedWord,
+};

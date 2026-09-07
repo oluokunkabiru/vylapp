@@ -1019,6 +1019,31 @@ model Messages {
   @@map("messages")
 }
 
+// S (rest): appeals. `moderationEngine.reviewAppeal()` already existed with
+// zero callers — no table to appeal against, no endpoint, nothing wiring
+// the already-seeded `moderation.appeal.review` RBAC permission (see
+// referenceData.sql) to anything. One appeal per moderation action (a
+// person disputes *that specific decision*, not their whole history) —
+// enforced by the unique index rather than just app-level logic.
+model ModerationAppeals {
+  id                 String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  moderationActionId String              @map("moderation_action_id") @db.Uuid
+  userId             String              @map("user_id") @db.Uuid
+  reason             String
+  status             AppealStatus        @default(pending)
+  decision           String?
+  reviewedBy         String?             @map("reviewed_by") @db.Uuid
+  reviewedAt         DateTime?           @map("reviewed_at") @db.Timestamptz(6)
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  moderationActions  ModerationActions   @relation(fields: [moderationActionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usersAppealsUserIdTousers     Users    @relation("moderation_appeals_user_idTousers", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usersAppealsReviewedByTousers Users?   @relation("moderation_appeals_reviewed_byTousers", fields: [reviewedBy], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([moderationActionId])
+  @@index([status, createdAt], map: "idx_appeals_status")
+  @@map("moderation_appeals")
+}
+
 model ModerationActions {
   id                                        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   moderatorId                               String   @map("moderator_id") @db.Uuid
@@ -1029,6 +1054,7 @@ model ModerationActions {
   durationHours                             Int?     @map("duration_hours")
   reportId                                  String?  @map("report_id") @db.Uuid
   createdAt                                 DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  moderationAppeals                         ModerationAppeals?
   usersModerationActionsModeratorIdTousers  Users    @relation("moderation_actions_moderator_idTousers", fields: [moderatorId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   reports                                   Reports? @relation(fields: [reportId], references: [id], onUpdate: NoAction)
   usersModerationActionsTargetUserIdTousers Users?   @relation("moderation_actions_target_user_idTousers", fields: [targetUserId], references: [id], onUpdate: NoAction)
@@ -1764,6 +1790,26 @@ model UserHasRoles {
   @@map("user_has_roles")
 }
 
+// S (rest): "muted words per language" — content-based muting, distinct
+// from UserMutes (who you mute) below. `language` is optional and purely
+// organizational (lets a user group/manage a long list by which language
+// they typed it in) — matching is always a literal case-insensitive
+// substring check against the vibe's actual text (see vibes.controller.ts's
+// feed()/categoryFeed()), so it works regardless of whether the vibe's own
+// declared language matches what the user tagged the word with.
+model MutedWords {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  word      String
+  language  String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  users     Users    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, word])
+  @@index([userId], map: "idx_muted_words_user")
+  @@map("muted_words")
+}
+
 model UserMutes {
   muterId                      String   @map("muter_id") @db.Uuid
   mutedId                      String   @map("muted_id") @db.Uuid
@@ -1914,6 +1960,9 @@ model Users {
   messages                                                    Messages[]
   moderationActionsModerationActionsModeratorIdTousers        ModerationActions[]        @relation("moderation_actions_moderator_idTousers")
   moderationActionsModerationActionsTargetUserIdTousers       ModerationActions[]        @relation("moderation_actions_target_user_idTousers")
+  moderationAppealsModerationAppealsUserIdTousers              ModerationAppeals[]       @relation("moderation_appeals_user_idTousers")
+  moderationAppealsModerationAppealsReviewedByTousers          ModerationAppeals[]       @relation("moderation_appeals_reviewed_byTousers")
+  mutedWords                                                   MutedWords[]
   notificationPreferences                                     NotificationPreferences?
   notificationsNotificationsActorIdTousers                    Notifications[]            @relation("notifications_actor_idTousers")
   notificationsNotificationsUserIdTousers                     Notifications[]            @relation("notifications_user_idTousers")
@@ -2453,6 +2502,14 @@ enum ReportReason {
   other
 
   @@map("report_reason")
+}
+
+enum AppealStatus {
+  pending
+  upheld
+  overturned
+
+  @@map("appeal_status")
 }
 
 enum ReportStatus {

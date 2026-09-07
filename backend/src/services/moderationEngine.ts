@@ -33,6 +33,17 @@ const PATTERN_BANK: PatternRule[] = [
   // above — a bare substring match is what actually works for this script.
   { pattern: /(أريد أن أموت|أريد الموت|لا أريد العيش|لا يستحق العيش|الانتحار|انتحار)/, lang: "ar", cat: "SELF_HARM", weight: 0.85 },
   { pattern: /(سأقتلك|سأؤذيك|سأدمرك|سأجدك)/, lang: "ar", cat: "HARASSMENT", weight: 0.80 },
+  // Classifier coverage (S, rest): Amharic had zero coverage despite being
+  // one of the three R0-gate flagship languages (see PROJECT_PLAN.md's
+  // "renders correctly in English, Arabic, Amharic"), same gap S-13 closed
+  // for Arabic. Same no-\b reasoning — Ge'ez script isn't \w-word-boundary
+  // aware either. Kept intentionally small: unlike the Arabic phrases above
+  // (extremely common, high-confidence direct translations), these are a
+  // best-effort set and — same caution S-13 applied to Arabic hate-speech
+  // slurs — need native-speaker review before this list is trusted as
+  // comprehensive rather than "better than the zero coverage that existed."
+  { pattern: /(መሞት እፈልጋለሁ|ራሴን ማጥፋት|ራስን ማጥፋት)/, lang: "am", cat: "SELF_HARM", weight: 0.80 },
+  { pattern: /(እገድልሃለሁ|እገድልሻለሁ|አጠፋሃለሁ)/, lang: "am", cat: "HARASSMENT", weight: 0.75 },
   { pattern: /\b(kill|hurt|destroy|rape)\s+(you|her|him|them|all)\b/i, lang: "en", cat: "HARASSMENT", weight: 0.80 },
   { pattern: /\b(i\s+know\s+where\s+you\s+live|i'll\s+find\s+you)\b/i, lang: "en", cat: "HARASSMENT", weight: 0.85 },
   { pattern: /\b(n[i1*]gg[e3]r|f[a@]gg[o0]t)\b/i, lang: "en", cat: "HATE_SPEECH", weight: 0.99 },
