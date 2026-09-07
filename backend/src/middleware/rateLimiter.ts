@@ -15,6 +15,7 @@
 //
 //  LIMITS (per IP, per route group):
 //    /auth/login, /auth/register   →  10/min  (brute force prevention)
+//    /auth/phone                   →  10/min  (OTP spam / SMS cost control)
 //    /translate                    →  30/min  (AI API cost control)
 //    /autopilot/run                →  5/min   (AI API cost control)
 //    /vibes POST                   →  60/hour (content spam prevention)
@@ -77,6 +78,7 @@ const ROUTE_LIMITS: RouteLimit[] = [
   { prefix: "/auth/login", method: "*", limit: 10, window: WINDOW_MS, desc: "Login brute-force guard" },
   { prefix: "/auth/register", method: "*", limit: 10, window: WINDOW_MS, desc: "Register spam guard" },
   { prefix: "/auth/2fa", method: "*", limit: 10, window: WINDOW_MS, desc: "2FA brute-force guard" },
+  { prefix: "/auth/phone", method: "*", limit: 10, window: WINDOW_MS, desc: "Phone OTP spam / SMS cost guard" },
   { prefix: "/translate", method: "*", limit: 30, window: WINDOW_MS, desc: "Translation AI cost" },
   { prefix: "/autopilot/run", method: "*", limit: 5, window: WINDOW_MS, desc: "Autopilot AI cost" },
   { prefix: "/vibes", method: "POST", limit: 60, window: HOUR_MS, desc: "Vibe creation spam" },

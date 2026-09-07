@@ -43,6 +43,10 @@ router.post("/forgot-password", asyncHandler(authController.forgotPassword));
 // ── POST /auth/reset-password ──────────────────────────────────────────────────
 router.post("/reset-password", asyncHandler(authController.resetPassword));
 
+// ── Phone + one-time code (I-02) ───────────────────────────────────────────────
+router.post("/phone/request-otp", asyncHandler(authController.requestPhoneOtp));
+router.post("/phone/verify-otp", asyncHandler(authController.verifyPhoneOtp));
+
 // ── Social sign-in (Google / Apple / Twitter(X) / LinkedIn) ───────────────────
 router.get("/oauth/providers", asyncHandler(authController.oauthProviders));
 router.get("/oauth/:provider", asyncHandler(authController.oauthStart));

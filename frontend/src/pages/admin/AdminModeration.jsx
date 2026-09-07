@@ -10,6 +10,10 @@ export default function AdminModeration() {
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  // A-13: resolve/remove_content are destructive — the backend now 400s
+  // without a reason, so the UI collects one instead of discovering that
+  // via a failed request.
+  const [reason, setReason] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -29,10 +33,15 @@ export default function AdminModeration() {
 
   const bulk = async (action) => {
     if (!selected.size) return;
+    if (action !== "dismiss" && !reason.trim()) {
+      toast("A reason is required for resolve/remove content", "error");
+      return;
+    }
     setBusy(true);
     try {
-      await api.post("/admin/moderation/bulk-action", { reportIds: [...selected], action });
+      await api.post("/admin/moderation/bulk-action", { reportIds: [...selected], action, reason: reason.trim() || undefined });
       toast(`${selected.size} report(s) ${action === "remove_content" ? "removed" : action + "d"}`);
+      setReason("");
       load();
     } catch (e) {
       toast(e.message, "error");
@@ -45,7 +54,9 @@ export default function AdminModeration() {
     <div style={{ padding: "28px 32px 60px" }}>
       <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.5px", margin: "0 0 20px" }}>Moderation Queue</h1>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, alignItems: "center" }}>
+      {/* flex-wrap: this toolbar is the main thing an on-call moderator opens
+          from a phone (A-08) — narrow viewports stack instead of clipping. */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, alignItems: "center" }}>
         <select value={status} onChange={e => setStatus(e.target.value)} style={{
           padding: "10px 14px", borderRadius: 10, border: "1px solid var(--border2)", background: "var(--bg3)", color: "var(--text)", fontSize: 14,
         }}>
@@ -55,11 +66,18 @@ export default function AdminModeration() {
         </select>
 
         {selected.size > 0 && (
-          <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
-            <span style={{ color: "var(--text3)", fontSize: 13, alignSelf: "center" }}>{selected.size} selected</span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginLeft: "auto", alignItems: "center" }}>
+            <span style={{ color: "var(--text3)", fontSize: 13 }}>{selected.size} selected</span>
+            <input
+              type="text"
+              placeholder="Reason (required for resolve/remove)"
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border2)", background: "var(--bg3)", color: "var(--text)", fontSize: 13, minWidth: 220 }}
+            />
             <button disabled={busy} onClick={() => bulk("dismiss")} style={btnStyle("var(--text3)")}>Dismiss</button>
-            <button disabled={busy} onClick={() => bulk("resolve")} style={btnStyle("var(--sky)")}>Resolve</button>
-            <button disabled={busy} onClick={() => bulk("remove_content")} style={btnStyle("var(--coral)")}>Remove content</button>
+            <button disabled={busy || !reason.trim()} onClick={() => bulk("resolve")} style={btnStyle("var(--sky)")}>Resolve</button>
+            <button disabled={busy || !reason.trim()} onClick={() => bulk("remove_content")} style={btnStyle("var(--coral)")}>Remove content</button>
           </div>
         )}
       </div>
@@ -71,8 +89,20 @@ export default function AdminModeration() {
           {reports.map(r => (
             <div key={r.id} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--border2)" }}>
               <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} style={{ marginTop: 3 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 13.5 }}>{r.reason}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13.5 }}>{r.reason}</span>
+                  {/* A-07: age visibility — a minor-authored target is the
+                      one thing that should never get buried in the queue. */}
+                  {r.targetIsMinor && (
+                    <span style={{ fontSize: 10.5, fontWeight: 800, color: "var(--coral)", border: "1px solid var(--coral)", borderRadius: 6, padding: "1px 6px" }}>MINOR</span>
+                  )}
+                  {/* A-06: same target reported more than once — a real
+                      priority signal, not just chronological order. */}
+                  {r.similarReportCount > 1 && (
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text3)", border: "1px solid var(--border2)", borderRadius: 6, padding: "1px 6px" }}>×{r.similarReportCount} reports</span>
+                  )}
+                </div>
                 {r.detail && <div style={{ color: "var(--text2)", fontSize: 12.5, marginTop: 2 }}>{r.detail}</div>}
                 <div style={{ color: "var(--text3)", fontSize: 11.5, marginTop: 4 }}>
                   {r.reportedVibeId && "Targets a vibe"} {r.reportedUserId && "Targets a user"} {r.reportedSpaceId && "Targets a Space"} {r.reportedMessageId && "Targets a message"}

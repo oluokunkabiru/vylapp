@@ -30,6 +30,22 @@ const env = {
   // Default-on preserves existing deployments that predate this switch.
   translationEnabled: (process.env.TRANSLATION_ENABLED || "true").toLowerCase() !== "false",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
+
+  // I-02: phone + one-time-code sign-in. "mock" (default) needs no SMS
+  // account at all — it always accepts `otpMockCode` (also logged server-side
+  // so a developer never has to guess it) instead of sending a real text.
+  // Flip to "twilio" and fill in the twilio.* values below once a real
+  // account exists; nothing else in the code path changes.
+  otp: {
+    provider: (process.env.OTP_PROVIDER || "mock").toLowerCase(), // "mock" | "twilio"
+    mockCode: process.env.OTP_MOCK_CODE || "123456",
+    ttlMinutes: parseInt(process.env.OTP_TTL_MINUTES || "10", 10),
+    twilio: {
+      accountSid: process.env.TWILIO_ACCOUNT_SID || null,
+      authToken: process.env.TWILIO_AUTH_TOKEN || null,
+      fromNumber: process.env.TWILIO_FROM_NUMBER || null,
+    },
+  },
   mediaStoragePath: process.env.MEDIA_STORAGE_PATH || path.join(process.cwd(), "storage", "media"),
   mediaPublicBaseUrl: (process.env.MEDIA_PUBLIC_BASE_URL || `${process.env.API_BASE_URL || `http://localhost:${parseInt(process.env.PORT || "4000", 10)}`}/media`).replace(/\/$/, ""),
   mailHost: process.env.MAIL_HOST || "127.0.0.1",

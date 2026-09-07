@@ -23,6 +23,14 @@ function randomBase32(n: number): string {
   return Array.from(bytes).map(b => chars[b % 32]).join("");
 }
 
+// ── Numeric OTP (phone/SMS one-time codes) ─────────────────────────────────
+// crypto.randomInt is uniform (unlike `% 10` on randomBytes, which is
+// slightly biased) and rejects out-of-range values internally.
+function generateNumericOTP(digits = 6): string {
+  const max = 10 ** digits;
+  return String(crypto.randomInt(0, max)).padStart(digits, "0");
+}
+
 // ── Password hashing (scrypt, salted) ─────────────────────────────────────
 function hashPassword(plain: string): string {
   const salt = randomHex(16);
@@ -139,7 +147,7 @@ function generateRecoveryCodes(count = 8): string[] {
 }
 
 export = {
-  randomHex, randomBase32,
+  randomHex, randomBase32, generateNumericOTP,
   hashPassword, verifyPassword,
   signJWT, verifyJWT,
   generateSessionToken, generateRefreshToken, generateApiKey,

@@ -12,6 +12,7 @@ import { AuthedRequest } from "../types/express";
 import respond from "../utils/respond";
 import prisma from "../config/prisma";
 import rbac from "../rbac";
+import ModerationQueue from "../services/moderationQueue";
 import { ReportStatus } from "../generated/prisma";
 
 const { ok, fail } = respond;
@@ -83,15 +84,18 @@ async function listUsers(req: AuthedRequest, res: Response) {
 }
 
 // ── POST /admin/users/:id/suspend ─────────────────────────────────────────────
+// A-13: reason is mandatory — a suspension with no recorded "why" leaves
+// nothing for a future reviewer or an appeal to go on.
 async function suspendUser(req: AuthedRequest, res: Response) {
   if (req.params.id === req.user.id) return fail(res, 400, "Cannot suspend your own account");
   const { reason } = req.body;
+  if (!String(reason || "").trim()) return fail(res, 400, "reason is required to suspend an account");
   const before = await prisma.users.findUnique({ where: { id: req.params.id }, select: { isSuspended: true, suspendedAt: true, suspendedReason: true } });
   if (!before) return fail(res, 404, "User not found");
 
   const user = await prisma.users.update({
     where: { id: req.params.id },
-    data: { isSuspended: true, suspendedAt: new Date(), suspendedReason: reason || null },
+    data: { isSuspended: true, suspendedAt: new Date(), suspendedReason: reason },
     select: { id: true, isSuspended: true, suspendedAt: true, suspendedReason: true },
   });
   await writeAudit(req.user.id, "user.suspend", "user", req.params.id, before, user, req.ip || null);
@@ -113,8 +117,14 @@ async function reinstateUser(req: AuthedRequest, res: Response) {
 }
 
 // ── POST /admin/users/:id/deactivate ──────────────────────────────────────────
+// A-13: reason mandatory, same as suspend. Users has no deactivated_reason
+// column (unlike suspendedReason) — not worth a migration for this alone,
+// so the reason is captured in the audit log's afterData, which is already
+// the system-of-record for "who did what and why" (see listAuditLog).
 async function deactivateUser(req: AuthedRequest, res: Response) {
   if (req.params.id === req.user.id) return fail(res, 400, "Cannot deactivate your own account");
+  const { reason } = req.body;
+  if (!String(reason || "").trim()) return fail(res, 400, "reason is required to deactivate an account");
   const before = await prisma.users.findUnique({ where: { id: req.params.id }, select: { isDeactivated: true, deactivatedAt: true } });
   if (!before) return fail(res, 404, "User not found");
 
@@ -123,7 +133,7 @@ async function deactivateUser(req: AuthedRequest, res: Response) {
     data: { isDeactivated: true, deactivatedAt: new Date() },
     select: { id: true, isDeactivated: true, deactivatedAt: true },
   });
-  await writeAudit(req.user.id, "user.deactivate", "user", req.params.id, before, user, req.ip || null);
+  await writeAudit(req.user.id, "user.deactivate", "user", req.params.id, before, { ...user, reason }, req.ip || null);
   return ok(res, { user: shapeUser({ ...user }) });
 }
 
@@ -156,29 +166,37 @@ async function analyticsTrends(req: AuthedRequest, res: Response) {
 }
 
 // ── GET /admin/moderation/queue ───────────────────────────────────────────────
+// A-06/A-07: worst-first, minor-target-first — see moderationQueue.ts.
 async function moderationQueue(req: AuthedRequest, res: Response) {
   const { page, pageSize, skip } = pageParams(req);
-  const status = (req.query.status as string) || "pending";
+  const status = ((req.query.status as string) || "pending") as ReportStatus;
 
-  const [reports, total] = await Promise.all([
-    prisma.reports.findMany({
-      where: { status: status as ReportStatus }, skip, take: pageSize, orderBy: { createdAt: "desc" },
-    }),
-    prisma.reports.count({ where: { status: status as ReportStatus } }),
-  ]);
+  const { reports, total } = await ModerationQueue.fetchPrioritizedReports(status, skip, pageSize);
   return ok(res, { reports, page, page_size: pageSize, total });
 }
 
 // ── POST /admin/moderation/bulk-action ────────────────────────────────────────
 // body: { reportIds: string[], action: "dismiss" | "resolve" | "remove_content", reason? }
+// A-13: reason is mandatory for the two actions that actually do something
+// destructive (resolve implies "warned/actioned", remove_content deletes
+// real content) — "dismiss" just closes the report with no effect on the
+// user/content, so it's left optional.
 async function moderationBulkAction(req: AuthedRequest, res: Response) {
   const { reportIds, action, reason } = req.body;
   if (!Array.isArray(reportIds) || !reportIds.length) return fail(res, 400, "reportIds must be a non-empty array");
   if (!["dismiss", "resolve", "remove_content"].includes(action)) return fail(res, 400, "Invalid action");
+  if (action !== "dismiss" && !String(reason || "").trim()) {
+    return fail(res, 400, "reason is required for resolve/remove_content");
+  }
 
-  const reports = await prisma.reports.findMany({ where: { id: { in: reportIds } }, select: { id: true, reportedVibeId: true } });
+  const reports = await prisma.reports.findMany({ where: { id: { in: reportIds } }, select: { id: true, reportedVibeId: true, reportedUserId: true, reportedSpaceId: true, reportedMessageId: true } });
   const statusMap = { dismiss: "dismissed", resolve: "resolved_action", remove_content: "resolved_action" } as const;
   const actionTakenMap = { dismiss: "none", resolve: "none", remove_content: "removed" } as const;
+
+  // Same targetUserId-population bug fixed in moderation.controller.ts's
+  // resolveReport — this createMany path never set it either, so trust
+  // scores computed from bulk-actioned reports were silently undercounted.
+  const targetUserIds = await Promise.all(reports.map(r => ModerationQueue.resolveTargetUserId(r)));
 
   await prisma.$transaction(async (tx) => {
     await tx.reports.updateMany({
@@ -186,7 +204,11 @@ async function moderationBulkAction(req: AuthedRequest, res: Response) {
       data: { status: statusMap[action as keyof typeof statusMap], actionTaken: actionTakenMap[action as keyof typeof actionTakenMap], reviewedBy: req.user.id, reviewedAt: new Date() },
     });
     await tx.moderationActions.createMany({
-      data: reports.map(r => ({ moderatorId: req.user.id, action: actionTakenMap[action as keyof typeof actionTakenMap], reportId: r.id, reason: reason || "Bulk admin action" })),
+      data: reports.map((r, i) => ({
+        moderatorId: req.user.id, action: actionTakenMap[action as keyof typeof actionTakenMap], reportId: r.id,
+        reason: reason || "Bulk admin action (dismissed, no action taken)",
+        targetUserId: targetUserIds[i], targetVibeId: r.reportedVibeId || null,
+      })),
     });
     if (action === "remove_content") {
       const vibeIds = reports.map(r => r.reportedVibeId).filter((id): id is string => !!id);
@@ -196,7 +218,7 @@ async function moderationBulkAction(req: AuthedRequest, res: Response) {
     }
   });
 
-  await writeAudit(req.user.id, `moderation.bulk_${action}`, "report", null, { reportIds }, { count: reportIds.length }, req.ip || null);
+  await writeAudit(req.user.id, `moderation.bulk_${action}`, "report", null, { reportIds }, { count: reportIds.length, reason: reason || null }, req.ip || null);
   return ok(res, { updated: reportIds.length });
 }
 

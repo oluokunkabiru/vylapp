@@ -51,10 +51,28 @@ export function AuthProvider({ children }) {
     return u;
   }, [checkAdmin]);
 
+  // I-02: phone + one-time code. Two calls mirroring the two-step flow —
+  // requestPhoneOtp never touches auth state (nothing's confirmed yet),
+  // verifyPhoneOtp is the one that actually logs in/registers, same as
+  // login()/register() above. The backend finds-or-creates the account, so
+  // there's no separate "phone register" call — this one function covers
+  // both a returning number and a brand new one.
+  const requestPhoneOtp = useCallback(async (phone) => {
+    return api.post("/auth/phone/request-otp", { phone });
+  }, []);
+
+  const verifyPhoneOtp = useCallback(async (phone, code) => {
+    const { user: u } = await api.post("/auth/phone/verify-otp", { phone, code });
+    setUser(u);
+    connectSocket();
+    checkAdmin();
+    return u;
+  }, [checkAdmin]);
+
   const updateUser = useCallback((patch) => setUser(u => ({ ...u, ...patch })), []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, isAdmin, login, register, logout, updateUser, requestPhoneOtp, verifyPhoneOtp }}>
       {children}
     </AuthContext.Provider>
   );

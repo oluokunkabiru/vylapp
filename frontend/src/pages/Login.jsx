@@ -5,6 +5,7 @@ import { useToast } from "../context/ToastContext.jsx";
 import { PrimaryButton } from "../components/ui/index.jsx";
 import AuthLayout, { authInput, authLabel, authLink, authButtonStyle, focusAuthInput, blurAuthInput } from "../components/auth/AuthLayout.jsx";
 import SocialSignInButtons from "../components/auth/SocialSignInButtons.jsx";
+import PhoneSignIn from "../components/auth/PhoneSignIn.jsx";
 import { useTranslation } from "react-i18next";
 
 const OAUTH_ERROR_MESSAGES = {
@@ -102,6 +103,7 @@ export default function Login() {
         </div>
       </form>
       <SocialSignInButtons />
+      <PhoneSignIn />
     </AuthLayout>
   );
 }

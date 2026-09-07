@@ -2,6 +2,7 @@ import { Response } from "express";
 import { AuthedRequest } from "../types/express";
 import respond from "../utils/respond";
 import ModerationEngine from "../services/moderationEngine";
+import ModerationQueue from "../services/moderationQueue";
 import prisma from "../config/prisma";
 import { ReportReason, ReportStatus } from "../generated/prisma";
 
@@ -52,20 +53,31 @@ async function createReport(req: AuthedRequest, res: Response) {
   return ok(res, { report, analysis }, 201);
 }
 
-// ── GET /moderation/reports — admin queue ────────────────────────────────
+// ── GET /moderation/reports — moderator queue ─────────────────────────────
+// A-06/A-07: worst-first, minor-target-first — see moderationQueue.ts.
 async function listReports(req: AuthedRequest, res: Response) {
-  const status = (req.query.status as string) || "pending";
-  const reports = await prisma.reports.findMany({
-    where: { status: status as ReportStatus },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  const status = ((req.query.status as string) || "pending") as ReportStatus;
+  const { reports } = await ModerationQueue.fetchPrioritizedReports(status, 0, 50);
   return ok(res, { reports });
 }
 
-// ── POST /moderation/reports/:id/resolve — admin action ──────────────────
+// ── POST /moderation/reports/:id/resolve — moderator action ──────────────
+// A-13: a real disciplinary action (anything but "none"/dismissed) requires
+// a reason — the queue used to let "removed"/"suspended" through with a
+// hardcoded "Resolved via report queue" note that told a future reviewer
+// (or the affected user, on appeal) nothing about why.
 async function resolveReport(req: AuthedRequest, res: Response) {
-  const { actionTaken, status } = req.body; // 'removed'|'warned'|'suspended'|'none'
+  const { actionTaken, status, reason } = req.body; // 'removed'|'warned'|'suspended'|'none'
+  if (actionTaken && actionTaken !== "none" && !String(reason || "").trim()) {
+    return fail(res, 400, "reason is required for a disciplinary action");
+  }
+
+  const report = await prisma.reports.findUnique({
+    where: { id: req.params.id },
+    select: { reportedUserId: true, reportedVibeId: true, reportedSpaceId: true, reportedMessageId: true },
+  });
+  if (!report) return fail(res, 404, "Report not found");
+
   await prisma.reports.update({
     where: { id: req.params.id },
     data: {
@@ -75,8 +87,19 @@ async function resolveReport(req: AuthedRequest, res: Response) {
       reviewedAt: new Date(),
     },
   });
+
+  // Was previously never set — trustScore()'s violation count filters on
+  // targetUserId, so every resolved report silently contributed nothing to
+  // the reported user's trust score no matter how many times they'd been
+  // actioned. Resolved via the same target-resolution moderationQueue.ts
+  // uses for the queue's own target_is_minor join.
+  const targetUserId = await ModerationQueue.resolveTargetUserId(report);
   await prisma.moderationActions.create({
-    data: { moderatorId: req.user.id, action: actionTaken || "none", reportId: req.params.id, reason: "Resolved via report queue" },
+    data: {
+      moderatorId: req.user.id, action: actionTaken || "none", reportId: req.params.id,
+      reason: reason || "Resolved via report queue (no action taken)",
+      targetUserId, targetVibeId: report.reportedVibeId || null,
+    },
   });
   return ok(res, { resolved: true });
 }

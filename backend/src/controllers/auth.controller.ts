@@ -9,6 +9,7 @@ import respond from "../utils/respond";
 import rbac from "../rbac";
 import prisma from "../config/prisma";
 import OauthEngine from "../services/oauthEngine";
+import smsEngine from "../services/smsEngine";
 import type { OauthProvider } from "../types/oauth";
 import { AuthProvider } from "../generated/prisma";
 
@@ -354,6 +355,138 @@ async function resetPassword(req: Request, res: Response) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+//  PHONE + ONE-TIME-CODE (I-02)
+//
+//  Two-step, same shape as social sign-in's "we don't know who this is
+//  until the provider confirms it": request-otp sends a code (a real SMS
+//  via smsEngine's twilio path, or — with no provider account needed at
+//  all — a hardcoded/logged code via its mock path, switched purely by
+//  env.otp.provider); verify-otp checks it, then finds-or-creates the
+//  account, same pattern as findOrCreateOauthUser below.
+//
+//  New-account gap, deliberately mirroring I-13's documented OAuth-signup
+//  gap: this step collects no date_of_birth, so a brand-new phone account
+//  stays isMinor:true (the schema's fail-closed default) until a follow-up
+//  onboarding step collects a real one — not something to invent here.
+// ════════════════════════════════════════════════════════════════════════════
+const PHONE_RE = /^\+?[1-9]\d{6,14}$/; // loose E.164-ish: no leading 0/+0, 7-15 digits
+const OTP_MAX_ATTEMPTS = 5;
+
+function normalizePhone(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim().replace(/[\s\-().]/g, "");
+  return PHONE_RE.test(trimmed) ? trimmed : null;
+}
+
+// ── POST /auth/phone/request-otp ───────────────────────────────────────────────
+async function requestPhoneOtp(req: Request, res: Response) {
+  const phone = normalizePhone(req.body?.phone);
+  if (!phone) return fail(res, 400, "A valid phone number is required (e.g. +15551234567)");
+
+  // A fresh request invalidates any still-live code for this phone rather
+  // than letting several valid codes stack up.
+  await prisma.phoneOtps.updateMany({ where: { phone, consumedAt: null }, data: { consumedAt: new Date() } });
+
+  // Mock mode deliberately ignores randomness — the whole point of
+  // OTP_PROVIDER=mock is a code you already know without reading logs.
+  const code = env.otp.provider === "mock" ? env.otp.mockCode : crypto.generateNumericOTP(6);
+  const codeHash = crypto.hashPassword(code);
+  const expiresAt = new Date(Date.now() + env.otp.ttlMinutes * 60000);
+
+  await prisma.phoneOtps.create({ data: { phone, codeHash, expiresAt } });
+
+  const result = await smsEngine.sendOtp(phone, code);
+  if (!result.ok) return fail(res, 502, result.error);
+
+  return ok(res, {
+    sent: true,
+    expiresInMinutes: env.otp.ttlMinutes,
+    provider: env.otp.provider,
+    // Only ever present in mock mode outside production — a real Twilio
+    // send never reaches this line with a code to hand back.
+    ...(env.otp.provider === "mock" && env.nodeEnv !== "production" ? { devCode: code } : {}),
+  });
+}
+
+// Finds a returning phone user or creates a brand new one — same
+// priority/shape as findOrCreateOauthUser, phone in place of provider id.
+async function findOrCreatePhoneUser(phone: string) {
+  const existing = await prisma.users.findFirst({ where: { phone } });
+  if (existing) {
+    if (!existing.phoneVerifiedAt) {
+      return prisma.users.update({ where: { id: existing.id }, data: { phoneVerifiedAt: new Date() } });
+    }
+    return existing;
+  }
+
+  const last4 = phone.slice(-4);
+  const baseHandle = `viber${last4}`;
+  let handle = baseHandle;
+  for (let i = 0; await prisma.users.findUnique({ where: { handle } }); i++) {
+    handle = `${baseHandle}${crypto.randomHex(3)}`;
+    if (i > 5) break; // pathological collision loop guard
+  }
+
+  const existingCount = await prisma.users.count();
+  const isFounding = existingCount < 1000;
+  const displayName = `Viber ${last4}`;
+
+  const user = await prisma.users.create({
+    data: {
+      // Same synthetic-placeholder trick oauthCallback uses for
+      // providers with no email — phone-only accounts have none either,
+      // and email stays a real unique NOT NULL column either way.
+      email: `phone.${phone.replace(/[^0-9]/g, "")}@phone.vylapp.invalid`,
+      handle, displayName, avatarInitials: last4.slice(0, 2) || "VY",
+      phone, phoneVerifiedAt: new Date(),
+      isFoundingMember: isFounding, foundingRank: isFounding ? existingCount + 1 : null,
+      // isMinor left at its schema default (true) — see the block comment above.
+    },
+  });
+  await rbac.assignRole(user.id, "user");
+  return user;
+}
+
+// ── POST /auth/phone/verify-otp ────────────────────────────────────────────────
+async function verifyPhoneOtp(req: Request, res: Response) {
+  const phone = normalizePhone(req.body?.phone);
+  const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
+  if (!phone) return fail(res, 400, "A valid phone number is required");
+  if (!code) return fail(res, 400, "code is required");
+
+  const record = await prisma.phoneOtps.findFirst({
+    where: { phone, consumedAt: null },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!record) return fail(res, 400, "No pending verification code for this phone. Request a new one.");
+  if (record.expiresAt < new Date()) return fail(res, 400, "Code expired. Request a new one.");
+
+  if (!crypto.verifyPassword(code, record.codeHash)) {
+    const attempts = record.attempts + 1;
+    // Burn the code after too many wrong guesses rather than letting a
+    // ttlMinutes-long brute-force window stay open — same fail-closed
+    // instinct as the rest of this file's auth checks.
+    await prisma.phoneOtps.update({
+      where: { id: record.id },
+      data: attempts >= OTP_MAX_ATTEMPTS ? { attempts, consumedAt: new Date() } : { attempts },
+    });
+    return fail(res, 401, "Invalid code");
+  }
+
+  await prisma.phoneOtps.update({ where: { id: record.id }, data: { consumedAt: new Date() } });
+
+  const user = await findOrCreatePhoneUser(phone);
+  if (user.isSuspended) return fail(res, 403, "Account suspended");
+
+  await prisma.users.update({ where: { id: user.id }, data: { online: true, lastSeen: new Date() } });
+  const { accessToken, refreshToken } = issueTokens(user);
+  await storeRefreshToken(user.id, refreshToken, { ip: req.ip, ua: req.headers["user-agent"], phone: true });
+  const csrfToken = authCookies.setAuthCookies(res, { accessToken, refreshToken });
+
+  return ok(res, { user: publicUser(toSnakeUser(user)), csrfToken });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 //  SOCIAL SIGN-IN — Google, Apple, Twitter(X), LinkedIn
 //
 //  Full-page browser redirect flow (not XHR): oauthStart 302s the browser to
@@ -499,5 +632,6 @@ async function oauthCallback(req: Request, res: Response) {
 export = {
   publicUser, register, login, refresh, logout, me, changePassword, verifyEmail, resendVerification,
   enroll2FA, verify2FA, forgotPassword, resetPassword,
+  requestPhoneOtp, verifyPhoneOtp,
   oauthProviders, oauthStart, oauthCallback,
 };

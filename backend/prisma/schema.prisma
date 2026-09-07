@@ -1144,6 +1144,27 @@ model PasswordResets {
   @@map("password_resets")
 }
 
+// I-02: phone + one-time-code auth. userId is null until verification
+// succeeds and an account is found-or-created (mirrors the OAuth-state
+// flow, which also doesn't know the user up front). code is hashed with
+// the same scrypt helper as passwords — a leaked DB row shouldn't hand out
+// a live code. One row per (phone, still-live) request; a new request
+// invalidates the previous one rather than allowing several live codes.
+model PhoneOtps {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  phone       String
+  codeHash    String    @map("code_hash")
+  attempts    Int       @default(0)
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz(6)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  userId      String?   @map("user_id") @db.Uuid
+  users       Users?    @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([phone])
+  @@map("phone_otps")
+}
+
 model PathCourses {
   pathId        String        @map("path_id") @db.Uuid
   courseId      String        @map("course_id") @db.Uuid
@@ -1770,6 +1791,12 @@ model Users {
   id                                                          String                     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   email                                                       String                     @unique @db.Citext
   handle                                                      String                     @unique @db.Citext
+  // I-02: E.164-ish phone identity, independent of email. Nullable/unique —
+  // an account can exist with either identity or both (a phone-registered
+  // user has no password/email until they set one). phoneVerifiedAt is set
+  // once, at successful OTP verification, and never silently recomputed.
+  phone                                                       String?                    @unique
+  phoneVerifiedAt                                             DateTime?                  @map("phone_verified_at") @db.Timestamptz(6)
   displayName                                                 String                     @map("display_name")
   bio                                                         String?
   location                                                    String?
@@ -1895,6 +1922,7 @@ model Users {
   paidDmAccessPaidDmAccessPayerIdTousers                      PaidDmAccess[]             @relation("paid_dm_access_payer_idTousers")
   passwordResets                                              PasswordResets[]
   pathEnrolments                                              PathEnrolments[]
+  phoneOtps                                                   PhoneOtps[]
   platformSubscriptions                                       PlatformSubscriptions[]
   pushTokens                                                  PushTokens[]
   refreshTokens                                               RefreshTokens[]
