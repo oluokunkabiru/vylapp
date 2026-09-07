@@ -24,17 +24,66 @@ async function assertModerator(userId: string, categoryId: string) {
 }
 
 // ── GET /forum/categories ─────────────────────────────────────────────────────
+// C (communities): `?mine=true` narrows to categories the caller has joined
+// (requires auth). member_count is real (grouped off community_memberships,
+// not a stored/denormalized counter); is_member is only ever computed when
+// a viewer is present — a logged-out request just never gets the field.
 async function listCategories(req: AuthedRequest, res: Response) {
+  const mine = req.query.mine === "true";
+  if (mine && !req.user) return res.status(401).json({ ok: false, error: { message: "Sign in to see your communities" } });
+
   const categories = await prisma.forumCategories.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      ...(mine ? { communityMemberships: { some: { userId: req.user!.id, status: "approved" } } } : {}),
+    },
     select: { id: true, slug: true, name: true, description: true, topicCategory: true, color: true, icon: true, sortOrder: true, threadCount: true },
     orderBy: { sortOrder: "asc" },
   });
+
+  const [counts, mine_memberships] = await Promise.all([
+    prisma.communityMemberships.groupBy({ by: ["categoryId"], where: { status: "approved", categoryId: { in: categories.map(c => c.id) } }, _count: true }),
+    req.user
+      ? prisma.communityMemberships.findMany({ where: { userId: req.user.id, categoryId: { in: categories.map(c => c.id) }, status: "approved" }, select: { categoryId: true } })
+      : Promise.resolve([]),
+  ]);
+  const countMap = new Map(counts.map(c => [c.categoryId, c._count]));
+  const memberSet = new Set(mine_memberships.map(m => m.categoryId));
+
   const shaped = categories.map(c => ({
     id: c.id, slug: c.slug, name: c.name, description: c.description, topic_category: c.topicCategory,
     color: c.color, icon: c.icon, sort_order: c.sortOrder, thread_count: c.threadCount,
+    member_count: countMap.get(c.id) || 0,
+    ...(req.user ? { is_member: memberSet.has(c.id) } : {}),
   }));
   res.json({ ok: true, data: { categories: shaped } });
+}
+
+// ── POST /forum/categories/:slug/join ─────────────────────────────────────────
+// C (communities): CommunityMemberships existed in the schema with zero
+// consumers — no join/leave path anywhere. Auto-approved (status goes
+// straight to "approved") since no category currently has any concept of
+// "private" or "requires approval" — the model's pending/resolvedBy shape
+// is ready for that once it exists, not something to half-invent here.
+async function joinCategory(req: AuthedRequest, res: Response) {
+  const category = await prisma.forumCategories.findFirst({ where: { slug: req.params.slug, isActive: true }, select: { id: true } });
+  if (!category) return res.status(404).json({ ok: false, error: { message: "Category not found" } });
+
+  await prisma.communityMemberships.upsert({
+    where: { userId_categoryId: { userId: req.user.id, categoryId: category.id } },
+    create: { userId: req.user.id, categoryId: category.id, status: "approved", resolvedAt: new Date() },
+    update: { status: "approved", resolvedAt: new Date() },
+  });
+  res.json({ ok: true, data: { joined: true } });
+}
+
+// ── DELETE /forum/categories/:slug/join — leave ───────────────────────────────
+async function leaveCategory(req: AuthedRequest, res: Response) {
+  const category = await prisma.forumCategories.findFirst({ where: { slug: req.params.slug }, select: { id: true } });
+  if (!category) return res.status(404).json({ ok: false, error: { message: "Category not found" } });
+
+  await prisma.communityMemberships.deleteMany({ where: { userId: req.user.id, categoryId: category.id } });
+  res.json({ ok: true, data: { joined: false } });
 }
 
 // ── GET /forum/categories/:slug/threads ───────────────────────────────────────
@@ -260,4 +309,4 @@ async function deleteReply(req: AuthedRequest, res: Response) {
   res.json({ ok: true });
 }
 
-export = { listCategories, listThreads, getThread, createThread, createReply, voteThread, voteReply, patchThread, deleteReply };
+export = { listCategories, joinCategory, leaveCategory, listThreads, getThread, createThread, createReply, voteThread, voteReply, patchThread, deleteReply };

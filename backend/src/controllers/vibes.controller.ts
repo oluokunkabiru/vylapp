@@ -10,6 +10,33 @@ import prisma from "../config/prisma";
 
 const { ok, fail } = respond;
 
+// G: notification grouping. Notifications.groupKey/groupCount existed on
+// the schema with nothing setting them — every like/repost created its own
+// row, so a popular vibe generated a wall of near-identical notifications
+// instead of one "Alice and 4 others liked your vibe" card. Grouped by
+// (type, vibeId), scoped to the recipient's still-unread window only — a
+// month-old already-read like shouldn't silently reattach to today's; once
+// something's been seen it's a closed chapter, not a place to keep adding.
+// Bumps createdAt on the existing row so a grouped card resurfaces to the
+// top on new activity, same as the apps this pattern is modeled on.
+async function createOrGroupNotification(userId: string, actorId: string, type: "like" | "repost", vibeId: string, actorName: string) {
+  const groupKey = `${type}:${vibeId}`;
+  const existing = await prisma.notifications.findFirst({ where: { userId, groupKey, isRead: false } });
+  if (existing) {
+    const verb = type === "like" ? "liked" : "reposted";
+    const body = existing.groupCount === 1
+      ? `${actorName} and 1 other ${verb} your vibe`
+      : `${actorName} and ${existing.groupCount} others ${verb} your vibe`;
+    await prisma.notifications.update({
+      where: { id: existing.id },
+      data: { groupCount: { increment: 1 }, actorId, body, createdAt: new Date() },
+    });
+    return;
+  }
+  const body = NotificationEngine.formatBody(type, actorName);
+  await prisma.notifications.create({ data: { userId, actorId, type, vibeId, body, groupKey, groupCount: 1 } });
+}
+
 // Kept as a raw column list (used by $queryRaw below): the feed/category/
 // single-vibe/bookmarks queries stay as parameterized raw SQL rather than
 // Prisma relations — FeedEngine.rankFeed (still plain JS) reads
@@ -365,8 +392,7 @@ async function like(req: AuthedRequest, res: Response) {
   });
   const vibe = await prisma.vibes.findUnique({ where: { id: req.params.id }, select: { userId: true, likesCount: true } });
   if (vibe && vibe.userId !== req.user.id) {
-    const body = NotificationEngine.formatBody("like", req.user.displayName);
-    await prisma.notifications.create({ data: { userId: vibe.userId, actorId: req.user.id, type: "like", vibeId: req.params.id, body } });
+    await createOrGroupNotification(vibe.userId, req.user.id, "like", req.params.id, req.user.displayName);
   }
   return ok(res, { liked: true, likesCount: vibe?.likesCount });
 }
@@ -386,8 +412,7 @@ async function repost(req: AuthedRequest, res: Response) {
   }
   const vibe = await prisma.vibes.findUnique({ where: { id: req.params.id }, select: { userId: true, repostsCount: true } });
   if (!existing && vibe && vibe.userId !== req.user.id) {
-    const body = NotificationEngine.formatBody("repost", req.user.displayName);
-    await prisma.notifications.create({ data: { userId: vibe.userId, actorId: req.user.id, type: "repost", vibeId: req.params.id, body } });
+    await createOrGroupNotification(vibe.userId, req.user.id, "repost", req.params.id, req.user.displayName);
   }
   return ok(res, { reposted: true, repostsCount: vibe?.repostsCount });
 }

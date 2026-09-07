@@ -4,9 +4,20 @@
 //  Postgres does the heavy lifting (pg_trgm), this adds field-weighted
 //  relevance scoring and fuzzy handle matching on top.
 // ════════════════════════════════════════════════════════════════════════════
+// G: diacritic-tolerant search. Postgres's unaccent() (search.controller.ts's
+// $queryRaw calls) already lets "jose" find "José" at the DB layer — but
+// this ranker re-filters with plain JS `.includes()` on top of that, and
+// JS .toLowerCase() does NOT strip accents ("josé".includes("jose") is
+// false). Without this, the DB correctly returns the row and this function
+// silently drops it again — the two layers have to agree or the DB-side
+// fix does nothing end-to-end.
+function stripDiacritics(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
 const SearchEngine = {
   rank(query: string, items: any[], fieldWeights: Record<string, number>) {
-    const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+    const tokens = stripDiacritics(query.toLowerCase()).split(/\s+/).filter(Boolean);
     return items
       .map(item => ({ ...item, _score: this._score(item, tokens, fieldWeights) }))
       .filter(r => r._score > 0)
@@ -19,7 +30,7 @@ const SearchEngine = {
     for (const [field, weight] of Object.entries(fieldWeights)) {
       const v = item[field];
       if (!v) continue;
-      const text = String(v).toLowerCase();
+      const text = stripDiacritics(String(v).toLowerCase());
       for (const t of tokens) {
         if (text.includes(t)) score += weight;
         if (text.startsWith(t)) score += weight * 0.5;

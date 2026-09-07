@@ -42,6 +42,37 @@ const DEAD_TOKEN_CODES = new Set([
   "messaging/invalid-argument",
 ]);
 
+// G: quiet hours. quiet_hours_start/end/timezone existed on
+// NotificationPreferences with nothing reading them — every push went out
+// regardless of the hour. Postgres TIME columns are timezone-naive; the
+// wall-clock hour:minute stored there is interpreted against
+// quietHoursTimezone here, using Intl rather than pulling in a date
+// library for one lookup. Suppresses the push only — the in-app/socket
+// notification the caller already created is untouched, so it's still
+// there next time the person opens the app; this only stops the buzz.
+function minutesOfDay(h: number, m: number) { return h * 60 + m; }
+
+function isWithinQuietHours(prefs: { quietHoursStart: Date | null; quietHoursEnd: Date | null; quietHoursTimezone: string | null }): boolean {
+  if (!prefs.quietHoursStart || !prefs.quietHoursEnd) return false;
+  let hour: number, minute: number;
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: prefs.quietHoursTimezone || "UTC", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).formatToParts(new Date());
+    hour = parseInt(parts.find(p => p.type === "hour")!.value, 10) % 24; // some locales report midnight as "24"
+    minute = parseInt(parts.find(p => p.type === "minute")!.value, 10);
+  } catch {
+    return false; // unrecognized timezone string — fail open (send it) rather than going silently, permanently quiet
+  }
+  const nowMin = minutesOfDay(hour, minute);
+  const startMin = minutesOfDay(prefs.quietHoursStart.getUTCHours(), prefs.quietHoursStart.getUTCMinutes());
+  const endMin = minutesOfDay(prefs.quietHoursEnd.getUTCHours(), prefs.quietHoursEnd.getUTCMinutes());
+  if (startMin === endMin) return false; // zero-length window = not configured
+  return startMin < endMin
+    ? nowMin >= startMin && nowMin < endMin
+    : nowMin >= startMin || nowMin < endMin; // wraps midnight, e.g. 22:00 -> 07:00
+}
+
 async function sendToUser(
   userId: string,
   notification: { title: string; body: string },
@@ -49,6 +80,12 @@ async function sendToUser(
 ) {
   const fbApp = getApp();
   if (!fbApp) return;
+
+  const prefs = await prisma.notificationPreferences.findUnique({
+    where: { userId },
+    select: { quietHoursStart: true, quietHoursEnd: true, quietHoursTimezone: true },
+  });
+  if (prefs && isWithinQuietHours(prefs)) return;
 
   const tokens = await prisma.pushTokens.findMany({
     where: { userId, active: true },

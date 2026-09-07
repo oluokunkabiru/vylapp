@@ -15,6 +15,14 @@ async function search(req: AuthedRequest, res: Response) {
 
   const results: { users: any[]; vibes: any[]; hashtags: any[] } = { users: [], vibes: [], hashtags: [] };
 
+  // G: diacritic-tolerant search. `unaccent` was already declared as a
+  // required datasource extension (schema.prisma) and installed in the DB
+  // — used for `unaccent()`-eligible @db.Citext columns elsewhere per that
+  // comment, but never actually called anywhere. Wrapping both sides makes
+  // "jose" find "José" and "cafe" find "café", on top of ILIKE's existing
+  // case-insensitivity. handle is @db.Citext, hence the ::text cast —
+  // unaccent() only has a text overload.
+  const needle = `%${q}%`;
   if (type === "all" || type === "users") {
     // S-23: minors aren't discoverable through general search. This only
     // removes them from anonymous/keyword search results — someone who
@@ -22,7 +30,8 @@ async function search(req: AuthedRequest, res: Response) {
     // own profile page, follower list, an existing conversation).
     const rows: any[] = await prisma.$queryRaw`
       SELECT id, handle, display_name, bio, avatar_color, avatar_initials, verified, connections_count
-       FROM users WHERE (handle ILIKE ${`%${q}%`} OR display_name ILIKE ${`%${q}%`}) AND deleted_at IS NULL AND is_minor = FALSE LIMIT 20
+       FROM users WHERE (unaccent(handle::text) ILIKE unaccent(${needle}) OR unaccent(display_name) ILIKE unaccent(${needle}))
+       AND deleted_at IS NULL AND is_minor = FALSE LIMIT 20
     `;
     results.users = SearchEngine.rank(q, rows, { handle: 3, display_name: 2.5, bio: 1.5 }).slice(0, 10);
   }
@@ -32,16 +41,16 @@ async function search(req: AuthedRequest, res: Response) {
     results.vibes = req.user?.isMinor
       ? await prisma.$queryRaw`
           SELECT v.id, v.content, v.tags, v.likes_count, u.handle FROM vibes v JOIN users u ON u.id = v.user_id
-           WHERE v.content ILIKE ${`%${q}%`} AND v.is_deleted = FALSE AND v.is_sensitive = FALSE ORDER BY v.created_at DESC LIMIT 20
+           WHERE unaccent(v.content) ILIKE unaccent(${needle}) AND v.is_deleted = FALSE AND v.is_sensitive = FALSE ORDER BY v.created_at DESC LIMIT 20
         `
       : await prisma.$queryRaw`
           SELECT v.id, v.content, v.tags, v.likes_count, u.handle FROM vibes v JOIN users u ON u.id = v.user_id
-           WHERE v.content ILIKE ${`%${q}%`} AND v.is_deleted = FALSE ORDER BY v.created_at DESC LIMIT 20
+           WHERE unaccent(v.content) ILIKE unaccent(${needle}) AND v.is_deleted = FALSE ORDER BY v.created_at DESC LIMIT 20
         `;
   }
   if (type === "all" || type === "hashtags") {
     results.hashtags = await prisma.$queryRaw`
-      SELECT tag, vibes_count FROM hashtags WHERE tag ILIKE ${`%${q}%`} ORDER BY vibes_count DESC LIMIT 10
+      SELECT tag, vibes_count FROM hashtags WHERE unaccent(tag) ILIKE unaccent(${needle}) ORDER BY vibes_count DESC LIMIT 10
     `;
   }
 

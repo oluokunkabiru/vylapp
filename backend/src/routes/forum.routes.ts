@@ -18,7 +18,13 @@ const { authenticate, optionalAuth } = authMiddleware;
 const router = express.Router();
 
 // ── GET /forum/categories ─────────────────────────────────────────────────────
-router.get("/categories", asyncHandler(forumController.listCategories));
+// optionalAuth: public browsing works logged-out, but a signed-in viewer
+// gets is_member/`?mine=true` filtering (see forum.controller.ts).
+router.get("/categories", optionalAuth, asyncHandler(forumController.listCategories));
+
+// ── Community membership (C) ──────────────────────────────────────────────────
+router.post("/categories/:slug/join", authenticate, asyncHandler(forumController.joinCategory));
+router.delete("/categories/:slug/join", authenticate, asyncHandler(forumController.leaveCategory));
 
 // ── GET /forum/categories/:slug/threads?lang= ─────────────────────────────────
 // optionalAuth (not authenticate): threads are publicly readable, but a

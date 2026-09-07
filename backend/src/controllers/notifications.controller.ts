@@ -12,6 +12,11 @@ function shapeNotification(row: any) {
     id: row.id, type: row.type, body: row.body, isRead: row.isRead, createdAt: row.createdAt,
     actor: actor ? { id: actor.id, handle: actor.handle, displayName: actor.displayName, avatarColor: actor.avatarColor, avatarInitials: actor.avatarInitials, verified: actor.verified } : null,
     vibeId: row.vibeId, spaceId: row.spaceId, conversationId: row.conversationId,
+    // G: grouping — groupCount > 1 means this card already represents
+    // several like/repost events collapsed into one (see vibes.controller.ts's
+    // createOrGroupNotification); most notifications are still 1:1 and this
+    // is just always 1 for them.
+    groupCount: row.groupCount,
   };
 }
 
@@ -69,17 +74,41 @@ async function digest(req: AuthedRequest, res: Response) {
 }
 
 // ── PATCH /notifications/preferences ─────────────────────────────────────
+// email_reposts/email_spaces/push_reposts/push_spaces/email_marketing had
+// schema columns and zero way to set them via this endpoint — filled in
+// alongside the G (quiet hours) gap below, same class of bug.
 const ALLOWED_PREFS: Record<string, string> = {
-  email_likes: "emailLikes", email_follows: "emailFollows", email_mentions: "emailMentions", email_dms: "emailDms",
-  push_likes: "pushLikes", push_follows: "pushFollows", push_mentions: "pushMentions", push_dms: "pushDms",
+  email_likes: "emailLikes", email_reposts: "emailReposts", email_follows: "emailFollows", email_mentions: "emailMentions",
+  email_dms: "emailDms", email_spaces: "emailSpaces", email_marketing: "emailMarketing",
+  push_likes: "pushLikes", push_reposts: "pushReposts", push_follows: "pushFollows", push_mentions: "pushMentions",
+  push_dms: "pushDms", push_spaces: "pushSpaces",
   in_app_all: "inAppAll",
 };
+
+// HH:MM (24h, e.g. "22:30") -> a Date Prisma can store into a @db.Time
+// column. Postgres TIME has no timezone of its own — the wall-clock value
+// is interpreted against quiet_hours_timezone at read time (pushEngine.ts).
+function parseTimeOfDay(value: unknown): Date | null {
+  if (value === null) return null; // explicit clear
+  if (typeof value !== "string" || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(value)) return undefined as any;
+  return new Date(`1970-01-01T${value}:00Z`);
+}
 
 async function updatePreferences(req: AuthedRequest, res: Response) {
   const data: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(req.body)) {
-    if (!(key in ALLOWED_PREFS)) continue;
-    data[ALLOWED_PREFS[key]] = val;
+    if (key in ALLOWED_PREFS) { data[ALLOWED_PREFS[key]] = val; continue; }
+    // G: quiet hours — schema fields (quiet_hours_start/end/timezone)
+    // existed with no way to set them; pushEngine.ts's sendToUser() is the
+    // consumer (see that file for the actual suppression logic).
+    if (key === "quiet_hours_start" || key === "quiet_hours_end") {
+      const parsed = parseTimeOfDay(val);
+      if (parsed === undefined) return fail(res, 400, `${key} must be "HH:MM" (24h) or null`);
+      data[key === "quiet_hours_start" ? "quietHoursStart" : "quietHoursEnd"] = parsed;
+    } else if (key === "quiet_hours_timezone") {
+      if (val !== null && typeof val !== "string") return fail(res, 400, "quiet_hours_timezone must be an IANA timezone string or null");
+      data.quietHoursTimezone = val;
+    }
   }
   if (!Object.keys(data).length) return fail(res, 400, "No valid preference fields");
 
