@@ -53,7 +53,7 @@ function Checkpoint({ checkpoint, onAnswered }) {
   );
 }
 
-export default function LessonViewer() {
+export default function LessonViewer({ lang }) {
   const { id, lessonId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -65,13 +65,16 @@ export default function LessonViewer() {
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [certificate, setCertificate] = useState(null);
+  // L Core "translated lessons" — same one-tap-back-to-original idea as
+  // CourseDetail, not the full PostCard reveal animation.
+  const [showOriginal, setShowOriginal] = useState(false);
   const startedAt = useRef(Date.now());
 
   useEffect(() => {
     setLoading(true);
     startedAt.current = Date.now();
     Promise.all([
-      api.get(`/learn/lessons/${lessonId}`),
+      api.get(`/learn/lessons/${lessonId}${lang ? `?lang=${lang}` : ""}`),
       api.get(`/learn/courses/${id}`).then(({ lessons }) => setCourseLessons(lessons || [])).catch(() => {}),
     ]).then(([data]) => {
       setLesson(data.lesson);
@@ -79,7 +82,7 @@ export default function LessonViewer() {
       setCompletion(data.completion);
     }).catch(e => toast(e.message, "error"))
       .finally(() => setLoading(false));
-  }, [lessonId]);
+  }, [lessonId, lang]);
 
   const markComplete = async () => {
     setCompleting(true);
@@ -128,7 +131,17 @@ export default function LessonViewer() {
         <Ic d={ic.back} s={16} c="var(--text2)" className="vy-dir-icon" /> Back to course
       </Link>
 
-      <h1 style={{ fontSize:19, fontWeight:900, marginBottom:16 }}>{lesson.title}</h1>
+      <h1 style={{ fontSize:19, fontWeight:900, marginBottom:8 }}>
+        {showOriginal || !lesson.titleTranslation ? lesson.title : lesson.titleTranslation.text}
+      </h1>
+      {(lesson.titleTranslation || lesson.bodyTranslation) && (
+        <button
+          onClick={() => setShowOriginal(s => !s)}
+          style={{ background:"none", border:"none", color:"var(--sky)", fontSize:12.5, fontWeight:700, cursor:"pointer", padding:0, marginBottom:16, display:"block" }}
+        >
+          {showOriginal ? `See in ${lang}` : "See original"}
+        </button>
+      )}
 
       {lesson.type === "video" && lesson.content?.video_url && (
         <video controls style={{ width:"100%", borderRadius:16, marginBottom:16, background:"#000" }} src={lesson.content.video_url} />
@@ -136,7 +149,7 @@ export default function LessonViewer() {
 
       {lesson.type === "article" && lesson.content?.body_html && (
         <div style={{ color:"var(--text)", fontSize:15, lineHeight:1.7, marginBottom:16 }}
-          dangerouslySetInnerHTML={{ __html: lesson.content.body_html }} />
+          dangerouslySetInnerHTML={{ __html: showOriginal || !lesson.bodyTranslation ? lesson.content.body_html : lesson.bodyTranslation.text }} />
       )}
 
       {lesson.type === "quiz" && (

@@ -45,7 +45,7 @@ function LessonRow({ lesson, index, locked, done, isLast, onClick }) {
   );
 }
 
-export default function CourseDetail() {
+export default function CourseDetail({ lang }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -59,11 +59,15 @@ export default function CourseDetail() {
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
   const [ratingBusy, setRatingBusy] = useState(false);
+  // L Core "translated lessons" — showOriginal toggles both title+description
+  // together, same "one tap back to original" idea PostCard uses, just not
+  // the full fold/unfold reveal animation (out of scope for this pass).
+  const [showOriginal, setShowOriginal] = useState(false);
 
   const load = async () => {
     setLoading(true);
     try {
-      const { course: c, lessons: l } = await api.get(`/learn/courses/${id}`);
+      const { course: c, lessons: l } = await api.get(`/learn/courses/${id}${lang ? `?lang=${lang}` : ""}`);
       setCourse(c);
       setLessons(l || []);
       if (user) {
@@ -73,7 +77,7 @@ export default function CourseDetail() {
     } catch {}
     finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, [id, user]);
+  useEffect(() => { load(); }, [id, user, lang]);
 
   const enrol = async () => {
     if (!user) { toast("Sign in to enrol", "error"); return; }
@@ -119,7 +123,9 @@ export default function CourseDetail() {
       </div>
 
       <div style={{ padding:"18px 16px" }}>
-        <h1 style={{ fontSize:21, fontWeight:900, margin:"0 0 8px" }}>{course.title}</h1>
+        <h1 style={{ fontSize:21, fontWeight:900, margin:"0 0 8px" }}>
+          {showOriginal || !course.titleTranslation ? course.title : course.titleTranslation.text}
+        </h1>
         <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap", marginBottom:14 }}>
           <span style={{ fontSize:12.5, color:"var(--text2)", textTransform:"capitalize" }}>{course.difficulty}</span>
           <span style={{ color:"var(--text3)" }}>·</span>
@@ -140,7 +146,17 @@ export default function CourseDetail() {
           </div>
         </div>
 
-        <p style={{ color:"var(--text2)", fontSize:14, lineHeight:1.6, marginBottom:20 }}>{course.description}</p>
+        <p style={{ color:"var(--text2)", fontSize:14, lineHeight:1.6, marginBottom:8 }}>
+          {showOriginal || !course.descriptionTranslation ? course.description : course.descriptionTranslation.text}
+        </p>
+        {(course.titleTranslation || course.descriptionTranslation) && (
+          <button
+            onClick={() => setShowOriginal(s => !s)}
+            style={{ background:"none", border:"none", color:"var(--sky)", fontSize:12.5, fontWeight:700, cursor:"pointer", padding:0, marginBottom:16 }}
+          >
+            {showOriginal ? `See in ${lang}` : "See original"}
+          </button>
+        )}
 
         {isEnrolled ? (
           <div style={{ marginBottom:22 }}>

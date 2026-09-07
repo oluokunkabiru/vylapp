@@ -139,8 +139,8 @@ function InnerApp() {
       <Route path="/explore" element={<Explore />} />
       <Route path="/spaces" element={<SpacesPage />} />
       <Route path="/learn" element={<LearnHome />} />
-      <Route path="/learn/courses/:id" element={<CourseDetail />} />
-      <Route path="/learn/courses/:id/lessons/:lessonId" element={<LessonViewer />} />
+      <Route path="/learn/courses/:id" element={<CourseDetail lang={lang} />} />
+      <Route path="/learn/courses/:id/lessons/:lessonId" element={<LessonViewer lang={lang} />} />
       <Route path="/notifications" element={<Notifications onClearBadge={()=>setNotifCount(0)} />} />
       <Route path="/messages" element={<Messages lang={lang} onClearBadge={()=>setMsgCount(0)} />} />
       <Route path="/profile" element={<Profile />} />

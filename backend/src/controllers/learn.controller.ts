@@ -9,6 +9,7 @@
 import { Response } from "express";
 import { AuthedRequest } from "../types/express";
 import ModerationEngine from "../services/moderationEngine";
+import TranslationEngine from "../services/translationEngine";
 import prisma from "../config/prisma";
 import crypto from "crypto";
 import { Prisma, CourseStatus, LessonType, EnrolmentStatus } from "../generated/prisma";
@@ -122,6 +123,16 @@ async function getCourse(req: AuthedRequest, res: Response) {
     id: l.id, title: l.title, type: l.type, duration_minutes: l.durationMinutes, sort_order: l.sortOrder, is_free_preview: l.isFreePreview,
   }));
 
+  // L Core "translated lessons" — course-catalogue half of it (getLesson
+  // handles the lesson-content half). Same translateEntitiesForViewer
+  // pipeline as vibes/forum/messages, just applied to a surface that never
+  // got it despite being real user-facing text.
+  const targetLang = req.query.lang as string | undefined;
+  await TranslationEngine.translateEntitiesForViewer([shapedCourse as any], targetLang, req.user?.id, { contentType: "course_title", textKey: "title", translationKey: "titleTranslation" });
+  if (shapedCourse.description) {
+    await TranslationEngine.translateEntitiesForViewer([shapedCourse as any], targetLang, req.user?.id, { contentType: "course_description", textKey: "description", translationKey: "descriptionTranslation" });
+  }
+
   res.json({ ok: true, data: { course: shapedCourse, lessons: shapedLessons } });
 }
 
@@ -158,6 +169,24 @@ async function getLesson(req: AuthedRequest, res: Response) {
       id: c.id, question: c.question, options: c.options, points: c.points, sort_order: c.sortOrder,
       response: responseMap.get(c.id) || null,
     }));
+  }
+
+  // L Core "translated lessons": lesson content had zero translation
+  // treatment despite this being the same pipeline (translateEntitiesForViewer)
+  // already wired into vibes/forum/messages. Title/description are top-level
+  // fields already shaped for it; body_html lives inside the `content` JSON
+  // blob, so it's lifted onto a synthetic top-level field for the same call
+  // rather than teaching the engine about nested paths for one caller.
+  const targetLang = req.query.lang as string | undefined;
+  await TranslationEngine.translateEntitiesForViewer([lesson as any], targetLang, req.user?.id, { contentType: "lesson_title", textKey: "title", translationKey: "titleTranslation" });
+  if (lesson.description) {
+    await TranslationEngine.translateEntitiesForViewer([lesson as any], targetLang, req.user?.id, { contentType: "lesson_description", textKey: "description", translationKey: "descriptionTranslation" });
+  }
+  const bodyHtml = (lesson.content as any)?.body_html;
+  if (bodyHtml) {
+    const proxy: any = { id: lesson.id, language: lesson.language, body_html: bodyHtml };
+    await TranslationEngine.translateEntitiesForViewer([proxy], targetLang, req.user?.id, { contentType: "lesson_body", textKey: "body_html", translationKey: "bodyTranslation" });
+    (lesson as any).bodyTranslation = proxy.bodyTranslation;
   }
 
   res.json({ ok: true, data: { lesson, checkpoints, completion: completion || null } });
