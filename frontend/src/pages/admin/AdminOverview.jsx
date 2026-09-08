@@ -6,25 +6,27 @@ import { Spinner, numFmt, Ic, ic } from "../../components/ui/index.jsx";
 
 const usd = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
 
-function Card({ label, value, sub, color }) {
-  return (
-    <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 20, padding: 20, flex: 1, minWidth: 180 }}>
+function Card({ label, value, sub, color, to }) {
+  const content = <>
       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text3)", letterSpacing: 0.5 }}>{label}</div>
       <div style={{ fontSize: 26, fontWeight: 900, color: color || "var(--text)", marginTop: 8, fontFamily: "var(--mono)" }}>{value}</div>
       {sub && <div style={{ fontSize: 11.5, color: "var(--text3)", marginTop: 4 }}>{sub}</div>}
-    </div>
-  );
+    </>;
+  const style = { background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 20, padding: 20, flex: 1, minWidth: 180, textDecoration: "none" };
+  return to ? <Link to={to} style={style}>{content}</Link> : <div style={style}>{content}</div>;
 }
 
-function ComparisonCard({ label, current = 0, previous = 0, format = numFmt }) {
+function ComparisonCard({ label, current = 0, previous = 0, format = numFmt, to }) {
   const change = previous ? ((current - previous) / previous) * 100 : (current ? 100 : 0);
   const positive = change >= 0;
-  return <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 16, flex: 1, minWidth: 155 }}>
+  const style = { background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 16, flex: 1, minWidth: 155, textDecoration: "none" };
+  const content = <>
     <div style={{ color: "var(--text3)", fontSize: 11, fontWeight: 800, letterSpacing: .4 }}>{label}</div>
     <div style={{ fontFamily: "var(--mono)", fontSize: 22, fontWeight: 900, marginTop: 7 }}>{format(current)}</div>
     <div style={{ color: positive ? "var(--green)" : "var(--coral)", fontSize: 12, fontWeight: 700, marginTop: 5 }}>{positive ? "+" : ""}{change.toFixed(1)}% <span style={{ color: "var(--text3)", fontWeight: 500 }}>vs prior period</span></div>
     <div style={{ color: "var(--text3)", fontSize: 11, marginTop: 4 }}>Previous: {format(previous)}</div>
-  </div>;
+  </>;
+  return to ? <Link to={to} style={style}>{content}</Link> : <div style={style}>{content}</div>;
 }
 
 function Sparkline({ series, color }) {
@@ -85,9 +87,9 @@ export default function AdminOverview() {
       {error && <div style={{ color: "var(--coral)", marginBottom: 16 }}>{error}</div>}
 
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 28 }}>
-        <Card label="TOTAL USERS" value={numFmt(platform?.totalUsers || 0)} />
-        <Card label="TOTAL VIBES" value={numFmt(platform?.totalVibes || 0)} />
-        <Card label="PLATFORM REVENUE" value={usd(platform?.platformRevenueUsd)} color="var(--green)" />
+        <Card label="TOTAL USERS" value={numFmt(platform?.totalUsers || 0)} to="/admin/users" sub="View user records →" />
+        <Card label="TOTAL VIBES" value={numFmt(platform?.totalVibes || 0)} to="/admin/content" sub="View content records →" />
+        <Card label="PLATFORM REVENUE" value={usd(platform?.platformRevenueUsd)} color="var(--green)" to="/admin/monetization" sub="View revenue records →" />
         <Card label="STICKINESS (DAU/MAU)" value={`${((platform?.stickiness || 0) * 100).toFixed(1)}%`} color="var(--violet-lt)" />
       </div>
 
@@ -96,11 +98,11 @@ export default function AdminOverview() {
           {trends.comparison && <div style={{ marginBottom: 28 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text2)", marginBottom: 12 }}>Period comparison · last {trends.days} days vs previous {trends.days} days</div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <ComparisonCard label="NEW USERS" current={trends.comparison.current.users} previous={trends.comparison.previous.users} />
-              <ComparisonCard label="NEW VIBES" current={trends.comparison.current.vibes} previous={trends.comparison.previous.vibes} />
-              <ComparisonCard label="NEW CONNECTIONS" current={trends.comparison.current.connections} previous={trends.comparison.previous.connections} />
-              <ComparisonCard label="ENGAGEMENTS" current={trends.comparison.current.engagement} previous={trends.comparison.previous.engagement} />
-              <ComparisonCard label="PLATFORM REVENUE" current={trends.comparison.current.revenue_usd} previous={trends.comparison.previous.revenue_usd} format={usd} />
+              <ComparisonCard label="NEW USERS" current={trends.comparison.current.users} previous={trends.comparison.previous.users} to="/admin/users" />
+              <ComparisonCard label="NEW VIBES" current={trends.comparison.current.vibes} previous={trends.comparison.previous.vibes} to="/admin/content" />
+              <ComparisonCard label="NEW CONNECTIONS" current={trends.comparison.current.connections} previous={trends.comparison.previous.connections} to="/admin/users" />
+              <ComparisonCard label="ENGAGEMENTS" current={trends.comparison.current.engagement} previous={trends.comparison.previous.engagement} to="/admin/content" />
+              <ComparisonCard label="PLATFORM REVENUE" current={trends.comparison.current.revenue_usd} previous={trends.comparison.previous.revenue_usd} format={usd} to="/admin/monetization" />
             </div>
           </div>}
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>

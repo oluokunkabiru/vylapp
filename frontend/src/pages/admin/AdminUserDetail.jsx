@@ -11,7 +11,7 @@ const title = { fontWeight: 850, fontSize: 14, marginBottom: 10 };
 const muted = { color: "var(--text3)", fontSize: 12 };
 
 function Person({ user }) {
-  return user ? <Link to={`/profile/${user.handle}`} style={{ color: "var(--sky)", textDecoration: "none" }}>@{user.handle}</Link> : <span style={muted}>Unknown user</span>;
+  return user ? <span style={{ display: "inline-flex", gap: 7, alignItems: "center" }}><Link to={`/admin/users/${encodeURIComponent(user.handle)}`} style={{ color: "var(--sky)", textDecoration: "none" }}>@{user.handle}</Link><Link to={`/profile/${user.handle}`} title="Open public profile" style={{ color: "var(--text3)", fontSize: 11, textDecoration: "none" }}>Public ↗</Link></span> : <span style={muted}>Unknown user</span>;
 }
 
 function Card({ to, label, value, sub }) {

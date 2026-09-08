@@ -129,9 +129,9 @@ function VibesTab() {
                     {v.is_deleted && <span style={{ color: "var(--coral)", fontWeight: 700 }}> · removed</span>}
                   </div>
                   <div style={{ fontSize: 13.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{v.content}</div>
-                  <div style={{ color: "var(--text3)", fontSize: 11.5, marginTop: 6 }}>
-                    {v.likes_count} likes · {v.reposts_count} reposts · {v.replies_count} replies · {v.views_count} views
-                  </div>
+                  <button onClick={() => inspect(v.id)} style={{ color: "var(--text3)", fontSize: 11.5, marginTop: 6, padding: 0, border: 0, background: "none", cursor: "pointer" }}>
+                    {v.likes_count} likes · {v.reposts_count} reposts · {v.replies_count} replies · {v.views_count} views · view activity →
+                  </button>
                   {v.moderation_note && <div style={{ color: "var(--coral)", fontSize: 11.5, marginTop: 4 }}>Note: {v.moderation_note}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -170,7 +170,7 @@ function VibesTab() {
 }
 
 function Actor({ actor }) {
-  return actor ? <Link to={`/profile/${actor.handle}`} style={{ color: "var(--sky)", textDecoration: "none" }}>@{actor.handle}</Link> : <span style={{ color: "var(--text3)" }}>Anonymous</span>;
+  return actor ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Link to={`/admin/users/${encodeURIComponent(actor.handle)}`} style={{ color: "var(--sky)", textDecoration: "none" }}>@{actor.handle}</Link><Link to={`/profile/${actor.handle}`} title="Open public profile" style={{ color: "var(--text3)", fontSize: 11, textDecoration: "none" }}>Public ↗</Link></span> : <span style={{ color: "var(--text3)" }}>Anonymous</span>;
 }
 
 function VibeDetailModal({ detail, loading, onClose }) {
@@ -309,7 +309,7 @@ function SpacesTab() {
               <>
                 {participants.map((p, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border2)" }}>
-                    <Link to={`/profile/${p.user.handle}`} style={{ fontSize: 13, color: "var(--sky)", textDecoration: "none" }}>@{p.user.handle} <span title={p.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(p.role)})</span></Link>
+                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><Link to={`/admin/users/${encodeURIComponent(p.user.handle)}`} style={{ fontSize: 13, color: "var(--sky)", textDecoration: "none" }}>@{p.user.handle}</Link><Link to={`/profile/${p.user.handle}`} title="Open public profile" style={{ color: "var(--text3)", fontSize: 11, textDecoration: "none" }}>Public ↗</Link><span title={p.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(p.role)})</span></span>
                     <span style={{ color: "var(--text3)", fontSize: 12 }}>{new Date(p.joined_at).toLocaleTimeString()}</span>
                   </div>
                 ))}

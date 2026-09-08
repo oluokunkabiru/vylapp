@@ -119,18 +119,18 @@ export default function Dashboard() {
 
             {/* Quick Metrics */}
             <div style={{ display: "flex", gap: 24, marginTop: 24, borderTop: "1px solid var(--border2)", paddingTop: 18 }}>
-              <div>
+              <Link to={`/profile/${user.handle}?view=followers`} style={{ textDecoration:"none" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text3)", letterSpacing: 0.5 }}>CONNECTIONS</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>{numFmt(user.connectionsCount)}</div>
-              </div>
-              <div>
+              </Link>
+              <Link to={`/profile/${user.handle}?view=following`} style={{ textDecoration:"none" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text3)", letterSpacing: 0.5 }}>FOLLOWING</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>{numFmt(user.followingCount)}</div>
-              </div>
-              <div>
+              </Link>
+              <Link to={`/profile/${user.handle}`} style={{ textDecoration:"none" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text3)", letterSpacing: 0.5 }}>TOTAL VIBES</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>{numFmt(user.vibesCount)}</div>
-              </div>
+              </Link>
             </div>
           </div>
 

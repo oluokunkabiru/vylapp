@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -13,6 +13,7 @@ export default function Profile() {
   const { user: me, logout } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMe = !handle || handle === me?.handle;
   const [profile, setProfile] = useState(isMe ? me : null);
   const [vibes, setVibes] = useState([]);
@@ -24,6 +25,9 @@ export default function Profile() {
   const [editForm, setEditForm] = useState({});
   const [ravenTier, setRavenTier] = useState(null);
   const [openingChat, setOpeningChat] = useState(false);
+  const socialView = searchParams.get("view");
+  const [socialUsers, setSocialUsers] = useState([]);
+  const [socialLoading, setSocialLoading] = useState(false);
 
   useEffect(() => {
     const targetHandle = handle || me?.handle;
@@ -50,6 +54,19 @@ export default function Profile() {
       api.get("/vibes/me/bookmarks").then(({ vibes: v }) => setSaved(v || [])).catch(() => {});
     }
   }, [profile?.id, profile?.handle, isMe]);
+
+  useEffect(() => {
+    if (!profile?.id || !["followers", "following"].includes(socialView || "")) return;
+    setSocialLoading(true);
+    const endpoint = socialView === "followers" ? "connections" : "following";
+    api.get(`/users/${profile.id}/${endpoint}`)
+      .then(data => setSocialUsers(data[endpoint] || []))
+      .catch(() => setSocialUsers([]))
+      .finally(() => setSocialLoading(false));
+  }, [profile?.id, socialView]);
+
+  const openSocial = (view) => setSearchParams({ view });
+  const closeSocial = () => setSearchParams({});
 
   const toggleFollow = async () => {
     if (!me) { toast("Sign in to connect", "error"); return; }
@@ -143,14 +160,14 @@ export default function Profile() {
         {/* Stats */}
         <div style={{ display:"flex", gap:24, marginBottom:4 }}>
           {[
-            [profile.vibesCount||0, "Vibes"],
-            [profile.connectionsCount||0, "Connects"],
-            [profile.followingCount||0, "Following"],
-          ].map(([n, l]) => (
-            <div key={l} style={{ textAlign:"center" }}>
+            [profile.vibesCount||0, "Vibes", () => setTab("vibes")],
+            [profile.connectionsCount||0, "Connects", () => openSocial("followers")],
+            [profile.followingCount||0, "Following", () => openSocial("following")],
+          ].map(([n, l, onClick]) => (
+            <button key={l} onClick={onClick} style={{ textAlign:"center", border:0, padding:0, background:"none", color:"var(--text)", cursor:"pointer" }} title={`View ${String(l).toLowerCase()}`}>
               <div style={{ fontWeight:800, fontSize:18 }}>{numFmt(n)}</div>
               <div style={{ color:"var(--text2)", fontSize:12.5 }}>{l}</div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
@@ -175,6 +192,16 @@ export default function Profile() {
           </div>
         )}
       </div>
+
+      {socialView && (
+        <div style={{ position:"fixed", inset:0, zIndex:100, background:"rgba(0,0,0,.55)", display:"flex", alignItems:"center", justifyContent:"center" }} onClick={closeSocial}>
+          <div style={{ width:"min(440px, calc(100% - 28px))", maxHeight:"70vh", overflowY:"auto", background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:18, padding:20 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}><div style={{ fontWeight:850 }}>{socialView === "followers" ? "Followers" : "Following"}</div><GhostButton onClick={closeSocial}>Close</GhostButton></div>
+            {socialLoading ? <div style={{ display:"flex", justifyContent:"center", padding:24 }}><Spinner size={24} /></div> : socialUsers.map(person => <Link key={person.id} to={`/profile/${person.handle}`} onClick={closeSocial} style={{ display:"flex", justifyContent:"space-between", padding:"11px 0", borderTop:"1px solid var(--border2)", color:"var(--text)", textDecoration:"none" }}><span style={{ fontWeight:700 }}>{person.displayName}</span><span style={{ color:"var(--text3)" }}>@{person.handle}</span></Link>)}
+            {!socialLoading && !socialUsers.length && <div style={{ color:"var(--text3)", padding:"18px 0", textAlign:"center" }}>No users to show</div>}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
