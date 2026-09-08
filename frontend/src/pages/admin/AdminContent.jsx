@@ -176,7 +176,7 @@ function VibeDetailModal({ detail, loading, onClose, fullPage = false }) {
           <section style={sectionStyle}>
             <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}><Actor actor={vibe.author} /> · {humanizeIdentifier(vibe.category)} · {new Date(vibe.created_at).toLocaleString()}</div>
             <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{vibe.content || "Media-only vibe"}</div>
-            <div style={metricGrid}>{Object.entries(detail.engagement.totals).map(([k, value]) => <div key={k}><div style={metricLabel}>{humanizeIdentifier(k)}</div><div style={{ fontWeight: 800 }}>{value}</div></div>)}</div>
+            <div style={metricGrid}>{Object.entries(detail.engagement.totals).map(([k, value]) => <Link key={k} to={`/admin/content/vibes/${vibe.id}/analytics/${k}`} style={{ color: "var(--text)", textDecoration: "none", borderRadius: 10, padding: 8, background: "var(--bg3)" }}><div style={metricLabel}>{humanizeIdentifier(k)}</div><div style={{ fontWeight: 800 }}>{value}</div><div style={{ color: "var(--sky)", fontSize: 10, marginTop: 3 }}>Analyse →</div></Link>)}</div>
           </section>
           <section style={sectionStyle}><SectionTitle title={`Comments / replies (${detail.engagement.replies.length})`} />{detail.engagement.replies.map(reply => <div key={reply.id} style={rowStyle}><div><Actor actor={reply.actor} /> <Link to={`/admin/content/vibes/${reply.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 6 }}>{reply.content || "Media-only reply"}</Link></div><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(reply.created_at).toLocaleString()}</span></div>)}{!detail.engagement.replies.length && <EmptyLine text="No replies" />}</section>
           <section style={sectionStyle}><SectionTitle title={`Quoted posts (${detail.engagement.quotes.length})`} />{detail.engagement.quotes.map(quote => <div key={quote.id} style={rowStyle}><div><Actor actor={quote.actor} /> <Link to={`/admin/content/vibes/${quote.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 6 }}>{quote.content || "Media-only quote"}</Link></div><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(quote.created_at).toLocaleString()}</span></div>)}{!detail.engagement.quotes.length && <EmptyLine text="No quote posts" />}</section>
@@ -200,6 +200,39 @@ function AdminVibeDetail() {
   }, [vibeId]); // eslint-disable-line
 
   return <VibeDetailModal detail={detail} loading={loading} fullPage onClose={() => navigate("/admin/content")} />;
+}
+
+function AdminVibeAnalytics() {
+  const { vibeId, metric } = useParams();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const supported = ["likes", "reposts", "bookmarks", "views", "anonymous_views", "replies", "quotes"];
+
+  useEffect(() => {
+    setLoading(true);
+    api.get(`/admin/content/vibes/${vibeId}`).then(setDetail).catch(e => toast(e.message, "error")).finally(() => setLoading(false));
+  }, [vibeId]); // eslint-disable-line
+
+  if (loading) return <div style={{ display: "flex", justifyContent: "center", padding: 80 }}><Spinner size={32} /></div>;
+  if (!detail || !supported.includes(metric)) return <div style={{ padding: "28px 32px" }}>This engagement metric is unavailable.</div>;
+  const events = metric === "anonymous_views" ? (detail.engagement.views || []).filter(event => !event.actor) : (detail.engagement[metric] || []);
+  const dates = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(); date.setHours(0, 0, 0, 0); date.setDate(date.getDate() - (6 - index));
+    return date;
+  });
+  const series = dates.map(date => {
+    const key = date.toISOString().slice(0, 10);
+    return { label: date.toLocaleDateString(undefined, { weekday: "short" }), count: events.filter(event => event.created_at && new Date(event.created_at).toISOString().slice(0, 10) === key).length };
+  });
+  const peak = Math.max(1, ...series.map(point => point.count));
+
+  return <div style={{ padding: "28px 32px 60px", maxWidth: 1160, margin: "0 auto" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", marginBottom: 22 }}><div><div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 6 }}>Content engagement analysis</div><h1 style={{ margin: 0, fontSize: 25, fontWeight: 900 }}>{humanizeIdentifier(metric)}</h1><div style={{ color: "var(--text2)", marginTop: 7 }}>{events.length} recorded {humanizeIdentifier(metric).toLowerCase()} for this post</div></div><button onClick={() => navigate(`/admin/content/vibes/${vibeId}`)} style={btnStyle("var(--text2)")}>← Back to post</button></div>
+    <section style={{ ...sectionStyle, marginBottom: 18 }}><div style={{ fontWeight: 800, marginBottom: 5 }}>Activity over the last 7 days</div><div style={{ color: "var(--text3)", fontSize: 12 }}>Each bar is an attributable engagement recorded on that day.</div><div style={{ height: 210, display: "flex", gap: 12, alignItems: "flex-end", paddingTop: 22 }}>{series.map(point => <div key={point.label} style={{ flex: 1, minWidth: 38, textAlign: "center", height: "100%", display: "flex", justifyContent: "flex-end", flexDirection: "column", gap: 7 }}><div style={{ fontSize: 12, fontWeight: 800 }}>{point.count}</div><div title={`${point.label}: ${point.count}`} style={{ height: `${Math.max(point.count ? 8 : 2, (point.count / peak) * 150)}px`, borderRadius: "8px 8px 2px 2px", background: "linear-gradient(180deg, var(--violet-lt), var(--violet))" }} /><div style={{ color: "var(--text3)", fontSize: 11 }}>{point.label}</div></div>)}</div></section>
+    <section style={sectionStyle}><div style={{ fontWeight: 800, marginBottom: 5 }}>People and records</div><div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 12 }}>Latest {events.length} events available to this review.</div>{events.map((event, index) => <div key={`${event.created_at}-${index}`} style={rowStyle}><span><Actor actor={event.actor} />{event.content && <Link to={`/admin/content/vibes/${event.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 7 }}>{event.content}</Link>}{event.source && <span style={{ color: "var(--text3)" }}> · {event.source}</span>}</span><span style={{ color: "var(--text3)", fontSize: 11 }}>{event.created_at ? new Date(event.created_at).toLocaleString() : "—"}</span></div>)}{!events.length && <EmptyLine text={`No ${humanizeIdentifier(metric).toLowerCase()} recorded yet`} />}</section>
+  </div>;
 }
 
 function SectionTitle({ title }) { return <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 10 }}>{title}</div>; }
@@ -334,8 +367,9 @@ function SpacesTab() {
 }
 
 export default function AdminContent() {
-  const { vibeId } = useParams();
+  const { vibeId, metric } = useParams();
   const [tab, setTab] = useState("vibes");
+  if (vibeId && metric) return <AdminVibeAnalytics />;
   if (vibeId) return <AdminVibeDetail />;
   return (
     <div style={{ padding: "28px 32px 60px" }}>

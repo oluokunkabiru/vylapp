@@ -90,7 +90,7 @@ export default function AdminOverview() {
         <Card label="TOTAL USERS" value={numFmt(platform?.totalUsers || 0)} to="/admin/users" sub="View user records →" />
         <Card label="TOTAL VIBES" value={numFmt(platform?.totalVibes || 0)} to="/admin/content" sub="View content records →" />
         <Card label="PLATFORM REVENUE" value={usd(platform?.platformRevenueUsd)} color="var(--green)" to="/admin/monetization" sub="View revenue records →" />
-        <Card label="STICKINESS (DAU/MAU)" value={`${((platform?.stickiness || 0) * 100).toFixed(1)}%`} color="var(--violet-lt)" />
+        <Card label="STICKINESS (DAU/MAU)" value={platform?.stickiness?.pct || "0.0%"} color="var(--violet-lt)" />
       </div>
 
       {trends && (
