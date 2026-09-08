@@ -1,10 +1,13 @@
 // ════════════════════════════════════════════════════════════════════════════
 //  CSRF — double-submit cookie check
 //
-//  Only applies to requests riding on the vyl_at/vyl_rt cookie session (the
-//  web client). Bearer-header requests (mobile app, or any future non-browser
-//  API client) have no ambient cookie credential for a forged cross-site
-//  request to exploit, so they're exempt.
+//  Only applies to requests authenticated by the vyl_at access cookie (the
+//  web client). A refresh cookie is not authority for ordinary endpoints; it
+//  is only consumed by the explicitly exempt /auth/refresh endpoint. Treating
+//  a stale vyl_rt as an authenticated session would incorrectly CSRF-block
+//  public recovery flows such as register and login. Bearer-header requests
+//  (mobile app, or any future non-browser API client) have no ambient cookie
+//  credential for a forged cross-site request to exploit, so they're exempt.
 //
 //  /auth/refresh is also exempt — deliberately, not an oversight. It's the
 //  one cookie-mutating endpoint the frontend calls before it can possibly
@@ -29,7 +32,7 @@ function csrfProtection(req: Request, res: Response, next: NextFunction) {
   if (SAFE_METHODS.has(req.method) || EXEMPT_PATHS.has(req.path)) return next();
 
   const cookies = req.cookies || {};
-  const hasCookieSession = Boolean(cookies[authCookies.ACCESS_COOKIE] || cookies[authCookies.REFRESH_COOKIE]);
+  const hasCookieSession = Boolean(cookies[authCookies.ACCESS_COOKIE]);
   if (!hasCookieSession) return next();
 
   const cookieToken = cookies[authCookies.CSRF_COOKIE];
