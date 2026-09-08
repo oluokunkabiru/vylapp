@@ -77,6 +77,8 @@ function shapeVibe(row: any, viewerState?: any) {
       id: row.user_id, handle: row.handle, displayName: row.display_name,
       avatarColor: row.avatar_color, avatarInitials: row.avatar_initials, avatarUrl: row.avatar_url,
       verified: row.verified, roleTag: row.role_tag,
+      viewerFollows: typeof row.viewer_follows === "boolean" ? row.viewer_follows : undefined,
+      connectionRequested: typeof row.connection_requested === "boolean" ? row.connection_requested : undefined,
     },
     viewer: viewerState || undefined,
   };
@@ -156,22 +158,35 @@ async function feed(req: AuthedRequest, res: Response) {
      ORDER BY v.created_at DESC LIMIT 100
   `, ...(req.user ? [req.user.id] : []));
 
-  let userProfile: { interests: string[]; is_pro: boolean; followingIds: string[] } = { interests: [], is_pro: false, followingIds: [] };
+  let userProfile: { interests: string[]; is_pro: boolean; followingIds: string[]; requestedIds: string[] } = {
+    interests: [], is_pro: false, followingIds: [], requestedIds: [],
+  };
   if (req.user) {
-    const [user, following] = await Promise.all([
+    const [user, following, requested] = await Promise.all([
       prisma.users.findUnique({ where: { id: req.user.id }, select: { interests: true, subscriptionPlan: true } }),
       prisma.connections.findMany({ where: { followerId: req.user.id }, select: { followingId: true } }),
+      prisma.connectionRequests.findMany({
+        where: { requesterId: req.user.id, status: "pending" },
+        select: { targetId: true },
+      }),
     ]);
     userProfile = {
       interests: user?.interests || [],
       is_pro: (user?.subscriptionPlan || "free") !== "free",
       followingIds: following.map(r => r.followingId),
+      requestedIds: requested.map(r => r.targetId),
     };
   }
 
   const ranked = FeedEngine.rankFeed(rows, userProfile, { page, pageSize });
   const withState = await attachViewerState(ranked, req.user?.id);
-  const shaped = withState.map(({ row, state }) => shapeVibe(row, state));
+  const followingIds = new Set(userProfile.followingIds);
+  const requestedIds = new Set(userProfile.requestedIds);
+  const shaped = withState.map(({ row, state }) => shapeVibe({
+    ...row,
+    viewer_follows: followingIds.has(row.user_id),
+    connection_requested: requestedIds.has(row.user_id),
+  }, state));
   await attachMediaToVibes(shaped);
   await translateVibesForViewer(shaped, req.query.lang as string, req.user?.id);
   // B1: additive field so the caller can tell "stop paginating" from "this

@@ -241,14 +241,19 @@ function RightRail({ lang }) {
   const { user } = useAuth();
   const [suggestions, setSuggestions] = useState([]);
   const [trending, setTrending] = useState([]);
-  const [followed, setFollowed] = useState(new Set());
 
   useEffect(() => {
     api.get("/vibes/feed?pageSize=30").then(({ vibes }) => {
       const seen = new Set();
       const users = [];
       for (const v of (vibes || [])) {
-        if (v.author?.id && !seen.has(v.author.id) && v.author.id !== user?.id) {
+        if (
+          v.author?.id &&
+          !seen.has(v.author.id) &&
+          v.author.id !== user?.id &&
+          !v.author.viewerFollows &&
+          !v.author.connectionRequested
+        ) {
           seen.add(v.author.id);
           users.push(v.author);
         }
@@ -262,7 +267,7 @@ function RightRail({ lang }) {
   const follow = async (u) => {
     try {
       await api.post(`/users/${u.id}/connect`);
-      setFollowed(s => new Set([...s, u.id]));
+      setSuggestions(current => current.filter(candidate => candidate.id !== u.id));
     } catch {}
   };
 
@@ -290,10 +295,7 @@ function RightRail({ lang }) {
                 <div style={{ fontWeight:700, fontSize:13.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{u.displayName}</div>
                 <div style={{ color:"var(--text2)", fontSize:12 }}>{u.roleTag || u.handle}</div>
               </div>
-              {!followed.has(u.id) && (
-                <button onClick={()=>follow(u)} style={{ background:"none", border:"none", color:"var(--violet-lt)", fontWeight:800, fontSize:13, cursor:"pointer" }}>Connect</button>
-              )}
-              {followed.has(u.id) && <span style={{ color:"var(--green)", fontSize:12, fontWeight:700 }}>✓</span>}
+              <button onClick={()=>follow(u)} style={{ background:"none", border:"none", color:"var(--violet-lt)", fontWeight:800, fontSize:13, cursor:"pointer" }}>Connect</button>
             </div>
           ))}
         </>
