@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
+import { humanizeIdentifier } from "../../lib/format.js";
 
 const PAGE_SIZE = 20;
 
@@ -96,7 +97,7 @@ export default function AdminUsers() {
                 </div>
                 <StatusBadge user={u} />
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => inspect(u.id)} style={btnStyle("var(--sky)")}>Inspect</button>
+                  <Link to={`/admin/users/${encodeURIComponent(u.handle)}`} style={{ ...btnStyle("var(--sky)"), textDecoration: "none" }}>View</Link>
                   {!u.is_suspended ? (
                     <button disabled={busyId === u.id} onClick={() => setReasonFor(u.id)} style={btnStyle("var(--coral)")}>Suspend</button>
                   ) : (
@@ -162,7 +163,7 @@ function UserDetailModal({ detail, loading, onClose }) {
             <div style={detailText}><b>Verification:</b> {u.verification_tier} · <b>2FA:</b> {u.two_factor_enabled ? "enabled" : "off"} · <b>Provider:</b> {u.provider} · <b>Plan:</b> {u.subscription_plan}</div>
             <div style={detailText}><b>Status:</b> {u.is_suspended ? `Suspended — ${u.suspended_reason || "no reason recorded"}` : u.is_deactivated ? "Deactivated" : "Active"} · <b>Last seen:</b> {u.last_seen ? new Date(u.last_seen).toLocaleString() : "Never"}</div>
           </section>
-          <section style={sectionStyle}><SectionTitle title="Roles and permissions" /><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{detail.access.roles.map(r => <span key={r.name} style={pillStyle}>{r.name}</span>)}</div><div style={{ color: "var(--text3)", fontSize: 12, marginTop: 9 }}>{detail.access.permissions.join(" · ") || "No effective permissions"}</div></section>
+          <section style={sectionStyle}><SectionTitle title="Roles and permissions" /><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{detail.access.roles.map(r => <span key={r.name} title={r.name} style={pillStyle}>{humanizeIdentifier(r.name)}</span>)}</div><div style={{ color: "var(--text3)", fontSize: 12, marginTop: 9 }}>{detail.access.permissions.map(humanizeIdentifier).join(" · ") || "No effective permissions"}</div></section>
           <section style={sectionStyle}><SectionTitle title={`Recent vibes (${detail.content.vibes.length})`} />{detail.content.vibes.map(v => <div key={v.id} style={rowStyle}><a href={`/admin/content?vibe=${v.id}`} style={{ color: "var(--text)", textDecoration: "none", flex: 1 }}>{v.content.slice(0, 180) || "Media-only vibe"}</a><span style={{ color: "var(--text3)", fontSize: 11 }}>{v.likesCount} likes · {v.repliesCount} replies</span></div>)}{!detail.content.vibes.length && <EmptyLine text="No vibes published" />}</section>
           <section style={sectionStyle}><SectionTitle title={`Connections (${detail.connections.following.length} following · ${detail.connections.followers.length} followers)`} /><div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13 }}><div><b>Following:</b> {detail.connections.following.map(x => <span key={x.user.id} style={{ marginLeft: 6 }}>{person(x.user)}</span>) || " —"}</div><div><b>Followers:</b> {detail.connections.followers.map(x => <span key={x.user.id} style={{ marginLeft: 6 }}>{person(x.user)}</span>) || " —"}</div></div></section>
           <section style={sectionStyle}><SectionTitle title="Recent account activity" />{detail.activity.map(a => <div key={a.id} style={rowStyle}><span><b>{a.action}</b>{a.entity_type && ` · ${a.entity_type}`}{a.entity_id && <a href={a.entity_type === "vibe" ? `/admin/content?vibe=${a.entity_id}` : "#"} style={{ color: "var(--sky)", marginLeft: 6 }}>Open record</a>}</span><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(a.created_at).toLocaleString()}</span></div>)}{!detail.activity.length && <EmptyLine text="No activity events recorded yet" />}</section>

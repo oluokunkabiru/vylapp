@@ -9,6 +9,7 @@ import AdminGuard, { AdminPermission } from "./pages/admin/AdminGuard.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import AdminOverview from "./pages/admin/AdminOverview.jsx";
 import AdminUsers from "./pages/admin/AdminUsers.jsx";
+import AdminUserDetail from "./pages/admin/AdminUserDetail.jsx";
 import AdminContent from "./pages/admin/AdminContent.jsx";
 import AdminModeration from "./pages/admin/AdminModeration.jsx";
 import AdminLearn from "./pages/admin/AdminLearn.jsx";
@@ -198,10 +199,11 @@ function InnerApp() {
 function AdminApp() {
   return (
     <AdminGuard>
-      <Routes>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminOverview />} />
-          <Route path="users" element={<AdminPermission permission="admin.users.manage"><AdminUsers /></AdminPermission>} />
+  <Routes>
+    <Route path="/admin" element={<AdminLayout />}>
+      <Route index element={<AdminOverview />} />
+      <Route path="users" element={<AdminPermission permission="admin.users.manage"><AdminUsers /></AdminPermission>} />
+      <Route path="users/:handle" element={<AdminPermission permission="admin.users.manage"><AdminUserDetail /></AdminPermission>} />
           <Route path="content" element={<AdminPermission permission="admin.content.manage"><AdminContent /></AdminPermission>} />
           <Route path="moderation" element={<AdminPermission permission="admin.content.manage"><AdminModeration /></AdminPermission>} />
           <Route path="learn" element={<AdminPermission permission="learn.manage"><AdminLearn /></AdminPermission>} />

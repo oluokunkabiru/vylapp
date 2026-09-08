@@ -6,7 +6,7 @@ export function humanizeIdentifier(value) {
   if (value == null) return "";
   return String(value)
     .trim()
-    .replace(/[_-]+/g, " ")
+    .replace(/[._-]+/g, " ")
     .replace(/\s+/g, " ")
     .split(" ")
     .map(word => {

@@ -107,7 +107,7 @@ async function getUserDetails(req: AuthedRequest, res: Response) {
   });
   if (!user) return fail(res, 404, "User not found");
 
-  const [access, vibes, followers, following, spaces, activity, notifications, reports] = await Promise.all([
+  const [access, vibes, followers, following, spaces, activity, notifications, reports, vibeTotal, followerTotal, followingTotal, spaceTotal, activityTotal, notificationTotal] = await Promise.all([
     rbac.getUserPermissionSummary(user.id),
     prisma.vibes.findMany({
       where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 50,
@@ -134,6 +134,12 @@ async function getUserDetails(req: AuthedRequest, res: Response) {
       include: { usersNotificationsActorIdTousers: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } },
     }),
     prisma.reports.count({ where: { OR: [{ reporterId: user.id }, { reportedUserId: user.id }] } }),
+    prisma.vibes.count({ where: { userId: user.id } }),
+    prisma.connections.count({ where: { followingId: user.id } }),
+    prisma.connections.count({ where: { followerId: user.id } }),
+    prisma.spaces.count({ where: { hostId: user.id } }),
+    prisma.userActivityLog.count({ where: { userId: user.id } }),
+    prisma.notifications.count({ where: { userId: user.id } }),
   ]);
 
   return ok(res, {
@@ -153,6 +159,7 @@ async function getUserDetails(req: AuthedRequest, res: Response) {
     activity: activity.map(entry => ({ id: entry.id, action: entry.action, entity_type: entry.entityType, entity_id: entry.entityId, metadata: entry.metadata, created_at: entry.createdAt })),
     notifications: notifications.map(note => ({ id: note.id, type: note.type, body: note.body, vibe_id: note.vibeId, space_id: note.spaceId, created_at: note.createdAt, actor: note.usersNotificationsActorIdTousers ? compactPerson(note.usersNotificationsActorIdTousers) : null })),
     moderation: { reports_involved: reports },
+    totals: { vibes: vibeTotal, followers: followerTotal, following: followingTotal, spaces: spaceTotal, activity: activityTotal, notifications: notificationTotal },
   });
 }
 
