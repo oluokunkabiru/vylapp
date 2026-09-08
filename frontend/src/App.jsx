@@ -120,12 +120,28 @@ function InnerApp() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Populate badges from server state after a refresh or a previously closed
+  // device. Socket events below only cover notifications that arrive live.
+  useEffect(() => {
+    if (!user) { setNotifCount(0); setMsgCount(0); return; }
+    Promise.all([
+      api.get("/notifications").catch(() => ({ unreadCount: 0 })),
+      api.get("/messages/conversations").catch(() => ({ conversations: [] })),
+    ]).then(([notifications, conversations]) => {
+      setNotifCount(notifications.unreadCount || 0);
+      setMsgCount((conversations.conversations || []).reduce((total, conversation) => total + (conversation.unreadCount || 0), 0));
+    });
+  }, [user?.id]);
+
   // Real-time notification/message badges
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
-    const onNotif = () => setNotifCount(n => n + 1);
-    const onMsg = () => setMsgCount(n => n + 1);
+    const onNotif = (notification) => {
+      setNotifCount(n => n + 1);
+      if (notification?.conversationId) setMsgCount(n => n + 1);
+    };
+    const onMsg = () => {};
     socket.on("notification:new", onNotif);
     socket.on("message:new", onMsg);
     return () => { socket.off("notification:new", onNotif); socket.off("message:new", onMsg); };

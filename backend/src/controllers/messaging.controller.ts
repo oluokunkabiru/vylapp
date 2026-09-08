@@ -347,6 +347,7 @@ async function sendMessage(req: AuthedRequest, res: Response) {
 
   const notifType = conv.type === "group" ? "group_message" : "dm";
   const body = NotificationEngine.formatBody(notifType, req.user.displayName, { groupName: conv.name });
+  const io = req.app.get("io");
 
   // Notify other members (excluding anyone who has left the conversation)
   const others = await prisma.conversationMembers.findMany({
@@ -354,13 +355,19 @@ async function sendMessage(req: AuthedRequest, res: Response) {
     select: { userId: true, mutedUntil: true },
   });
   for (const o of others) {
-    await prisma.notifications.create({
+    const notification = await prisma.notifications.create({
       data: { userId: o.userId, actorId: req.user.id, type: notifType, messageId: msg.id, conversationId: req.params.id, body },
+    });
+    // A recipient is in a personal socket room even when they are not viewing
+    // this conversation. Emit the same event used by the notification badge.
+    // The conversation room broadcast below only reaches an open chat pane.
+    io?.to(`user:${o.userId}`).emit("notification:new", {
+      id: notification.id, type: notifType, body, conversationId: req.params.id, messageId: msg.id, createdAt: notification.createdAt,
+      actor: { id: req.user.id, displayName: req.user.displayName },
     });
   }
 
-  // Real-time push over Socket.IO if available
-  const io = req.app.get("io");
+  // Real-time message delivery to an open conversation, if available.
   const sentMessage = {
     id: msg.id,
     content: msg.content,
