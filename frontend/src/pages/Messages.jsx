@@ -42,6 +42,17 @@ function RequestList({ requests, onAccept, onDecline }) {
   );
 }
 
+function MessageAttachment({ media }) {
+  const downloadName = media.mediaType === "audio" ? "voice-note.m4a" : media.mediaType === "video" ? "video.mp4" : media.mediaType === "image" ? "image.webp" : "attachment.pdf";
+  const download = <a href={media.url} download={downloadName} style={{ display:"inline-flex", alignItems:"center", marginTop:7, color:"inherit", fontSize:11.5, fontWeight:800, textDecoration:"underline" }}>Download</a>;
+  if (media.mediaType === "image") return <div><img src={media.url} alt="Message attachment" loading="lazy" style={{ display:"block", maxWidth:"100%", maxHeight:360, borderRadius:10 }} />{download}</div>;
+  if (media.mediaType === "video") return <div><video src={media.url} poster={media.thumbnailUrl || undefined} controls playsInline preload="metadata" style={{ display:"block", maxWidth:"100%", maxHeight:360, borderRadius:10 }} />{download}</div>;
+  if (media.mediaType === "audio") return <div style={{ minWidth:"min(280px, 100%)" }}><audio controls preload="metadata" style={{ width:"min(280px, 100%)", display:"block" }}><source src={media.url} type="audio/mp4" />Your browser cannot play this voice note.</audio>{download}</div>;
+  // PDFs are browser-previewable, so keep the document in the conversation.
+  // Download remains available for offline use or browsers without a PDF viewer.
+  return <div><iframe src={media.url} title="PDF attachment" style={{ display:"block", width:"min(360px, 100%)", height:300, border:0, borderRadius:10, background:"#fff" }} />{download}</div>;
+}
+
 function ConversationList({ convos, active, onSelect }) {
   return (
     <div style={{ flex:1, overflowY:"auto" }}>
@@ -360,14 +371,7 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
                         <div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:250 }}>{m.replyTo.content || "Attachment"}</div>
                       </div>
                     )}
-                    {(m.media || []).map(media => (
-                      <div key={media.id || media.url} style={{ marginBottom:m.content ? 8 : 0 }}>
-                        {media.mediaType === "image" && <a href={media.url} target="_blank" rel="noreferrer"><img src={media.url} alt="Message attachment" style={{ display:"block", maxWidth:"100%", maxHeight:300, borderRadius:10 }} /></a>}
-                        {media.mediaType === "video" && <video src={media.url} poster={media.thumbnailUrl || undefined} controls playsInline style={{ display:"block", maxWidth:"100%", maxHeight:300, borderRadius:10 }} />}
-                        {media.mediaType === "audio" && <audio src={media.url} controls preload="metadata" style={{ width:"min(280px, 100%)", display:"block" }} />}
-                        {media.mediaType === "document" && <a href={media.url} target="_blank" rel="noreferrer" style={{ color:"inherit", fontWeight:800, textDecoration:"underline" }}>📄 Open PDF attachment</a>}
-                      </div>
-                    ))}
+                    {(m.media || []).map(media => <div key={media.id || media.url} style={{ marginBottom:m.content ? 8 : 0 }}><MessageAttachment media={media} /></div>)}
                     {text && <span style={{ whiteSpace:"pre-wrap", overflowWrap:"anywhere" }}>{text}</span>}
                   </div>
                 </div>
