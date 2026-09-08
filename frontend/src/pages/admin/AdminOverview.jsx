@@ -16,6 +16,17 @@ function Card({ label, value, sub, color }) {
   );
 }
 
+function ComparisonCard({ label, current = 0, previous = 0, format = numFmt }) {
+  const change = previous ? ((current - previous) / previous) * 100 : (current ? 100 : 0);
+  const positive = change >= 0;
+  return <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 16, flex: 1, minWidth: 155 }}>
+    <div style={{ color: "var(--text3)", fontSize: 11, fontWeight: 800, letterSpacing: .4 }}>{label}</div>
+    <div style={{ fontFamily: "var(--mono)", fontSize: 22, fontWeight: 900, marginTop: 7 }}>{format(current)}</div>
+    <div style={{ color: positive ? "var(--green)" : "var(--coral)", fontSize: 12, fontWeight: 700, marginTop: 5 }}>{positive ? "+" : ""}{change.toFixed(1)}% <span style={{ color: "var(--text3)", fontWeight: 500 }}>vs prior period</span></div>
+    <div style={{ color: "var(--text3)", fontSize: 11, marginTop: 4 }}>Previous: {format(previous)}</div>
+  </div>;
+}
+
 function Sparkline({ series, color }) {
   if (!series?.length) return null;
   const max = Math.max(1, ...series.map(p => p.value));
@@ -81,7 +92,18 @@ export default function AdminOverview() {
       </div>
 
       {trends && (
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <>
+          {trends.comparison && <div style={{ marginBottom: 28 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text2)", marginBottom: 12 }}>Period comparison · last {trends.days} days vs previous {trends.days} days</div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <ComparisonCard label="NEW USERS" current={trends.comparison.current.users} previous={trends.comparison.previous.users} />
+              <ComparisonCard label="NEW VIBES" current={trends.comparison.current.vibes} previous={trends.comparison.previous.vibes} />
+              <ComparisonCard label="NEW CONNECTIONS" current={trends.comparison.current.connections} previous={trends.comparison.previous.connections} />
+              <ComparisonCard label="ENGAGEMENTS" current={trends.comparison.current.engagement} previous={trends.comparison.previous.engagement} />
+              <ComparisonCard label="PLATFORM REVENUE" current={trends.comparison.current.revenue_usd} previous={trends.comparison.previous.revenue_usd} format={usd} />
+            </div>
+          </div>}
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 20, padding: 20, flex: 1, minWidth: 260 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text2)" }}>New users — last {trends.days}d</div>
             <Sparkline series={trends.new_users} color="var(--violet-lt)" />
@@ -94,7 +116,8 @@ export default function AdminOverview() {
             <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text2)" }}>Revenue — last {trends.days}d</div>
             <Sparkline series={trends.revenue_usd} color="var(--green)" />
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {(learnStats || monetization) && (

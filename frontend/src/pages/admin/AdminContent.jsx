@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
@@ -57,6 +58,10 @@ function VibesTab() {
   const [busyId, setBusyId] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [reason, setReason] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const selectedId = searchParams.get("vibe");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -70,6 +75,15 @@ function VibesTab() {
   }, [page, status, q, author]); // eslint-disable-line
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!selectedId) { setDetail(null); return; }
+    setDetailLoading(true); setDetail(null);
+    api.get(`/admin/content/vibes/${selectedId}`).then(setDetail).catch(e => toast(e.message, "error")).finally(() => setDetailLoading(false));
+  }, [selectedId]); // eslint-disable-line
+
+  const inspect = (id) => setSearchParams({ vibe: id });
+  const closeInspect = () => setSearchParams({});
 
   const remove = async () => {
     setBusyId(removeTarget);
@@ -121,6 +135,7 @@ function VibesTab() {
                   {v.moderation_note && <div style={{ color: "var(--coral)", fontSize: 11.5, marginTop: 4 }}>Note: {v.moderation_note}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <button onClick={() => inspect(v.id)} style={btnStyle("var(--sky)")}>Inspect</button>
                   {!v.is_deleted ? (
                     <button disabled={busyId === v.id} onClick={() => setRemoveTarget(v.id)} style={btnStyle("var(--coral)")}>Remove</button>
                   ) : (
@@ -148,9 +163,48 @@ function VibesTab() {
           </div>
         </div>
       )}
+
+      {selectedId && <VibeDetailModal detail={detail} loading={detailLoading} onClose={closeInspect} />}
     </>
   );
 }
+
+function Actor({ actor }) {
+  return actor ? <Link to={`/profile/${actor.handle}`} style={{ color: "var(--sky)", textDecoration: "none" }}>@{actor.handle}</Link> : <span style={{ color: "var(--text3)" }}>Anonymous</span>;
+}
+
+function VibeDetailModal({ detail, loading, onClose }) {
+  const vibe = detail?.vibe;
+  const groups = detail ? [
+    ["Likes", detail.engagement.likes], ["Reshares", detail.engagement.reposts], ["Bookmarks", detail.engagement.bookmarks], ["Views", detail.engagement.views],
+  ] : [];
+  return (
+    <div style={overlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 18 }}><div><div style={{ fontWeight: 900, fontSize: 19 }}>Content review</div><div style={{ color: "var(--text3)", fontSize: 12 }}>Post, comments and attributable engagement</div></div><button onClick={onClose} style={btnStyle("var(--text3)")}>Close</button></div>
+        {loading ? <div style={{ display: "flex", justifyContent: "center", padding: 50 }}><Spinner size={28} /></div> : vibe && <>
+          <section style={sectionStyle}>
+            <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}><Actor actor={vibe.author} /> · {humanizeIdentifier(vibe.category)} · {new Date(vibe.created_at).toLocaleString()}</div>
+            <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{vibe.content || "Media-only vibe"}</div>
+            <div style={metricGrid}>{Object.entries(detail.engagement.totals).map(([k, value]) => <div key={k}><div style={metricLabel}>{humanizeIdentifier(k)}</div><div style={{ fontWeight: 800 }}>{value}</div></div>)}</div>
+          </section>
+          <section style={sectionStyle}><SectionTitle title={`Comments / replies (${detail.engagement.replies.length})`} />{detail.engagement.replies.map(reply => <div key={reply.id} style={rowStyle}><div><Actor actor={reply.actor} /> <a href={`/admin/content?vibe=${reply.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 6 }}>{reply.content || "Media-only reply"}</a></div><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(reply.created_at).toLocaleString()}</span></div>)}{!detail.engagement.replies.length && <EmptyLine text="No replies" />}</section>
+          <section style={sectionStyle}><SectionTitle title={`Quoted posts (${detail.engagement.quotes.length})`} />{detail.engagement.quotes.map(quote => <div key={quote.id} style={rowStyle}><div><Actor actor={quote.actor} /> <a href={`/admin/content?vibe=${quote.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 6 }}>{quote.content || "Media-only quote"}</a></div><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(quote.created_at).toLocaleString()}</span></div>)}{!detail.engagement.quotes.length && <EmptyLine text="No quote posts" />}</section>
+            {groups.map(([title, events]) => <section key={title} style={sectionStyle}><SectionTitle title={`${title} (${events.length})`} />{events.map((event, index) => <div key={`${event.created_at}-${index}`} style={rowStyle}><span><Actor actor={event.actor} />{event.source && <span style={{ color: "var(--text3)" }}> · {event.source}</span>}</span><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(event.created_at).toLocaleString()}</span></div>)}{!events.length && <EmptyLine text={`No ${title.toLowerCase()} recorded`} />}</section>)}
+        </>}
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({ title }) { return <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 10 }}>{title}</div>; }
+function EmptyLine({ text }) { return <div style={{ color: "var(--text3)", fontSize: 13 }}>{text}</div>; }
+const overlayStyle = { position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,.62)", display: "flex", justifyContent: "flex-end" };
+const modalStyle = { width: "min(760px, 100%)", height: "100%", overflowY: "auto", background: "var(--bg1)", borderLeft: "1px solid var(--border)", padding: "28px 24px 48px" };
+const sectionStyle = { background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: 16, marginBottom: 14 };
+const metricGrid = { display: "grid", gridTemplateColumns: "repeat(4, minmax(70px, 1fr))", gap: 10, marginTop: 15 };
+const metricLabel = { color: "var(--text3)", fontSize: 10.5, textTransform: "uppercase", marginBottom: 3 };
+const rowStyle = { display: "flex", justifyContent: "space-between", gap: 12, padding: "9px 0", borderTop: "1px solid var(--border2)", fontSize: 12.5 };
 
 // ── Spaces tab ─────────────────────────────────────────────────────────────
 function StatusBadge({ status, colorMap }) {
@@ -255,7 +309,7 @@ function SpacesTab() {
               <>
                 {participants.map((p, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border2)" }}>
-                    <span style={{ fontSize: 13 }}>@{p.user.handle} <span title={p.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(p.role)})</span></span>
+                    <Link to={`/profile/${p.user.handle}`} style={{ fontSize: 13, color: "var(--sky)", textDecoration: "none" }}>@{p.user.handle} <span title={p.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(p.role)})</span></Link>
                     <span style={{ color: "var(--text3)", fontSize: 12 }}>{new Date(p.joined_at).toLocaleTimeString()}</span>
                   </div>
                 ))}

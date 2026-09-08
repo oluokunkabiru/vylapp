@@ -83,6 +83,79 @@ async function listUsers(req: AuthedRequest, res: Response) {
   return ok(res, { users: users.map(shapeUser), page, page_size: pageSize, total });
 }
 
+function compactPerson(user: any) {
+  return { id: user.id, handle: user.handle, display_name: user.displayName, avatar_url: user.avatarUrl };
+}
+
+// ── GET /admin/users/:id — account review, social graph, content and audit trail ──
+// Deliberately excludes password hashes, OAuth/provider tokens, 2FA secrets and
+// recovery codes. Admin review needs account context, never authentication secrets.
+async function getUserDetails(req: AuthedRequest, res: Response) {
+  const user = await prisma.users.findUnique({
+    where: { id: req.params.id },
+    select: {
+      id: true, handle: true, email: true, displayName: true, bio: true, website: true, location: true,
+      currentCountry: true, currentCity: true, heritageCountries: true, avatarUrl: true, bannerUrl: true,
+      roleTag: true, verified: true, verificationTier: true, isCreator: true, isAdmin: true, isBot: true,
+      isMinor: true, provider: true, twoFactorEnabled: true, phone: true, phoneVerifiedAt: true,
+      online: true, lastSeen: true, onboardingDone: true, interests: true, contentLanguage: true,
+      privateAccount: true, allowDms: true, subscriptionPlan: true, subscriptionStatus: true, subscriptionEndsAt: true,
+      vibesCount: true, connectionsCount: true, followingCount: true, spacesHosted: true, creatorEarningsUsd: true,
+      isSuspended: true, suspendedAt: true, suspendedReason: true, isDeactivated: true, deactivatedAt: true,
+      createdAt: true, updatedAt: true,
+    },
+  });
+  if (!user) return fail(res, 404, "User not found");
+
+  const [access, vibes, followers, following, spaces, activity, notifications, reports] = await Promise.all([
+    rbac.getUserPermissionSummary(user.id),
+    prisma.vibes.findMany({
+      where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 50,
+      select: { id: true, content: true, category: true, replyTo: true, quoteOf: true, isDeleted: true, createdAt: true, likesCount: true, repostsCount: true, repliesCount: true, viewsCount: true },
+    }),
+    prisma.connections.findMany({
+      where: { followingId: user.id }, orderBy: { createdAt: "desc" }, take: 50,
+      include: { usersConnectionsFollowerIdTousers: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } },
+    }),
+    prisma.connections.findMany({
+      where: { followerId: user.id }, orderBy: { createdAt: "desc" }, take: 50,
+      include: { usersConnectionsFollowingIdTousers: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } },
+    }),
+    prisma.spaces.findMany({
+      where: { hostId: user.id }, orderBy: { createdAt: "desc" }, take: 30,
+      select: { id: true, title: true, status: true, listenersCount: true, peakListeners: true, createdAt: true, startedAt: true, endedAt: true },
+    }),
+    prisma.userActivityLog.findMany({
+      where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 100,
+      select: { id: true, action: true, entityType: true, entityId: true, metadata: true, createdAt: true },
+    }),
+    prisma.notifications.findMany({
+      where: { userId: user.id }, orderBy: { createdAt: "desc" }, take: 30,
+      include: { usersNotificationsActorIdTousers: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } },
+    }),
+    prisma.reports.count({ where: { OR: [{ reporterId: user.id }, { reportedUserId: user.id }] } }),
+  ]);
+
+  return ok(res, {
+    user: { ...shapeUser(user), bio: user.bio, website: user.website, location: user.location, current_country: user.currentCountry, current_city: user.currentCity,
+      heritage_countries: user.heritageCountries, banner_url: user.bannerUrl, role_tag: user.roleTag, verification_tier: user.verificationTier,
+      is_minor: user.isMinor, provider: user.provider, two_factor_enabled: user.twoFactorEnabled, phone: user.phone, phone_verified_at: user.phoneVerifiedAt,
+      online: user.online, last_seen: user.lastSeen, onboarding_done: user.onboardingDone, interests: user.interests, content_language: user.contentLanguage,
+      private_account: user.privateAccount, allow_dms: user.allowDms, subscription_plan: user.subscriptionPlan, subscription_status: user.subscriptionStatus,
+      subscription_ends_at: user.subscriptionEndsAt, vibes_count: user.vibesCount, connections_count: user.connectionsCount, following_count: user.followingCount,
+      spaces_hosted: user.spacesHosted, creator_earnings_usd: Number(user.creatorEarningsUsd), updated_at: user.updatedAt },
+    access: { roles: access.globalRoles.map((role: any) => ({ name: role.name, description: role.description })), permissions: access.effectivePermissions },
+    content: { vibes, spaces },
+    connections: {
+      followers: followers.map(row => ({ user: compactPerson(row.usersConnectionsFollowerIdTousers), created_at: row.createdAt })),
+      following: following.map(row => ({ user: compactPerson(row.usersConnectionsFollowingIdTousers), created_at: row.createdAt })),
+    },
+    activity: activity.map(entry => ({ id: entry.id, action: entry.action, entity_type: entry.entityType, entity_id: entry.entityId, metadata: entry.metadata, created_at: entry.createdAt })),
+    notifications: notifications.map(note => ({ id: note.id, type: note.type, body: note.body, vibe_id: note.vibeId, space_id: note.spaceId, created_at: note.createdAt, actor: note.usersNotificationsActorIdTousers ? compactPerson(note.usersNotificationsActorIdTousers) : null })),
+    moderation: { reports_involved: reports },
+  });
+}
+
 // ── POST /admin/users/:id/suspend ─────────────────────────────────────────────
 // A-13: reason is mandatory — a suspension with no recorded "why" leaves
 // nothing for a future reviewer or an appeal to go on.
@@ -142,7 +215,8 @@ async function analyticsTrends(req: AuthedRequest, res: Response) {
   const days = Math.min(90, Math.max(1, parseInt((req.query.days as string) || "30", 10) || 30));
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-  const [newUsers, newVibes, revenue] = await Promise.all([
+  const previousSince = new Date(since.getTime() - days * 24 * 60 * 60 * 1000);
+  const [newUsers, newVibes, revenue, currentUsers, previousUsers, currentVibes, previousVibes, currentConnections, previousConnections, currentEngagement, previousEngagement, currentRevenue, previousRevenue] = await Promise.all([
     prisma.$queryRaw<{ day: Date; count: bigint }[]>`
       SELECT date_trunc('day', created_at) AS day, COUNT(*)::bigint AS count
       FROM users WHERE created_at >= ${since} GROUP BY 1 ORDER BY 1`,
@@ -152,6 +226,16 @@ async function analyticsTrends(req: AuthedRequest, res: Response) {
     prisma.$queryRaw<{ day: Date; total: number }[]>`
       SELECT date_trunc('day', created_at) AS day, COALESCE(SUM(platform_fee_usd), 0)::float AS total
       FROM transactions WHERE created_at >= ${since} GROUP BY 1 ORDER BY 1`,
+    prisma.users.count({ where: { createdAt: { gte: since } } }),
+    prisma.users.count({ where: { createdAt: { gte: previousSince, lt: since } } }),
+    prisma.vibes.count({ where: { createdAt: { gte: since }, isDeleted: false } }),
+    prisma.vibes.count({ where: { createdAt: { gte: previousSince, lt: since }, isDeleted: false } }),
+    prisma.connections.count({ where: { createdAt: { gte: since } } }),
+    prisma.connections.count({ where: { createdAt: { gte: previousSince, lt: since } } }),
+    prisma.$queryRaw<{ count: bigint }[]>`SELECT (SELECT COUNT(*) FROM vibe_likes WHERE created_at >= ${since}) + (SELECT COUNT(*) FROM vibe_reposts WHERE created_at >= ${since}) + (SELECT COUNT(*) FROM vibes WHERE reply_to IS NOT NULL AND created_at >= ${since}) AS count`,
+    prisma.$queryRaw<{ count: bigint }[]>`SELECT (SELECT COUNT(*) FROM vibe_likes WHERE created_at >= ${previousSince} AND created_at < ${since}) + (SELECT COUNT(*) FROM vibe_reposts WHERE created_at >= ${previousSince} AND created_at < ${since}) + (SELECT COUNT(*) FROM vibes WHERE reply_to IS NOT NULL AND created_at >= ${previousSince} AND created_at < ${since}) AS count`,
+    prisma.transactions.aggregate({ where: { createdAt: { gte: since } }, _sum: { platformFeeUsd: true } }),
+    prisma.transactions.aggregate({ where: { createdAt: { gte: previousSince, lt: since } }, _sum: { platformFeeUsd: true } }),
   ]);
 
   const toSeries = (rows: { day: Date }[], valueKey: string) =>
@@ -162,6 +246,10 @@ async function analyticsTrends(req: AuthedRequest, res: Response) {
     new_users: toSeries(newUsers, "count"),
     new_vibes: toSeries(newVibes, "count"),
     revenue_usd: toSeries(revenue, "total"),
+    comparison: {
+      current: { users: currentUsers, vibes: currentVibes, connections: currentConnections, engagement: Number(currentEngagement[0]?.count || 0), revenue_usd: Number(currentRevenue._sum.platformFeeUsd || 0) },
+      previous: { users: previousUsers, vibes: previousVibes, connections: previousConnections, engagement: Number(previousEngagement[0]?.count || 0), revenue_usd: Number(previousRevenue._sum.platformFeeUsd || 0) },
+    },
   });
 }
 
@@ -242,6 +330,6 @@ async function listAuditLog(req: AuthedRequest, res: Response) {
 }
 
 export = {
-  me, listUsers, suspendUser, reinstateUser, deactivateUser,
+  me, listUsers, getUserDetails, suspendUser, reinstateUser, deactivateUser,
   analyticsTrends, moderationQueue, moderationBulkAction, listAuditLog,
 };

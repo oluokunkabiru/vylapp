@@ -57,6 +57,41 @@ async function listVibes(req: AuthedRequest, res: Response) {
   return ok(res, { vibes: vibes.map(shapeVibe), page, page_size: pageSize, total });
 }
 
+function compactActor(user: any) {
+  return user ? { id: user.id, handle: user.handle, display_name: user.displayName, avatar_url: user.avatarUrl } : null;
+}
+
+// ── GET /admin/content/vibes/:id — post plus attributable engagement ─────────
+async function getVibeDetails(req: AuthedRequest, res: Response) {
+  const vibe = await prisma.vibes.findUnique({
+    where: { id: req.params.id },
+    include: { users: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } },
+  });
+  if (!vibe) return fail(res, 404, "Vibe not found");
+
+  const [replies, quotes, likes, reposts, bookmarks, views] = await Promise.all([
+    prisma.vibes.findMany({ where: { replyTo: vibe.id }, orderBy: { createdAt: "desc" }, take: 100, include: { users: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } } }),
+    prisma.vibes.findMany({ where: { quoteOf: vibe.id }, orderBy: { createdAt: "desc" }, take: 100, include: { users: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } } }),
+    prisma.vibeLikes.findMany({ where: { vibeId: vibe.id }, orderBy: { createdAt: "desc" }, take: 100, include: { users: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } } }),
+    prisma.vibeReposts.findMany({ where: { vibeId: vibe.id }, orderBy: { createdAt: "desc" }, take: 100, include: { users: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } } }),
+    prisma.vibeBookmarks.findMany({ where: { vibeId: vibe.id }, orderBy: { createdAt: "desc" }, take: 100, include: { users: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } } }),
+    prisma.vibeViews.findMany({ where: { vibeId: vibe.id }, orderBy: { viewedAt: "desc" }, take: 100, include: { users: { select: { id: true, handle: true, displayName: true, avatarUrl: true } } } }),
+  ]);
+  const event = (type: string, user: any, createdAt: Date, extra: any = {}) => ({ type, actor: compactActor(user), created_at: createdAt, ...extra });
+  return ok(res, {
+    vibe: shapeVibe(vibe),
+    engagement: {
+      totals: { likes: likes.length, reposts: reposts.length, bookmarks: bookmarks.length, replies: replies.length, quotes: quotes.length, views: views.length, anonymous_views: views.filter(view => !view.viewerId).length },
+      likes: likes.map(row => event("like", row.users, row.createdAt)),
+      reposts: reposts.map(row => event("repost", row.users, row.createdAt)),
+      bookmarks: bookmarks.map(row => event("bookmark", row.users, row.createdAt)),
+      views: views.map(row => event("view", row.users, row.viewedAt, { source: row.source })),
+      replies: replies.map(row => ({ ...shapeVibe(row), actor: compactActor(row.users) })),
+      quotes: quotes.map(row => ({ ...shapeVibe(row), actor: compactActor(row.users) })),
+    },
+  });
+}
+
 // ── POST /admin/content/vibes/:id/remove ──────────────────────────────────────
 async function removeVibe(req: AuthedRequest, res: Response) {
   const { reason } = req.body;
@@ -151,4 +186,4 @@ async function spaceParticipants(req: AuthedRequest, res: Response) {
   return ok(res, { participants: shaped });
 }
 
-export = { listVibes, removeVibe, restoreVibe, listSpaces, forceEndSpace, spaceParticipants };
+export = { listVibes, getVibeDetails, removeVibe, restoreVibe, listSpaces, forceEndSpace, spaceParticipants };

@@ -27,6 +27,7 @@ router.get("/me", asyncHandler(adminController.me));
 
 // ── GET /admin/users ─────────────────────────────────────────────────────────
 router.get("/users", requirePermission("admin.users.manage"), asyncHandler(adminController.listUsers));
+router.get("/users/:id", requirePermission("admin.users.manage"), asyncHandler(adminController.getUserDetails));
 
 // ── POST /admin/users/:id/suspend ─────────────────────────────────────────────
 router.post("/users/:id/suspend", requirePermission("admin.users.manage"), asyncHandler(adminController.suspendUser));
@@ -53,6 +54,7 @@ router.get("/audit", requirePermission("admin.audit.read"), asyncHandler(adminCo
 //  CONTENT — Vibes & Spaces  (admin.content.manage)
 // ════════════════════════════════════════════════════════════════════════════
 router.get("/content/vibes",                requirePermission("admin.content.manage"), asyncHandler(adminContentController.listVibes));
+router.get("/content/vibes/:id",            requirePermission("admin.content.manage"), asyncHandler(adminContentController.getVibeDetails));
 router.post("/content/vibes/:id/remove",     requirePermission("admin.content.manage"), asyncHandler(adminContentController.removeVibe));
 router.post("/content/vibes/:id/restore",    requirePermission("admin.content.manage"), asyncHandler(adminContentController.restoreVibe));
 router.get("/content/spaces",                requirePermission("admin.content.manage"), asyncHandler(adminContentController.listSpaces));
