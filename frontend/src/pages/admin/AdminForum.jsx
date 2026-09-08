@@ -3,6 +3,8 @@ import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
 import { humanizeIdentifier } from "../../lib/format.js";
+import { Link } from "react-router-dom";
+import AdminUserLink from "./AdminUserLink.jsx";
 
 const PAGE_SIZE = 20;
 
@@ -113,7 +115,7 @@ function ModeratorsModal({ category, onClose }) {
           <>
             {moderators.map(m => (
               <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border2)" }}>
-                <span style={{ fontSize: 13 }}>@{m.user.handle} <span title={m.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(m.role)})</span></span>
+                <span style={{ fontSize: 13 }}><AdminUserLink handle={m.user.handle} /> <span title={m.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(m.role)})</span></span>
                 <button disabled={busy} onClick={() => remove(m.id)} style={btnStyle("var(--coral)")}>Remove</button>
               </div>
             ))}
@@ -189,7 +191,7 @@ function CategoriesSection({ categories, onReload }) {
               {!c.is_active && <span style={{ color: "var(--coral)", fontSize: 11, fontWeight: 700 }}>inactive</span>}
             </div>
             <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 10 }}>{c.description || "No description"}</div>
-            <div style={{ color: "var(--text3)", fontSize: 11.5, marginBottom: 10 }}>{c.thread_count} threads · /{c.slug}</div>
+            <div style={{ color: "var(--text3)", fontSize: 11.5, marginBottom: 10 }}><Link to="#threads" style={{ color: "var(--sky)", textDecoration: "none" }}>{c.thread_count} threads</Link> · /{c.slug}</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setEditing(c)} style={btnStyle("var(--sky)")}>Edit</button>
               <button onClick={() => setModFor(c)} style={btnStyle("var(--violet-lt)")}>Moderators</button>
@@ -240,7 +242,7 @@ function ThreadsSection({ categories }) {
   };
 
   return (
-    <div>
+    <div id="threads">
       <h2 style={{ fontSize: 17, fontWeight: 800, margin: "0 0 14px" }}>Threads</h2>
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <input value={q} onChange={e => { setPage(0); setQ(e.target.value); }} placeholder="Search title…" style={{ ...inputStyle, flex: 1, minWidth: 200 }} />
@@ -268,7 +270,7 @@ function ThreadsSection({ categories }) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{t.title} {t.is_pinned && <span style={{ color: "var(--violet-lt)", fontSize: 11 }}>PINNED</span>}</div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
-                    @{t.author.handle} · {t.category?.name} · {t.reply_count} replies · {t.vote_score} votes · {new Date(t.created_at).toLocaleDateString()}
+                    <AdminUserLink handle={t.author.handle} /> · {t.category?.name} · {t.reply_count} replies · {t.vote_score} votes · {new Date(t.created_at).toLocaleDateString()}
                   </div>
                 </div>
                 <span title={t.status} style={{ color: THREAD_STATUS_COLORS[t.status] || "var(--text3)", fontWeight: 700, fontSize: 12 }}>{humanizeIdentifier(t.status)}</span>

@@ -3,6 +3,7 @@ import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
 import { humanizeIdentifier } from "../../lib/format.js";
+import AdminUserLink from "./AdminUserLink.jsx";
 
 const PAGE_SIZE = 30;
 
@@ -41,7 +42,7 @@ export default function AdminAudit() {
                   <span style={{ fontSize: 11.5, color: "var(--text3)" }}>{new Date(e.created_at).toLocaleString()}</span>
                 </div>
                 <div style={{ fontSize: 12.5, color: "var(--text2)", marginTop: 4 }}>
-                  by @{e.admin.handle} ({e.admin.display_name})
+                  by <AdminUserLink handle={e.admin.handle} /> ({e.admin.display_name})
                   {e.target_type && ` · target: ${humanizeIdentifier(e.target_type)}${e.target_id ? ` #${e.target_id.slice(0, 8)}` : ""}`}
                 </div>
               </div>

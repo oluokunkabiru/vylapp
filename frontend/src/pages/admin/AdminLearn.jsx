@@ -3,6 +3,7 @@ import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner, numFmt } from "../../components/ui/index.jsx";
 import { humanizeIdentifier } from "../../lib/format.js";
+import AdminUserLink from "./AdminUserLink.jsx";
 
 const PAGE_SIZE = 20;
 
@@ -124,7 +125,7 @@ function CoursesTab() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{c.title}</div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
-                    by @{c.educator.handle} · {humanizeIdentifier(c.category)} · {c.is_free ? "Free" : `$${Number(c.price_usd).toFixed(2)}`}
+                    by <AdminUserLink handle={c.educator.handle} /> · {humanizeIdentifier(c.category)} · {c.is_free ? "Free" : `$${Number(c.price_usd).toFixed(2)}`}
                     · {c.enrolment_count} enrolled · {Number(c.avg_rating).toFixed(1)}★
                   </div>
                 </div>
@@ -203,7 +204,7 @@ function EducatorsTab() {
             {educators.map(e => (
               <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--border2)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{e.user.display_name} <span style={{ color: "var(--text3)", fontWeight: 500 }}>@{e.user.handle}</span></div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{e.user.display_name} <AdminUserLink handle={e.user.handle} /></div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
                     {e.subjects?.join(", ") || "no subjects"} · {e.total_students} students · {e.total_courses} courses · {Number(e.avg_rating).toFixed(1)}★
                   </div>

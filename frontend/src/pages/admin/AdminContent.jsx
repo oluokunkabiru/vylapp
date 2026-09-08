@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
 import { humanizeIdentifier } from "../../lib/format.js";
+import AdminUserLink from "./AdminUserLink.jsx";
 
 const PAGE_SIZE = 20;
 
@@ -125,7 +126,7 @@ function VibesTab() {
               <div key={v.id} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--border2)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, color: "var(--text3)", marginBottom: 4 }}>
-                    @{v.author.handle} · {humanizeIdentifier(v.category)} · {new Date(v.created_at).toLocaleString()}
+                    <AdminUserLink handle={v.author.handle} /> · {humanizeIdentifier(v.category)} · {new Date(v.created_at).toLocaleString()}
                     {v.is_deleted && <span style={{ color: "var(--coral)", fontWeight: 700 }}> · removed</span>}
                   </div>
                   <div style={{ fontSize: 13.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{v.content}</div>
@@ -170,7 +171,7 @@ function VibesTab() {
 }
 
 function Actor({ actor }) {
-  return actor ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Link to={`/admin/users/${encodeURIComponent(actor.handle)}`} style={{ color: "var(--sky)", textDecoration: "none" }}>@{actor.handle}</Link><Link to={`/profile/${actor.handle}`} title="Open public profile" style={{ color: "var(--text3)", fontSize: 11, textDecoration: "none" }}>Public ↗</Link></span> : <span style={{ color: "var(--text3)" }}>Anonymous</span>;
+  return actor ? <AdminUserLink handle={actor.handle} /> : <span style={{ color: "var(--text3)" }}>Anonymous</span>;
 }
 
 function VibeDetailModal({ detail, loading, onClose }) {
@@ -280,7 +281,7 @@ function SpacesTab() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{s.title}</div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
-                    hosted by @{s.host.handle} · {s.listeners_count} listeners (peak {s.peak_listeners})
+                    hosted by <AdminUserLink handle={s.host.handle} /> · <button onClick={() => viewParticipants(s.id)} style={{ color: "var(--sky)", font: "inherit", padding: 0, border: 0, background: "none", cursor: "pointer" }}>{s.listeners_count} listeners</button> (peak {s.peak_listeners})
                     {s.total_tips_usd > 0 && ` · $${Number(s.total_tips_usd).toFixed(2)} tips`}
                   </div>
                 </div>
@@ -309,7 +310,7 @@ function SpacesTab() {
               <>
                 {participants.map((p, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border2)" }}>
-                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><Link to={`/admin/users/${encodeURIComponent(p.user.handle)}`} style={{ fontSize: 13, color: "var(--sky)", textDecoration: "none" }}>@{p.user.handle}</Link><Link to={`/profile/${p.user.handle}`} title="Open public profile" style={{ color: "var(--text3)", fontSize: 11, textDecoration: "none" }}>Public ↗</Link><span title={p.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(p.role)})</span></span>
+                    <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><AdminUserLink handle={p.user.handle} /><span title={p.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(p.role)})</span></span>
                     <span style={{ color: "var(--text3)", fontSize: 12 }}>{new Date(p.joined_at).toLocaleTimeString()}</span>
                   </div>
                 ))}

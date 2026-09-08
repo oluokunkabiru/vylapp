@@ -3,6 +3,7 @@ import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
 import { humanizeIdentifier } from "../../lib/format.js";
+import AdminUserLink from "./AdminUserLink.jsx";
 
 const PAGE_SIZE = 20;
 const usd = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
@@ -146,7 +147,7 @@ function PayoutsTab() {
             {payouts.map(p => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--border2)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{usd(p.amount_usd)} <span style={{ color: "var(--text3)", fontWeight: 500 }}>to @{p.creator.handle}</span></div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{usd(p.amount_usd)} <span style={{ color: "var(--text3)", fontWeight: 500 }}>to <AdminUserLink handle={p.creator.handle} /></span></div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
                     {new Date(p.period_start).toLocaleDateString()} – {new Date(p.period_end).toLocaleDateString()}
                     {p.failure_reason && <span style={{ color: "var(--coral)" }}> · {p.failure_reason}</span>}
@@ -218,7 +219,7 @@ function CreatorsTab() {
             {creators.map(c => (
               <div key={c.user.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--border2)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{c.user.display_name} <span style={{ color: "var(--text3)", fontWeight: 500 }}>@{c.user.handle}</span></div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{c.user.display_name} <AdminUserLink handle={c.user.handle} /></div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
                     {c.subscriber_count} subscribers · {c.stripe_onboarded ? "Stripe connected" : "Stripe not connected"} · payout {humanizeIdentifier(c.payout_schedule)}
                   </div>
@@ -283,7 +284,7 @@ function SubscribersTab() {
             {subscribers.map(s => (
               <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--border2)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>{s.user.display_name} <span style={{ color: "var(--text3)", fontWeight: 500 }}>@{s.user.handle}</span></div>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>{s.user.display_name} <AdminUserLink handle={s.user.handle} /></div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
                     {plans[s.plan]?.name || humanizeIdentifier(s.plan)} · {usd(s.price_usd)}/{humanizeIdentifier(s.billing_period).toLowerCase()} · renews {s.current_period_end ? new Date(s.current_period_end).toLocaleDateString() : "—"}
                   </div>
