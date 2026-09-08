@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
@@ -49,6 +49,7 @@ const inputStyle = {
 // ── Vibes tab ──────────────────────────────────────────────────────────────
 function VibesTab() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [vibes, setVibes] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -59,10 +60,6 @@ function VibesTab() {
   const [busyId, setBusyId] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [reason, setReason] = useState("");
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [detail, setDetail] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const selectedId = searchParams.get("vibe");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -77,14 +74,7 @@ function VibesTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    if (!selectedId) { setDetail(null); return; }
-    setDetailLoading(true); setDetail(null);
-    api.get(`/admin/content/vibes/${selectedId}`).then(setDetail).catch(e => toast(e.message, "error")).finally(() => setDetailLoading(false));
-  }, [selectedId]); // eslint-disable-line
-
-  const inspect = (id) => setSearchParams({ vibe: id });
-  const closeInspect = () => setSearchParams({});
+  const inspect = (id) => navigate(`/admin/content/vibes/${id}`);
 
   const remove = async () => {
     setBusyId(removeTarget);
@@ -165,7 +155,6 @@ function VibesTab() {
         </div>
       )}
 
-      {selectedId && <VibeDetailModal detail={detail} loading={detailLoading} onClose={closeInspect} />}
     </>
   );
 }
@@ -189,13 +178,28 @@ function VibeDetailModal({ detail, loading, onClose }) {
             <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{vibe.content || "Media-only vibe"}</div>
             <div style={metricGrid}>{Object.entries(detail.engagement.totals).map(([k, value]) => <div key={k}><div style={metricLabel}>{humanizeIdentifier(k)}</div><div style={{ fontWeight: 800 }}>{value}</div></div>)}</div>
           </section>
-          <section style={sectionStyle}><SectionTitle title={`Comments / replies (${detail.engagement.replies.length})`} />{detail.engagement.replies.map(reply => <div key={reply.id} style={rowStyle}><div><Actor actor={reply.actor} /> <a href={`/admin/content?vibe=${reply.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 6 }}>{reply.content || "Media-only reply"}</a></div><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(reply.created_at).toLocaleString()}</span></div>)}{!detail.engagement.replies.length && <EmptyLine text="No replies" />}</section>
-          <section style={sectionStyle}><SectionTitle title={`Quoted posts (${detail.engagement.quotes.length})`} />{detail.engagement.quotes.map(quote => <div key={quote.id} style={rowStyle}><div><Actor actor={quote.actor} /> <a href={`/admin/content?vibe=${quote.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 6 }}>{quote.content || "Media-only quote"}</a></div><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(quote.created_at).toLocaleString()}</span></div>)}{!detail.engagement.quotes.length && <EmptyLine text="No quote posts" />}</section>
+          <section style={sectionStyle}><SectionTitle title={`Comments / replies (${detail.engagement.replies.length})`} />{detail.engagement.replies.map(reply => <div key={reply.id} style={rowStyle}><div><Actor actor={reply.actor} /> <Link to={`/admin/content/vibes/${reply.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 6 }}>{reply.content || "Media-only reply"}</Link></div><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(reply.created_at).toLocaleString()}</span></div>)}{!detail.engagement.replies.length && <EmptyLine text="No replies" />}</section>
+          <section style={sectionStyle}><SectionTitle title={`Quoted posts (${detail.engagement.quotes.length})`} />{detail.engagement.quotes.map(quote => <div key={quote.id} style={rowStyle}><div><Actor actor={quote.actor} /> <Link to={`/admin/content/vibes/${quote.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 6 }}>{quote.content || "Media-only quote"}</Link></div><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(quote.created_at).toLocaleString()}</span></div>)}{!detail.engagement.quotes.length && <EmptyLine text="No quote posts" />}</section>
             {groups.map(([title, events]) => <section key={title} style={sectionStyle}><SectionTitle title={`${title} (${events.length})`} />{events.map((event, index) => <div key={`${event.created_at}-${index}`} style={rowStyle}><span><Actor actor={event.actor} />{event.source && <span style={{ color: "var(--text3)" }}> · {event.source}</span>}</span><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(event.created_at).toLocaleString()}</span></div>)}{!events.length && <EmptyLine text={`No ${title.toLowerCase()} recorded`} />}</section>)}
         </>}
       </div>
     </div>
   );
+}
+
+function AdminVibeDetail() {
+  const { vibeId } = useParams();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api.get(`/admin/content/vibes/${vibeId}`).then(setDetail).catch(e => toast(e.message, "error")).finally(() => setLoading(false));
+  }, [vibeId]); // eslint-disable-line
+
+  return <VibeDetailModal detail={detail} loading={loading} onClose={() => navigate("/admin/content")} />;
 }
 
 function SectionTitle({ title }) { return <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 10 }}>{title}</div>; }
@@ -328,7 +332,9 @@ function SpacesTab() {
 }
 
 export default function AdminContent() {
+  const { vibeId } = useParams();
   const [tab, setTab] = useState("vibes");
+  if (vibeId) return <AdminVibeDetail />;
   return (
     <div style={{ padding: "28px 32px 60px" }}>
       <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.5px", margin: "0 0 20px" }}>Content</h1>

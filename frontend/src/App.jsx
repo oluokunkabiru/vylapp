@@ -205,6 +205,7 @@ function AdminApp() {
       <Route path="users" element={<AdminPermission permission="admin.users.manage"><AdminUsers /></AdminPermission>} />
       <Route path="users/:handle" element={<AdminPermission permission="admin.users.manage"><AdminUserDetail /></AdminPermission>} />
           <Route path="content" element={<AdminPermission permission="admin.content.manage"><AdminContent /></AdminPermission>} />
+          <Route path="content/vibes/:vibeId" element={<AdminPermission permission="admin.content.manage"><AdminContent /></AdminPermission>} />
           <Route path="moderation" element={<AdminPermission permission="admin.content.manage"><AdminModeration /></AdminPermission>} />
           <Route path="learn" element={<AdminPermission permission="learn.manage"><AdminLearn /></AdminPermission>} />
           <Route path="forum" element={<AdminPermission permission="admin.content.manage"><AdminForum /></AdminPermission>} />
