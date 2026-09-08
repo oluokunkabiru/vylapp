@@ -55,6 +55,40 @@ function Card({ label, value, color }) {
   );
 }
 
+function PaymentProviders() {
+  const toast = useToast();
+  const [data, setData] = useState(null);
+  const [enabled, setEnabled] = useState([]);
+  const [defaultProvider, setDefaultProvider] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(() => {
+    api.get("/admin/monetization/payment-providers").then(result => {
+      setData(result); setEnabled(result.settings.enabled || []); setDefaultProvider(result.settings.default_provider || "");
+    }).catch(e => toast(e.message, "error"));
+  }, []); // eslint-disable-line
+  useEffect(() => { load(); }, [load]);
+
+  const toggle = (provider) => {
+    if (!provider.configured) return;
+    setEnabled(current => current.includes(provider.id) ? current.filter(id => id !== provider.id) : [...current, provider.id]);
+    if (defaultProvider === provider.id) setDefaultProvider("");
+  };
+  const save = async () => {
+    if (!enabled.length) return toast("Select at least one payment method", "error");
+    setSaving(true);
+    try {
+      await api.put("/admin/monetization/payment-providers", { enabled, default_provider: enabled.includes(defaultProvider) ? defaultProvider : enabled[0] });
+      toast("Payment methods saved"); load();
+    } catch (e) { toast(e.message, "error"); } finally { setSaving(false); }
+  };
+  if (!data) return null;
+  return <section style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 18, padding: 20, marginBottom: 28 }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 14, alignItems: "flex-start", marginBottom: 14 }}><div><div style={{ fontSize: 17, fontWeight: 850 }}>Payment methods</div><div style={{ color: "var(--text3)", fontSize: 12.5, marginTop: 4 }}>Choose which configured gateway payment modules can offer. Secret keys are stored only on the server.</div></div><button disabled={saving} onClick={save} style={btnStyle("var(--violet-lt)")}>{saving ? "Saving…" : "Save methods"}</button></div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 10 }}>{data.providers.map(provider => <label key={provider.id} style={{ display: "block", padding: 14, borderRadius: 12, border: `1px solid ${enabled.includes(provider.id) ? "var(--violet-border)" : "var(--border2)"}`, opacity: provider.configured ? 1 : 0.58, cursor: provider.configured ? "pointer" : "not-allowed" }}><div style={{ display: "flex", gap: 9, alignItems: "center" }}><input type="checkbox" checked={enabled.includes(provider.id)} disabled={!provider.configured} onChange={() => toggle(provider)} /><span style={{ fontWeight: 800, fontSize: 14 }}>{provider.label}</span></div><div style={{ color: provider.configured ? "var(--green)" : "var(--coral)", fontSize: 11.5, marginTop: 8 }}>{provider.configured ? "Server key configured" : "Add its server key to enable"}</div><div style={{ color: "var(--text3)", fontSize: 11, marginTop: 4 }}>{provider.currencies.join(" · ")}</div>{enabled.includes(provider.id) && <label style={{ display: "flex", gap: 6, alignItems: "center", color: "var(--text2)", fontSize: 11.5, marginTop: 10 }}><input type="radio" name="default-payment-provider" checked={defaultProvider === provider.id} onChange={() => setDefaultProvider(provider.id)} /> Default checkout</label>}</label>)}</div>
+  </section>;
+}
+
 // ── Overview cards + breakdown ─────────────────────────────────────────────
 function Overview() {
   const [data, setData] = useState(null);
@@ -307,6 +341,7 @@ export default function AdminMonetization() {
     <div style={{ padding: "28px 32px 60px" }}>
       <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.5px", margin: "0 0 20px" }}>Monetization</h1>
       <Overview />
+      <PaymentProviders />
       <Tabs tab={tab} setTab={setTab} />
       {tab === "payouts" && <PayoutsTab />}
       {tab === "creators" && <CreatorsTab />}

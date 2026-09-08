@@ -14,6 +14,7 @@ import adminContentController from "../controllers/adminContent.controller";
 import adminLearnController from "../controllers/adminLearn.controller";
 import adminForumController from "../controllers/adminForum.controller";
 import adminMonetizationController from "../controllers/adminMonetization.controller";
+import adminPaymentsController from "../controllers/adminPayments.controller";
 import adminSettingsController from "../controllers/adminSettings.controller";
 
 const { authenticate, requireAdmin } = authMiddleware;
@@ -95,6 +96,8 @@ router.post("/monetization/payouts/:id/mark-paid",  requirePermission("creator.m
 router.post("/monetization/payouts/:id/mark-failed", requirePermission("creator.manage"), asyncHandler(adminMonetizationController.markPayoutFailed));
 router.get("/monetization/creators",                requirePermission("creator.manage"), asyncHandler(adminMonetizationController.listCreators));
 router.get("/monetization/subscribers",             requirePermission("creator.manage"), asyncHandler(adminMonetizationController.listSubscribers));
+router.get("/monetization/payment-providers",       requirePermission("creator.manage"), asyncHandler(adminPaymentsController.getPaymentSettings));
+router.put("/monetization/payment-providers",       requirePermission("creator.manage"), asyncHandler(adminPaymentsController.updatePaymentSettings));
 
 // ════════════════════════════════════════════════════════════════════════════
 //  SETTINGS — App config & feature flags  (admin.system.config)

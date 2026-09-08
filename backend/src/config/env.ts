@@ -31,6 +31,15 @@ const env = {
   translationEnabled: (process.env.TRANSLATION_ENABLED || "true").toLowerCase() !== "false",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || null,
 
+  // Payment credentials are deliberately environment-only. Administrators can
+  // select enabled gateways in the console, but never enter or retrieve a
+  // secret key through the browser or database.
+  payments: {
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY || null,
+    paystackSecretKey: process.env.PAYSTACK_SECRET_KEY || null,
+    flutterwaveSecretKey: process.env.FLUTTERWAVE_SECRET_KEY || null,
+  },
+
   // I-02: phone + one-time-code sign-in. "mock" (default) needs no SMS
   // account at all — it always accepts `otpMockCode` (also logged server-side
   // so a developer never has to guess it) instead of sending a real text.
