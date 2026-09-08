@@ -139,6 +139,11 @@ html[dir="rtl"] .vy-desktop-main {
   border-right: 0 !important;
   border-left: 1px solid var(--border2) !important;
 }
+
+/* Route content lives in a narrow desktop reading column. Flex children must
+   be allowed to shrink instead of painting into the adjacent right rail. */
+.vy-desktop-main, .vy-desktop-main > * { min-width: 0; }
+.vy-desktop-main { overflow-x: hidden; }
 html[dir="rtl"] .vy-sidebar,
 html[dir="rtl"] .vy-message-list,
 html[dir="rtl"] .auth-brand-panel {

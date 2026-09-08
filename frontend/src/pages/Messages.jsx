@@ -454,7 +454,7 @@ export default function Messages({ lang, onClearBadge }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedConversationId = searchParams.get("conversation");
 
   useEffect(() => {
@@ -504,12 +504,24 @@ export default function Messages({ lang, onClearBadge }) {
   const onGroupCreated = (conversationId, name) => {
     setGroupModalOpen(false);
     setActive({ id: conversationId, type: "group", name, otherUser: null });
+    setSearchParams({ conversation: conversationId });
     loadConvos().catch(() => {});
   };
 
   const onLeftGroup = () => {
     setActive(null);
+    setSearchParams({});
     loadConvos().catch(() => {});
+  };
+
+  const selectConversation = (conversation) => {
+    setActive(conversation);
+    setSearchParams({ conversation: conversation.id });
+  };
+
+  const closeConversation = () => {
+    setActive(null);
+    setSearchParams({});
   };
 
   if (!user) return <Empty emoji="💬" title="Sign in to message" sub="Connect with the community in private." />;
@@ -545,13 +557,15 @@ export default function Messages({ lang, onClearBadge }) {
         : <RequestList requests={requests} onAccept={acceptRequest} onDecline={declineRequest} />)
     : (convos.length === 0
         ? <Empty emoji="💬" title="No conversations yet" sub="Go to a profile and start a DM, or create a group." />
-        : <ConversationList convos={convos} active={active} onSelect={setActive} />);
+        : <ConversationList convos={convos} active={active} onSelect={selectConversation} />);
 
-  // Desktop: split pane; mobile: list or chat
-  if (isMobile) {
+  // The shell gives this route a focused 480px reading column on desktop. A
+  // 320px inbox plus chat pane cannot fit there and previously painted over
+  // the right rail. An open chat therefore uses the full route pane.
+  if (isMobile || active) {
     if (active) return (
-      <div style={{ height:"calc(100vh - 112px)", display:"flex", flexDirection:"column" }}>
-        <ChatWindow convo={active} lang={lang} onBack={()=>setActive(null)} onLeft={onLeftGroup} />
+      <div style={{ height:isMobile ? "calc(100vh - 112px)" : "100vh", minWidth:0, display:"flex", flexDirection:"column" }}>
+        <ChatWindow convo={active} lang={lang} onBack={closeConversation} onLeft={onLeftGroup} />
         {groupModalOpen && <NewGroupModal onClose={()=>setGroupModalOpen(false)} onCreated={onGroupCreated} />}
       </div>
     );
