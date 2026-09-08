@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../lib/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
@@ -45,6 +46,9 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted,
   const [reportDetail, setReportDetail] = useState("");
   const [reportBusy, setReportBusy] = useState(false);
   const isMine = !!user && user.handle === vibe.author?.handle;
+  const [followingAuthor, setFollowingAuthor] = useState(vibe.author?.viewerFollows ?? false);
+  const [connectionRequested, setConnectionRequested] = useState(vibe.author?.connectionRequested ?? false);
+  const [connecting, setConnecting] = useState(false);
 
   const startEdit = () => { setEditText(vibe.content); setIsEditing(true); };
   const cancelEdit = () => setIsEditing(false);
@@ -64,6 +68,16 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted,
       onDeleted?.(vibe.id);
       toast("Vibe deleted");
     } catch (e) { toast(e.message, "error"); }
+  };
+  const connectAuthor = async () => {
+    if (!user) { toast("Sign in to connect", "error"); return; }
+    setConnecting(true);
+    try {
+      const result = await api.post(`/users/${vibe.author.id}/connect`);
+      if (result.status === "requested") setConnectionRequested(true);
+      else setFollowingAuthor(true);
+      toast(result.status === "requested" ? `Connection request sent to ${vibe.author.displayName}` : `Connected with ${vibe.author.displayName} ✓`);
+    } catch (e) { toast(e.message, "error"); } finally { setConnecting(false); }
   };
   const [replies, setReplies] = useState([]);
   const [showReplies, setShowReplies] = useState(false);
@@ -242,10 +256,10 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted,
     <article style={{ borderBottom:"1px solid var(--border2)", paddingBottom:14, opacity: isPending ? 0.6 : 1, transition:"opacity var(--duration-base) var(--ease-standard)" }}>
       {/* Header */}
       <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px" }}>
-        <Avatar user={vibe.author} size={38} />
+        <Link to={`/profile/${vibe.author?.handle}`} aria-label={`Open ${vibe.author?.displayName || "author"}'s profile`} style={{ display:"flex", flexShrink:0 }}><Avatar user={vibe.author} size={38} /></Link>
         <div style={{ flex:1, minWidth:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:5 }}>
-            <span style={{ fontWeight:800, fontSize:14 }}>{vibe.author?.displayName}</span>
+            <Link to={`/profile/${vibe.author?.handle}`} style={{ color:"var(--text)", textDecoration:"none", fontWeight:800, fontSize:14 }}>{vibe.author?.displayName}</Link>
             {vibe.author?.verified && <VerifiedBadge />}
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:2 }}>
@@ -255,6 +269,8 @@ export default function PostCard({ vibe: initialVibe, lang, firstTip, onDeleted,
             </span>
           </div>
         </div>
+        {!isPending && !isMine && !followingAuthor && !connectionRequested && <button disabled={connecting} onClick={connectAuthor} style={{ border:"1px solid var(--violet-border)", background:"var(--violet-dim)", color:"var(--violet-lt)", borderRadius:999, padding:"6px 10px", fontSize:11.5, fontWeight:800, cursor:"pointer", flexShrink:0 }}>{connecting ? "Connecting…" : "Connect"}</button>}
+        {!isPending && !isMine && (followingAuthor || connectionRequested) && <Link to={`/profile/${vibe.author?.handle}`} style={{ color:"var(--text3)", textDecoration:"none", fontSize:11.5, fontWeight:700, flexShrink:0 }}>{connectionRequested ? "Requested" : "Connected"}</Link>}
         {!isPending && (
           isMine ? (
             <Menu
