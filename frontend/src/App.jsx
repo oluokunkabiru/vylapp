@@ -5,7 +5,7 @@ import { getSocket } from "./lib/socket.js";
 import { isRtl } from "./lib/languages.js";
 import i18n from "./i18n.js";
 
-import AdminGuard from "./pages/admin/AdminGuard.jsx";
+import AdminGuard, { AdminPermission } from "./pages/admin/AdminGuard.jsx";
 import AdminLayout from "./pages/admin/AdminLayout.jsx";
 import AdminOverview from "./pages/admin/AdminOverview.jsx";
 import AdminUsers from "./pages/admin/AdminUsers.jsx";
@@ -201,15 +201,15 @@ function AdminApp() {
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminOverview />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="content" element={<AdminContent />} />
-          <Route path="moderation" element={<AdminModeration />} />
-          <Route path="learn" element={<AdminLearn />} />
-          <Route path="forum" element={<AdminForum />} />
-          <Route path="monetization" element={<AdminMonetization />} />
-          <Route path="roles" element={<AdminRoles />} />
-          <Route path="settings" element={<AdminSettings />} />
-          <Route path="audit" element={<AdminAudit />} />
+          <Route path="users" element={<AdminPermission permission="admin.users.manage"><AdminUsers /></AdminPermission>} />
+          <Route path="content" element={<AdminPermission permission="admin.content.manage"><AdminContent /></AdminPermission>} />
+          <Route path="moderation" element={<AdminPermission permission="admin.content.manage"><AdminModeration /></AdminPermission>} />
+          <Route path="learn" element={<AdminPermission permission="learn.manage"><AdminLearn /></AdminPermission>} />
+          <Route path="forum" element={<AdminPermission permission="admin.content.manage"><AdminForum /></AdminPermission>} />
+          <Route path="monetization" element={<AdminPermission permission="creator.manage"><AdminMonetization /></AdminPermission>} />
+          <Route path="roles" element={<AdminPermission permission="admin.roles.manage"><AdminRoles /></AdminPermission>} />
+          <Route path="settings" element={<AdminPermission permission="admin.system.config"><AdminSettings /></AdminPermission>} />
+          <Route path="audit" element={<AdminPermission permission="admin.audit.read"><AdminAudit /></AdminPermission>} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>
       </Routes>

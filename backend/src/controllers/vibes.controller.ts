@@ -51,7 +51,8 @@ const VIBE_FIELDS = `
   v.event_title, v.event_time, v.event_reminded_count, v.event_interested_count,
   v.likes_count, v.reposts_count, v.replies_count, v.views_count, v.bookmarks_count,
   v.is_autopilot, v.impact_badge, v.created_at, v.is_edited, v.is_sensitive,
-  u.handle, u.display_name, u.avatar_color, u.avatar_initials, u.avatar_url, u.verified, u.role_tag
+  u.handle, u.display_name, u.avatar_color, u.avatar_initials, u.avatar_url,
+  (u.verification_tier <> 'none') AS verified, u.role_tag
 `;
 
 function shapeVibe(row: any, viewerState?: any) {

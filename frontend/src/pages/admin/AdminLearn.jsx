@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner, numFmt } from "../../components/ui/index.jsx";
+import { humanizeIdentifier } from "../../lib/format.js";
 
 const PAGE_SIZE = 20;
 
@@ -123,11 +124,11 @@ function CoursesTab() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{c.title}</div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
-                    by @{c.educator.handle} · {c.category} · {c.is_free ? "Free" : `$${Number(c.price_usd).toFixed(2)}`}
+                    by @{c.educator.handle} · {humanizeIdentifier(c.category)} · {c.is_free ? "Free" : `$${Number(c.price_usd).toFixed(2)}`}
                     · {c.enrolment_count} enrolled · {Number(c.avg_rating).toFixed(1)}★
                   </div>
                 </div>
-                <span style={{ color: COURSE_STATUS_COLORS[c.status] || "var(--text3)", fontWeight: 700, fontSize: 12, textTransform: "capitalize" }}>{c.status.replace("_", " ")}</span>
+                <span title={c.status} style={{ color: COURSE_STATUS_COLORS[c.status] || "var(--text3)", fontWeight: 700, fontSize: 12 }}>{humanizeIdentifier(c.status)}</span>
                 <div style={{ display: "flex", gap: 8 }}>
                   {c.status !== "published" && (
                     <button disabled={busyId === c.id} onClick={() => act(c.id, "publish", "Course published")} style={btnStyle("var(--green)")}>Publish</button>
@@ -207,7 +208,7 @@ function EducatorsTab() {
                     {e.subjects?.join(", ") || "no subjects"} · {e.total_students} students · {e.total_courses} courses · {Number(e.avg_rating).toFixed(1)}★
                   </div>
                 </div>
-                <span style={{ color: EDUCATOR_STATUS_COLORS[e.status] || "var(--text3)", fontWeight: 700, fontSize: 12, textTransform: "capitalize" }}>{e.status}</span>
+                <span title={e.status} style={{ color: EDUCATOR_STATUS_COLORS[e.status] || "var(--text3)", fontWeight: 700, fontSize: 12 }}>{humanizeIdentifier(e.status)}</span>
                 <div style={{ display: "flex", gap: 8 }}>
                   {e.status !== "verified" && (
                     <button disabled={busyId === e.id} onClick={() => act(e.id, "verify", "Educator verified")} style={btnStyle("var(--green)")}>Verify</button>

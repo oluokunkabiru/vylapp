@@ -36,7 +36,7 @@ function publicUser(row: any) {
   return {
     id: row.id, handle: row.handle, displayName: row.display_name, bio: row.bio,
     avatarColor: row.avatar_color, avatarInitials: row.avatar_initials, avatarUrl: row.avatar_url,
-    roleTag: row.role_tag, verified: row.verified, verificationTier: row.verification_tier,
+    roleTag: row.role_tag, verified: row.verification_tier && row.verification_tier !== "none", verificationTier: row.verification_tier,
     isCreator: row.is_creator, onboardingStep: row.onboarding_step, onboardingDone: row.onboarding_done,
     interests: row.interests, subscriptionPlan: row.subscription_plan,
     vibesCount: row.vibes_count, connectionsCount: row.connections_count, followingCount: row.following_count,
@@ -162,12 +162,27 @@ async function register(req: Request, res: Response) {
 
 // ── POST /auth/login ───────────────────────────────────────────────────────────
 async function login(req: Request, res: Response) {
-  const { emailOrHandle, password } = req.body;
+  const { emailOrHandle, password, twoFactorCode } = req.body;
   if (!emailOrHandle || !password) return fail(res, 400, "emailOrHandle and password are required");
   const user = await prisma.users.findFirst({ where: { OR: [{ email: emailOrHandle }, { handle: emailOrHandle }] } });
   if (!user) return fail(res, 401, "Invalid credentials");
   if (user.isSuspended) return fail(res, 403, "Account suspended");
   if (!crypto.verifyPassword(password, user.passwordHash)) return fail(res, 401, "Invalid credentials");
+
+  if (user.twoFactorEnabled) {
+    const code = typeof twoFactorCode === "string" ? twoFactorCode.trim() : "";
+    if (!code) return ok(res, { twoFactorRequired: true });
+    const recoveryCodes = Array.isArray(user.recoveryCodes) ? user.recoveryCodes : [];
+    const recoveryCode = recoveryCodes.find(saved => saved.toLowerCase() === code.toLowerCase());
+    const validTotp = !!user.twoFactorSecret && crypto.verifyTOTP(code.replace(/\s/g, ""), user.twoFactorSecret);
+    if (!validTotp && !recoveryCode) return fail(res, 401, "Invalid two-step verification code");
+    if (recoveryCode) {
+      await prisma.users.update({
+        where: { id: user.id },
+        data: { recoveryCodes: recoveryCodes.filter(saved => saved !== recoveryCode) },
+      });
+    }
+  }
 
   await prisma.users.update({ where: { id: user.id }, data: { online: true, lastSeen: new Date() } });
 
@@ -217,6 +232,100 @@ async function me(req: AuthedRequest, res: Response) {
   // authCookies.ts's setAuthCookies for why).
   const csrfToken = req.cookies?.[authCookies.CSRF_COOKIE] || null;
   return ok(res, { user: publicUser(toSnakeUser(user)), csrfToken });
+}
+
+// ── GET /auth/account-status ─────────────────────────────────────────────────
+// Private, self-only account assurance summary for the user dashboard. Keep
+// authentication factors separate from the public verification tier: an email
+// confirmation proves control of an inbox, not the person's real-world identity.
+function maskPhone(phone: string | null) {
+  if (!phone) return null;
+  const visible = phone.slice(-4);
+  return `${phone.startsWith("+") ? "+" : ""}${"•".repeat(Math.max(4, phone.length - visible.length - (phone.startsWith("+") ? 1 : 0)))}${visible}`;
+}
+
+async function accountStatus(req: AuthedRequest, res: Response) {
+  const [user, access] = await Promise.all([
+    prisma.users.findUnique({
+      where: { id: req.user.id },
+      select: {
+        email: true, phone: true, phoneVerifiedAt: true, displayName: true,
+        handle: true, bio: true, avatarUrl: true, location: true,
+        currentCountry: true, currentCity: true, language: true,
+        contentLanguage: true, subscriptionPlan: true, provider: true,
+        verified: true, verificationTier: true, twoFactorEnabled: true,
+        isCreator: true, isMinor: true, createdAt: true,
+      },
+    }),
+    rbac.getUserPermissionSummary(req.user.id),
+  ]);
+
+  if (!user) return fail(res, 404, "User not found");
+
+  const permissions = new Set(access.effectivePermissions);
+  const can = (permission: string) => permissions.has("*") || permissions.has(permission);
+  const roles = access.globalRoles.map((role: any) => ({
+    name: role.name,
+    description: role.description,
+    assignedAt: role.assigned_at,
+    expiresAt: role.expires_at,
+  }));
+  // A few legacy/demo accounts predate RBAC assignment rows. They are still
+  // ordinary authenticated users, so present that baseline role rather than
+  // showing a confusing empty role list on their dashboard.
+  if (!roles.length) roles.push({
+    name: "user",
+    description: "Standard Vylapp member",
+    assignedAt: null,
+    expiresAt: null,
+  });
+
+  const dashboards = [
+    { key: "user", label: "User dashboard", description: "Account, activity and verification", path: "/dashboard" },
+  ];
+  if (can("admin.access")) {
+    dashboards.push({ key: "admin", label: "Admin console", description: "Role-based platform operations", path: "/admin" });
+  }
+  if (can("creator.analytics.own") || user.isCreator) {
+    dashboards.push({ key: "creator", label: "Creator dashboard", description: "Earnings and creator account", path: "/creator" });
+  }
+
+  const hasContactableEmail = !user.email.endsWith(".invalid");
+  const profileFields = [user.displayName, user.handle, user.bio, user.avatarUrl, user.location || user.currentCity || user.currentCountry];
+  const profileCompleted = profileFields.filter(Boolean).length;
+  const identityVerified = user.verificationTier !== "none";
+  const assuranceScore = Math.min(100,
+    (hasContactableEmail && user.verified ? 25 : 0) +
+    (user.phoneVerifiedAt ? 20 : 0) +
+    (user.twoFactorEnabled ? 10 : 0) +
+    (identityVerified ? 35 : 0) +
+    Math.round((profileCompleted / profileFields.length) * 10),
+  );
+
+  return ok(res, {
+    roles,
+    dashboards,
+    account: {
+      email: hasContactableEmail ? user.email : null,
+      phone: maskPhone(user.phone),
+      provider: user.provider,
+      memberSince: user.createdAt,
+      subscriptionPlan: user.subscriptionPlan,
+      uiLanguage: user.language,
+      contentLanguages: user.contentLanguage,
+      location: user.location || [user.currentCity, user.currentCountry].filter(Boolean).join(", ") || null,
+      isMinor: user.isMinor,
+    },
+    verification: {
+      assuranceScore,
+      assuranceLevel: assuranceScore >= 80 ? "strong" : assuranceScore >= 45 ? "standard" : "basic",
+      email: { available: hasContactableEmail, verified: hasContactableEmail && user.verified },
+      phone: { available: !!user.phone, verified: !!user.phoneVerifiedAt },
+      twoFactor: { enabled: user.twoFactorEnabled },
+      identity: { verified: identityVerified, tier: user.verificationTier },
+      profile: { completed: profileCompleted, total: profileFields.length },
+    },
+  });
 }
 
 // ── POST /auth/change-password ─────────────────────────────────────────────────
@@ -630,7 +739,7 @@ async function oauthCallback(req: Request, res: Response) {
 }
 
 export = {
-  publicUser, register, login, refresh, logout, me, changePassword, verifyEmail, resendVerification,
+  publicUser, register, login, refresh, logout, me, accountStatus, changePassword, verifyEmail, resendVerification,
   enroll2FA, verify2FA, forgotPassword, resetPassword,
   requestPhoneOtp, verifyPhoneOtp,
   oauthProviders, oauthStart, oauthCallback,

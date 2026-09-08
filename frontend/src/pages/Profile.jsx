@@ -23,6 +23,7 @@ export default function Profile() {
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [ravenTier, setRavenTier] = useState(null);
+  const [openingChat, setOpeningChat] = useState(false);
 
   useEffect(() => {
     const targetHandle = handle || me?.handle;
@@ -89,7 +90,7 @@ export default function Profile() {
           <div>
             <div style={{ display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
               <span style={{ fontWeight:800, fontSize:20 }}>{profile.displayName}</span>
-              {profile.verified && <VerifiedBadge size={16} />}
+              {profile.verificationTier && profile.verificationTier !== "none" && <VerifiedBadge size={16} />}
               {ravenTier && <span title={ravenTier.label} style={{ fontSize:18 }}>{ravenTier.badge}</span>}
             </div>
             <div style={{ color:"var(--text2)", fontSize:13.5, fontFamily:"var(--mono)", marginTop:2 }}>@{profile.handle}</div>
@@ -107,11 +108,16 @@ export default function Profile() {
                 <PrimaryButton onClick={toggleFollow} sx={{ padding:"10px 18px" }}>
                   {following ? "Connected" : "Connect"}
                 </PrimaryButton>
-                <GhostButton onClick={async()=>{
+                <GhostButton loading={openingChat} onClick={async()=>{
+                  if (openingChat) return;
+                  setOpeningChat(true);
                   try {
                     const { conversationId } = await api.post("/messages/conversations/dm", { userId: profile.id });
-                    toast("Chat opened ✓");
-                  } catch (e) { toast(e.message,"error"); }
+                    navigate(`/messages?conversation=${encodeURIComponent(conversationId)}`);
+                  } catch (e) {
+                    toast(e.message,"error");
+                    setOpeningChat(false);
+                  }
                 }}>Message</GhostButton>
               </>
             )}

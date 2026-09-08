@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
+import { humanizeIdentifier } from "../../lib/format.js";
 
 const PAGE_SIZE = 20;
 const usd = (n) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(n || 0);
@@ -71,7 +72,7 @@ function Overview() {
         <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
           {data.by_type.map(t => (
             <div key={t.type} style={{ display: "flex", justifyContent: "space-between", padding: "10px 18px", borderBottom: "1px solid var(--border2)", fontSize: 13 }}>
-              <span style={{ textTransform: "capitalize", color: "var(--text2)" }}>{t.type.replace(/_/g, " ")}</span>
+              <span title={t.type} style={{ color: "var(--text2)" }}>{humanizeIdentifier(t.type)}</span>
               <span>{t.count} · {usd(t.gross_usd)} gross · {usd(t.platform_fee_usd)} fees</span>
             </div>
           ))}
@@ -151,7 +152,7 @@ function PayoutsTab() {
                     {p.failure_reason && <span style={{ color: "var(--coral)" }}> · {p.failure_reason}</span>}
                   </div>
                 </div>
-                <span style={{ color: PAYOUT_STATUS_COLORS[p.status] || "var(--text3)", fontWeight: 700, fontSize: 12, textTransform: "capitalize" }}>{p.status}</span>
+                <span title={p.status} style={{ color: PAYOUT_STATUS_COLORS[p.status] || "var(--text3)", fontWeight: 700, fontSize: 12 }}>{humanizeIdentifier(p.status)}</span>
                 {p.status === "pending" && (
                   <div style={{ display: "flex", gap: 8 }}>
                     <button disabled={busyId === p.id} onClick={() => markPaid(p.id)} style={btnStyle("var(--green)")}>Mark paid</button>
@@ -219,7 +220,7 @@ function CreatorsTab() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{c.user.display_name} <span style={{ color: "var(--text3)", fontWeight: 500 }}>@{c.user.handle}</span></div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
-                    {c.subscriber_count} subscribers · {c.stripe_onboarded ? "Stripe connected" : "Stripe not connected"} · payout {c.payout_schedule}
+                    {c.subscriber_count} subscribers · {c.stripe_onboarded ? "Stripe connected" : "Stripe not connected"} · payout {humanizeIdentifier(c.payout_schedule)}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", fontSize: 12.5 }}>
@@ -284,10 +285,10 @@ function SubscribersTab() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>{s.user.display_name} <span style={{ color: "var(--text3)", fontWeight: 500 }}>@{s.user.handle}</span></div>
                   <div style={{ color: "var(--text3)", fontSize: 12.5 }}>
-                    {plans[s.plan]?.name || s.plan} · {usd(s.price_usd)}/{s.billing_period} · renews {s.current_period_end ? new Date(s.current_period_end).toLocaleDateString() : "—"}
+                    {plans[s.plan]?.name || humanizeIdentifier(s.plan)} · {usd(s.price_usd)}/{humanizeIdentifier(s.billing_period).toLowerCase()} · renews {s.current_period_end ? new Date(s.current_period_end).toLocaleDateString() : "—"}
                   </div>
                 </div>
-                <span style={{ fontWeight: 700, fontSize: 12, textTransform: "capitalize", color: s.status === "active" ? "var(--green)" : "var(--text3)" }}>{s.status}</span>
+                <span title={s.status} style={{ fontWeight: 700, fontSize: 12, color: s.status === "active" ? "var(--green)" : "var(--text3)" }}>{humanizeIdentifier(s.status)}</span>
               </div>
             ))}
             {!subscribers.length && <div style={{ padding: "40px 0", textAlign: "center", color: "var(--text3)" }}>No subscribers found</div>}

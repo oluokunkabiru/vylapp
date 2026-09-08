@@ -49,11 +49,12 @@ async function upload(req: AuthedRequest, res: Response) {
 async function remove(req: AuthedRequest, res: Response) {
   const asset = await prisma.mediaAssets.findUnique({ where: { id: req.params.id } });
   if (!asset || asset.uploadedBy !== req.user.id) return fail(res, 404, "Media not found");
-  const [vibeUses, storyUses] = await Promise.all([
+  const [vibeUses, storyUses, messageUses] = await Promise.all([
     prisma.vibeMedia.count({ where: { url: asset.url } }),
     prisma.stories.count({ where: { mediaAssetId: asset.id, deletedAt: null, expiresAt: { gt: new Date() } } }),
+    prisma.messageMedia.count({ where: { url: asset.url } }),
   ]);
-  if (vibeUses || storyUses) return fail(res, 409, "Media is already attached to published content");
+  if (vibeUses || storyUses || messageUses) return fail(res, 409, "Media is already attached to published content");
   await prisma.mediaAssets.delete({ where: { id: asset.id } });
   await removeStoredFiles(asset.cdnKey, asset.thumbnailUrl);
   return ok(res, { deleted: true });

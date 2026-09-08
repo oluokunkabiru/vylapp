@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getSocket } from "../lib/socket.js";
@@ -151,7 +152,16 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [showOriginal, setShowOriginal] = useState(new Set());
+  const [replyTo, setReplyTo] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const recorderRef = useRef(null);
+  const recordingTimerRef = useRef(null);
+  const recordingStreamRef = useRef(null);
 
   const loadMsgs = useCallback(async () => {
     if (!convo) return;
@@ -177,7 +187,7 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
         // the server broadcasts it back over the socket to every member of
         // the conversation, including the sender — without this guard the
         // sender saw their own message twice. Dedupe by id.
-        setMessages(m => m.some(x => x.id === data.message.id) ? m : [...m, { ...data.message, sender: { id: data.message.senderId } }]);
+        setMessages(m => m.some(x => x.id === data.message.id) ? m : [...m, { ...data.message, sender: data.message.sender || { id: data.message.senderId } }]);
       }
     };
     socket.on("message:new", onMsg);
@@ -186,16 +196,107 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior:"smooth" }); }, [messages]);
 
+  useEffect(() => () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    recordingStreamRef.current?.getTracks().forEach(track => track.stop());
+  }, []);
+
+  const uploadFiles = async files => {
+    const room = 4 - attachments.length;
+    const selected = [...files].slice(0, room);
+    if (!selected.length) {
+      toast("A message can contain up to 4 attachments", "error");
+      return [];
+    }
+    setUploading(true);
+    const uploaded = [];
+    try {
+      for (const file of selected) {
+        const form = new FormData();
+        form.append("file", file);
+        const { media } = await api.upload("/media/upload", form);
+        uploaded.push({ ...media, name: file.name });
+      }
+      setAttachments(current => [...current, ...uploaded]);
+      return uploaded;
+    } catch (error) {
+      await Promise.all(uploaded.map(item => api.delete(`/media/${item.id}`).catch(() => {})));
+      toast(error.message, "error");
+      return [];
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const removeAttachment = async item => {
+    setAttachments(current => current.filter(attachment => attachment.id !== item.id));
+    await api.delete(`/media/${item.id}`).catch(() => {});
+  };
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast("Voice recording is not supported by this browser", "error");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const preferredType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find(type => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(stream, preferredType ? { mimeType: preferredType } : undefined);
+      const chunks = [];
+      recordingStreamRef.current = stream;
+      recorderRef.current = recorder;
+      recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+      recorder.onstop = async () => {
+        if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+        stream.getTracks().forEach(track => track.stop());
+        recordingStreamRef.current = null;
+        const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        const fileType = (recorder.mimeType || "audio/webm").split(";")[0];
+        const extension = fileType === "audio/mp4" ? "m4a" : "webm";
+        if (blob.size) await uploadFiles([new File([blob], `voice-note-${Date.now()}.${extension}`, { type: fileType })]);
+      };
+      recorder.start();
+      setRecordingSeconds(0);
+      setRecording(true);
+      recordingTimerRef.current = setInterval(() => setRecordingSeconds(value => value + 1), 1000);
+    } catch (error) {
+      toast(error?.name === "NotAllowedError" ? "Microphone permission was denied" : "Could not start voice recording", "error");
+    }
+  };
+
+  const stopRecording = () => {
+    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
+    setRecording(false);
+  };
+
   const send = async () => {
     const text = draft.trim();
-    if (!text || sending) return;
+    if ((!text && !attachments.length) || sending || uploading || recording) return;
+    const pendingAttachments = attachments;
+    const pendingReply = replyTo;
     setDraft("");
     setSending(true);
     try {
-      const { message } = await api.post(`/messages/conversations/${convo.id}/messages`, { content: text });
+      const { message } = await api.post(`/messages/conversations/${convo.id}/messages`, {
+        content: text,
+        mediaIds: pendingAttachments.map(item => item.id),
+        replyToId: pendingReply?.id || null,
+      });
       // Guards the same way the socket handler above does — the socket
       // broadcast and this response can arrive in either order.
-      setMessages(m => m.some(x => x.id === message.id) ? m : [...m, { ...message, sender: { id: user.id, displayName: user.displayName } }]);
+      setMessages(m => m.some(x => x.id === message.id) ? m : [...m, {
+        ...message,
+        replyTo: message.replyTo || (pendingReply ? {
+          id: pendingReply.id,
+          content: pendingReply.content,
+          contentType: pendingReply.contentType,
+          sender: pendingReply.sender,
+        } : null),
+        sender: { id: user.id, displayName: user.displayName },
+      }]);
+      setAttachments([]);
+      setReplyTo(null);
     } catch (e) { toast(e.message, "error"); setDraft(text); }
     finally { setSending(false); }
   };
@@ -252,7 +353,23 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
                     background: mine ? "var(--grad)" : "var(--bg3)",
                     color:"var(--text)", fontSize:14.5, lineHeight:1.45,
                     marginLeft:mine?0:8, marginRight:mine?0:0,
-                  }}>{text}</div>
+                  }}>
+                    {m.replyTo && (
+                      <div style={{ borderLeft:"3px solid currentColor", padding:"5px 8px", marginBottom:7, opacity:0.72, background:"rgba(0,0,0,0.1)", borderRadius:6, fontSize:12 }}>
+                        <strong>{m.replyTo.sender?.displayName || "Message"}</strong>
+                        <div style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:250 }}>{m.replyTo.content || "Attachment"}</div>
+                      </div>
+                    )}
+                    {(m.media || []).map(media => (
+                      <div key={media.id || media.url} style={{ marginBottom:m.content ? 8 : 0 }}>
+                        {media.mediaType === "image" && <a href={media.url} target="_blank" rel="noreferrer"><img src={media.url} alt="Message attachment" style={{ display:"block", maxWidth:"100%", maxHeight:300, borderRadius:10 }} /></a>}
+                        {media.mediaType === "video" && <video src={media.url} poster={media.thumbnailUrl || undefined} controls playsInline style={{ display:"block", maxWidth:"100%", maxHeight:300, borderRadius:10 }} />}
+                        {media.mediaType === "audio" && <audio src={media.url} controls preload="metadata" style={{ width:"min(280px, 100%)", display:"block" }} />}
+                        {media.mediaType === "document" && <a href={media.url} target="_blank" rel="noreferrer" style={{ color:"inherit", fontWeight:800, textDecoration:"underline" }}>📄 Open PDF attachment</a>}
+                      </div>
+                    ))}
+                    {text && <span style={{ whiteSpace:"pre-wrap", overflowWrap:"anywhere" }}>{text}</span>}
+                  </div>
                 </div>
                 {hasTranslation && (
                   <button
@@ -262,31 +379,66 @@ function ChatWindow({ convo, lang, onBack, onLeft }) {
                     {original ? "See translation" : "See original"}
                   </button>
                 )}
+                <button onClick={() => setReplyTo(m)} style={{ background:"none", border:"none", color:"var(--text3)", fontSize:11, marginTop:3, padding:"2px 4px", cursor:"pointer" }}>↩ Reply</button>
               </div>
             );
           })}
         <div ref={bottomRef} />
       </div>
 
-      <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderTop:"1px solid var(--border2)", flexShrink:0 }}>
+      {replyTo && (
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 16px", borderTop:"1px solid var(--border2)", background:"var(--bg2)" }}>
+          <div style={{ flex:1, minWidth:0, borderLeft:"3px solid var(--violet-lt)", paddingLeft:10 }}>
+            <div style={{ fontSize:12, color:"var(--violet-lt)", fontWeight:800 }}>Replying to {replyTo.sender?.displayName || "message"}</div>
+            <div style={{ color:"var(--text2)", fontSize:12, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{replyTo.content || "Attachment"}</div>
+          </div>
+          <button onClick={() => setReplyTo(null)} aria-label="Cancel reply" style={{ background:"none", border:"none", color:"var(--text2)", fontSize:20, cursor:"pointer" }}>×</button>
+        </div>
+      )}
+
+      {!!attachments.length && (
+        <div style={{ display:"flex", gap:8, overflowX:"auto", padding:"8px 16px", borderTop:"1px solid var(--border2)", background:"var(--bg2)" }}>
+          {attachments.map(item => (
+            <div key={item.id} style={{ position:"relative", minWidth:76, width:76, height:62, borderRadius:10, overflow:"hidden", border:"1px solid var(--border)", background:"var(--bg3)" }}>
+              {item.mediaType === "image" ? <img src={item.url} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} /> : (
+                <div style={{ height:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:5, fontSize:10, textAlign:"center", color:"var(--text2)" }}>
+                  <span style={{ fontSize:18 }}>{item.mediaType === "audio" ? "🎤" : item.mediaType === "video" ? "🎬" : "📄"}</span>
+                  <span style={{ width:"100%", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.name || item.mediaType}</span>
+                </div>
+              )}
+              <button onClick={() => removeAttachment(item)} aria-label="Remove attachment" style={{ position:"absolute", top:2, right:2, width:20, height:20, borderRadius:"50%", border:0, background:"rgba(0,0,0,.72)", color:"#fff", cursor:"pointer" }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"12px 16px", borderTop:"1px solid var(--border2)", flexShrink:0 }}>
+        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/*,application/pdf" multiple hidden onChange={event => uploadFiles(event.target.files)} />
+        <button onClick={() => fileInputRef.current?.click()} disabled={uploading || recording || attachments.length >= 4} title="Attach image, video, audio, or PDF" aria-label="Add attachment" style={{ width:40, height:40, flexShrink:0, borderRadius:"50%", border:"1px solid var(--border2)", background:"var(--bg3)", color:"var(--text2)", fontSize:20, cursor:"pointer", opacity:uploading?0.55:1 }}>📎</button>
         <input dir="auto"
           value={draft} onChange={e=>setDraft(e.target.value)}
           onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey) { e.preventDefault(); send(); } }}
-          placeholder="Type a message…"
+          placeholder={recording ? `Recording voice note… ${Math.floor(recordingSeconds/60)}:${String(recordingSeconds%60).padStart(2,"0")}` : attachments.length ? "Add a caption…" : "Type a message…"}
+          disabled={recording}
           style={{
             flex:1, padding:"11px 16px", borderRadius:"var(--radius-pill)",
             background:"var(--bg3)", border:"1px solid var(--border2)",
             color:"var(--text)", fontSize:14.5, outline:"none",
           }}
         />
-        <button onClick={send} disabled={!draft.trim()||sending} style={{
+        {!draft.trim() && !attachments.length ? (
+          <button onClick={recording ? stopRecording : startRecording} disabled={uploading} title={recording ? "Stop recording" : "Record voice note"} aria-label={recording ? "Stop recording" : "Record voice note"} style={{
+            width:44, height:44, borderRadius:"50%", border:"none", display:"flex", alignItems:"center", justifyContent:"center",
+            background:recording?"var(--coral)":"var(--violet-dim)", color:recording?"#fff":"var(--violet-lt)", cursor:"pointer", fontSize:18,
+          }}>{recording ? "■" : <Ic d={ic.mic} s={19} />}</button>
+        ) : <button onClick={send} disabled={sending||uploading||recording} style={{
           width:44, height:44, borderRadius:"50%",
-          background: draft.trim() ? "var(--grad)" : "var(--bg3)",
+          background: "var(--grad)",
           border:"none", display:"flex", alignItems:"center", justifyContent:"center",
-          cursor: draft.trim() ? "pointer" : "default",
+          cursor: sending || uploading ? "wait" : "pointer",
         }}>
-          <Ic d={ic.send} s={18} c={draft.trim()?"#fff":"var(--text3)"} className="vy-dir-icon" />
-        </button>
+          <Ic d={ic.send} s={18} c="#fff" className="vy-dir-icon" />
+        </button>}
       </div>
     </div>
   );
@@ -302,6 +454,8 @@ export default function Messages({ lang, onClearBadge }) {
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 800);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const requestedConversationId = searchParams.get("conversation");
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 800);
@@ -310,8 +464,19 @@ export default function Messages({ lang, onClearBadge }) {
   }, []);
 
   const loadConvos = useCallback(() => {
-    return api.get("/messages/conversations").then(({ conversations: c }) => { setConvos(c||[]); onClearBadge?.(); });
-  }, [onClearBadge]);
+    return api.get("/messages/conversations").then(({ conversations: c }) => {
+      const list = c || [];
+      setConvos(list);
+      if (requestedConversationId) {
+        const requested = list.find(conversation => conversation.id === requestedConversationId);
+        if (requested) {
+          setActive(requested);
+          setTab("chats");
+        }
+      }
+      onClearBadge?.();
+    });
+  }, [onClearBadge, requestedConversationId]);
 
   const loadRequests = useCallback(() => {
     return api.get("/messages/requests").then(({ requests: r }) => setRequests(r||[])).catch(() => {});

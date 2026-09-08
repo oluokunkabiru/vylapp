@@ -90,6 +90,14 @@ export default function Settings({ lang, setLang }) {
   const toast = useToast();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(null); // which field is in flight, for per-row feedback
+  const [security, setSecurity] = useState(null);
+  const [enrolment, setEnrolment] = useState(null);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [securityBusy, setSecurityBusy] = useState(false);
+
+  useEffect(() => {
+    api.get("/auth/account-status").then(({ verification }) => setSecurity(verification)).catch(() => {});
+  }, []);
 
   const savePref = async (patch, field) => {
     setSaving(field);
@@ -100,6 +108,34 @@ export default function Settings({ lang, setLang }) {
       toast(e.message || "Couldn't save that", "error");
     } finally {
       setSaving(null);
+    }
+  };
+
+  const beginTwoFactor = async () => {
+    setSecurityBusy(true);
+    try {
+      const result = await api.post("/auth/2fa/enroll");
+      setEnrolment(result);
+      toast("A verification code was sent to your email.");
+    } catch (error) {
+      toast(error.message, "error");
+    } finally {
+      setSecurityBusy(false);
+    }
+  };
+
+  const confirmTwoFactor = async () => {
+    if (!twoFactorCode.trim()) return;
+    setSecurityBusy(true);
+    try {
+      await api.post("/auth/2fa/verify", { code: twoFactorCode.trim() });
+      setSecurity(current => current ? { ...current, twoFactor: { enabled:true } } : current);
+      setTwoFactorCode("");
+      toast("Two-step verification enabled.");
+    } catch (error) {
+      toast(error.message, "error");
+    } finally {
+      setSecurityBusy(false);
     }
   };
 
@@ -148,6 +184,33 @@ export default function Settings({ lang, setLang }) {
         </Card>
 
         <MutedWordsSection />
+
+        <SectionLabel>Security</SectionLabel>
+        <Card>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:16 }}>
+            <div>
+              <div style={{ fontWeight:800, fontSize:14 }}>Two-step verification</div>
+              <div style={{ color:"var(--text3)", fontSize:12.5, lineHeight:1.5, marginTop:3 }}>{security?.twoFactor?.enabled ? "Enabled. Password sign-in also requires a rotating code or recovery code." : "Add a rotating verification code to password sign-in."}</div>
+            </div>
+            <span style={{ color:security?.twoFactor?.enabled?"var(--green)":"var(--amber)", fontWeight:800, fontSize:12 }}>{security?.twoFactor?.enabled ? "Enabled" : "Off"}</span>
+          </div>
+
+          {!security?.twoFactor?.enabled && !enrolment && <GhostButton loading={securityBusy} onClick={beginTwoFactor} style={{ marginTop:14 }}>Enable two-step verification</GhostButton>}
+
+          {!security?.twoFactor?.enabled && enrolment && (
+            <div style={{ marginTop:14, paddingTop:14, borderTop:"1px solid var(--border2)" }}>
+              <div style={{ color:"var(--text2)", fontSize:12.5, lineHeight:1.5, marginBottom:10 }}>Enter the six-digit code sent to your account email. You can also add this secret to a TOTP authenticator: <code style={{ userSelect:"all", overflowWrap:"anywhere" }}>{enrolment.secret}</code></div>
+              <div style={{ display:"flex", gap:8 }}>
+                <input value={twoFactorCode} onChange={event => setTwoFactorCode(event.target.value)} inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" style={{ flex:1, padding:"10px 12px", borderRadius:10, border:"1px solid var(--border)", background:"var(--bg3)", color:"var(--text)" }} />
+                <PrimaryButton loading={securityBusy} disabled={securityBusy || !twoFactorCode.trim()} onClick={confirmTwoFactor}>Confirm</PrimaryButton>
+              </div>
+              <div style={{ marginTop:12, padding:10, borderRadius:10, background:"rgba(255,184,48,.08)", border:"1px solid rgba(255,184,48,.2)", color:"var(--text2)", fontSize:12 }}>
+                Save these one-use recovery codes somewhere private before confirming:
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:5, marginTop:8, fontFamily:"var(--mono)", color:"var(--text)", userSelect:"all" }}>{enrolment.recoveryCodes.map(code => <span key={code}>{code}</span>)}</div>
+              </div>
+            </div>
+          )}
+        </Card>
 
         <SectionLabel>Account</SectionLabel>
         <Card>

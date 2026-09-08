@@ -29,7 +29,8 @@ async function search(req: AuthedRequest, res: Response) {
     // already follows a minor account can still reach it directly (their
     // own profile page, follower list, an existing conversation).
     const rows: any[] = await prisma.$queryRaw`
-      SELECT id, handle, display_name, bio, avatar_color, avatar_initials, verified, connections_count
+      SELECT id, handle, display_name, bio, avatar_color, avatar_initials,
+             (verification_tier <> 'none') AS verified, connections_count
        FROM users WHERE (unaccent(handle::text) ILIKE unaccent(${needle}) OR unaccent(display_name) ILIKE unaccent(${needle}))
        AND deleted_at IS NULL AND is_minor = FALSE LIMIT 20
     `;
@@ -83,7 +84,8 @@ async function autocomplete(req: AuthedRequest, res: Response) {
   // S-23 applies here too — a minor shouldn't turn up as an @mention
   // suggestion for someone who isn't already following them.
   const users: { handle: string; display_name: string; verified: boolean }[] = await prisma.$queryRaw`
-    SELECT handle, display_name, verified FROM users WHERE handle ILIKE ${`${q}%`} AND is_minor = FALSE LIMIT 8
+    SELECT handle, display_name, (verification_tier <> 'none') AS verified
+      FROM users WHERE handle ILIKE ${`${q}%`} AND is_minor = FALSE LIMIT 8
   `;
   return ok(res, { suggestions: users.map(r => ({ type: "user", value: r.handle, label: r.display_name, verified: r.verified })) });
 }

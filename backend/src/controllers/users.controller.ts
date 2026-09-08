@@ -12,7 +12,7 @@ function publicUser(row: any, viewerFollows?: boolean) {
     location: row.location, website: row.website,
     currentCountry: row.currentCountry, currentCity: row.currentCity, heritageCountries: row.heritageCountries,
     avatarColor: row.avatarColor, avatarInitials: row.avatarInitials, avatarUrl: row.avatarUrl,
-    bannerUrl: row.bannerUrl, roleTag: row.roleTag, verified: row.verified,
+    bannerUrl: row.bannerUrl, roleTag: row.roleTag, verified: row.verificationTier !== "none",
     verificationTier: row.verificationTier, isCreator: row.isCreator,
     vibesCount: row.vibesCount, connectionsCount: row.connectionsCount, followingCount: row.followingCount,
     spacesHosted: row.spacesHosted, createdAt: row.createdAt,

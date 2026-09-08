@@ -22,6 +22,9 @@ router.post("/logout", asyncHandler(authController.logout));
 // ── GET /auth/me ───────────────────────────────────────────────────────────────
 router.get("/me", requireAuth, asyncHandler(authController.me));
 
+// ── GET /auth/account-status — roles, dashboards and assurance factors ───────
+router.get("/account-status", requireAuth, asyncHandler(authController.accountStatus));
+
 // ── POST /auth/change-password ─────────────────────────────────────────────────
 router.post("/change-password", requireAuth, asyncHandler(authController.changePassword));
 

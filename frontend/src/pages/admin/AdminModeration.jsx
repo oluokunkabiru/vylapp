@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
+import { humanizeIdentifier } from "../../lib/format.js";
 
 export default function AdminModeration() {
   const toast = useToast();
@@ -91,7 +92,7 @@ export default function AdminModeration() {
               <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} style={{ marginTop: 3 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontWeight: 700, fontSize: 13.5 }}>{r.reason}</span>
+                  <span title={r.reason} style={{ fontWeight: 700, fontSize: 13.5 }}>{humanizeIdentifier(r.reason)}</span>
                   {/* A-07: age visibility — a minor-authored target is the
                       one thing that should never get buried in the queue. */}
                   {r.targetIsMinor && (

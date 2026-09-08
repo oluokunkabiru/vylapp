@@ -20,7 +20,8 @@ export default function Login() {
   const toast = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [form, setForm] = useState({ emailOrHandle: "", password: "" });
+  const [form, setForm] = useState({ emailOrHandle: "", password: "", twoFactorCode: "" });
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
 
@@ -44,7 +45,12 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await login(form.emailOrHandle, form.password);
+      const result = await login(form.emailOrHandle, form.password, form.twoFactorCode);
+      if (result.twoFactorRequired) {
+        setTwoFactorRequired(true);
+        toast("Enter the code from your authenticator or a recovery code.");
+        return;
+      }
       toast(t("auth.welcomeBack"));
       navigate("/");
     } catch (err) {
@@ -76,6 +82,24 @@ export default function Login() {
             onBlur={blurAuthInput}
           />
         </div>
+
+        {twoFactorRequired && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            <label style={authLabel}>Two-step verification code</label>
+            <input
+              type="text"
+              autoComplete="one-time-code"
+              placeholder="6-digit or recovery code"
+              value={form.twoFactorCode}
+              onChange={set("twoFactorCode")}
+              required
+              autoFocus
+              style={authInput}
+              onFocus={focusAuthInput}
+              onBlur={blurAuthInput}
+            />
+          </div>
+        )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>

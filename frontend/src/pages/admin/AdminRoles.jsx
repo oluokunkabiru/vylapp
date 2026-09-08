@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
+import { humanizeIdentifier } from "../../lib/format.js";
 
 export default function AdminRoles() {
   const toast = useToast();
@@ -64,7 +65,7 @@ export default function AdminRoles() {
               borderBottom: "1px solid var(--border2)", cursor: "pointer",
               color: selectedRole === r.name ? "var(--text)" : "var(--text2)",
             }}>
-              <div style={{ fontWeight: 700, fontSize: 13.5 }}>{r.name}{r.is_system && <span style={{ color: "var(--text3)", fontWeight: 500 }}> (system)</span>}</div>
+              <div title={r.name} style={{ fontWeight: 700, fontSize: 13.5 }}>{humanizeIdentifier(r.name)}{r.is_system && <span style={{ color: "var(--text3)", fontWeight: 500 }}> (system)</span>}</div>
               <div style={{ fontSize: 11.5, color: "var(--text3)", marginTop: 2 }}>{r.permissions?.length || 0} permission(s)</div>
             </button>
           ))}
@@ -76,10 +77,10 @@ export default function AdminRoles() {
           <div style={{ color: "var(--text3)", padding: "60px 0", textAlign: "center" }}>Select a role to manage its permissions</div>
         ) : (
           <>
-            <h2 style={{ fontSize: 18, fontWeight: 800, margin: "26px 0 16px" }}>{selectedRole}</h2>
+            <h2 title={selectedRole} style={{ fontSize: 18, fontWeight: 800, margin: "26px 0 16px" }}>{humanizeIdentifier(selectedRole)}</h2>
             {Object.entries(grouped).map(([group, perms]) => (
               <div key={group} style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "var(--text3)", letterSpacing: 0.5, marginBottom: 8, textTransform: "uppercase" }}>{group}</div>
+                <div title={group} style={{ fontSize: 12, fontWeight: 800, color: "var(--text3)", letterSpacing: 0.5, marginBottom: 8, textTransform: "uppercase" }}>{humanizeIdentifier(group)}</div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {perms.map(p => {
                     const hasIt = rolePerms.has(p.name);
@@ -90,7 +91,7 @@ export default function AdminRoles() {
                         fontSize: 12.5, cursor: busyPerm === p.name ? "wait" : "pointer",
                       }}>
                         <input type="checkbox" checked={hasIt} disabled={busyPerm === p.name} onChange={() => togglePerm(p.name, hasIt)} />
-                        <span title={p.description} style={{ color: hasIt ? "var(--text)" : "var(--text2)" }}>{p.name}</span>
+                        <span title={`${p.name}${p.description ? ` — ${p.description}` : ""}`} style={{ color: hasIt ? "var(--text)" : "var(--text2)" }}>{humanizeIdentifier(p.name.replace(/\./g, "_"))}</span>
                       </label>
                     );
                   })}

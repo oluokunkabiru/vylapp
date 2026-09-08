@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../lib/api.js";
 import { Ic, ic, Empty } from "../components/ui/index.jsx";
 import { useToast } from "../context/ToastContext.jsx";
@@ -15,6 +16,7 @@ const CAT_EMOJI = { TECH_VIBES:"⚡", GLOBAL_CONNECT:"🌍", CREATIVE_LEARN:"�
 
 export default function Explore() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("all");
   const [results, setResults] = useState({ users:[], vibes:[], hashtags:[] });
@@ -88,7 +90,18 @@ export default function Explore() {
             <div style={{ marginBottom:20 }}>
               <div style={{ fontWeight:800, fontSize:13, color:"var(--text2)", marginBottom:10, letterSpacing:0.4 }}>PEOPLE</div>
               {results.users.map(u => (
-                <div key={u.id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12, padding:"10px 12px", borderRadius:14, background:"var(--bg3)", border:"1px solid var(--border2)" }}>
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => navigate(`/profile/${encodeURIComponent(u.handle)}`)}
+                  aria-label={`View ${u.display_name || `@${u.handle}`} profile`}
+                  style={{
+                    display:"flex", alignItems:"center", gap:10, width:"100%",
+                    marginBottom:12, padding:"10px 12px", borderRadius:14,
+                    background:"var(--bg3)", border:"1px solid var(--border2)",
+                    color:"var(--text)", textAlign:"start", cursor:"pointer",
+                  }}
+                >
                   <div style={{ width:40, height:40, borderRadius:"50%", background:`${u.avatar_color||"#7C3AED"}1e`, border:`1.5px solid ${u.avatar_color||"#7C3AED"}40`, display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, color:u.avatar_color||"#7C3AED", fontSize:14, fontFamily:"var(--mono)", flexShrink:0 }}>
                     {u.avatar_initials || u.display_name?.slice(0,2).toUpperCase()}
                   </div>
@@ -96,7 +109,7 @@ export default function Explore() {
                     <div style={{ fontWeight:800, fontSize:14 }}>{u.display_name}</div>
                     <div style={{ color:"var(--text2)", fontSize:12.5 }}>@{u.handle}</div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
+import { humanizeIdentifier } from "../../lib/format.js";
 
 const PAGE_SIZE = 20;
 
@@ -110,7 +111,7 @@ function VibesTab() {
               <div key={v.id} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--border2)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12.5, color: "var(--text3)", marginBottom: 4 }}>
-                    @{v.author.handle} · {v.category} · {new Date(v.created_at).toLocaleString()}
+                    @{v.author.handle} · {humanizeIdentifier(v.category)} · {new Date(v.created_at).toLocaleString()}
                     {v.is_deleted && <span style={{ color: "var(--coral)", fontWeight: 700 }}> · removed</span>}
                   </div>
                   <div style={{ fontSize: 13.5, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{v.content}</div>
@@ -154,7 +155,7 @@ function VibesTab() {
 // ── Spaces tab ─────────────────────────────────────────────────────────────
 function StatusBadge({ status, colorMap }) {
   const color = colorMap[status] || "var(--text3)";
-  return <span style={{ color, fontWeight: 700, fontSize: 12, textTransform: "capitalize" }}>{status}</span>;
+  return <span title={status} style={{ color, fontWeight: 700, fontSize: 12 }}>{humanizeIdentifier(status)}</span>;
 }
 
 const SPACE_STATUS_COLORS = { live: "var(--green)", scheduled: "var(--sky)", ended: "var(--text3)", cancelled: "var(--coral)" };
@@ -254,7 +255,7 @@ function SpacesTab() {
               <>
                 {participants.map((p, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border2)" }}>
-                    <span style={{ fontSize: 13 }}>@{p.user.handle} <span style={{ color: "var(--text3)" }}>({p.role})</span></span>
+                    <span style={{ fontSize: 13 }}>@{p.user.handle} <span title={p.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(p.role)})</span></span>
                     <span style={{ color: "var(--text3)", fontSize: 12 }}>{new Date(p.joined_at).toLocaleTimeString()}</span>
                   </div>
                 ))}

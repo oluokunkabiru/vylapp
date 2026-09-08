@@ -20,6 +20,44 @@ function shapeConversation(row: any) {
   };
 }
 
+function shapeMessage(m: any) {
+  return {
+    id: m.id,
+    content: m.content,
+    language: m.language,
+    contentType: m.contentType,
+    replyToId: m.replyToId,
+    replyTo: m.messages ? {
+      id: m.messages.id,
+      content: m.messages.content,
+      contentType: m.messages.contentType,
+      sender: {
+        id: m.messages.senderId,
+        displayName: m.messages.users?.displayName,
+        handle: m.messages.users?.handle,
+      },
+    } : null,
+    media: (m.messageMedia || []).map((media: any) => ({
+      id: media.id,
+      mediaType: media.mediaType,
+      url: media.url,
+      thumbnailUrl: media.thumbnailUrl,
+      width: media.width,
+      height: media.height,
+      durationMs: media.durationMs,
+      sizeBytes: media.sizeBytes == null ? null : Number(media.sizeBytes),
+    })),
+    sender: {
+      id: m.senderId,
+      handle: m.users?.handle,
+      displayName: m.users?.displayName,
+      avatarColor: m.users?.avatarColor,
+      avatarInitials: m.users?.avatarInitials,
+    },
+    createdAt: m.createdAt,
+  };
+}
+
 // ── GET /messages/conversations — the main inbox, requests excluded ──────
 // Kept as raw SQL: a self-join to find "the other DM participant" plus
 // NULLS LAST ordering doesn't translate cleanly to the query builder, and
@@ -29,7 +67,8 @@ async function listConversations(req: AuthedRequest, res: Response) {
   const rows: any[] = await prisma.$queryRaw`
     SELECT c.*, cm.unread_count,
        ou.id as other_user_id, ou.handle as other_handle, ou.display_name as other_display_name,
-       ou.avatar_color as other_avatar_color, ou.avatar_initials as other_avatar_initials, ou.verified as other_verified
+       ou.avatar_color as other_avatar_color, ou.avatar_initials as other_avatar_initials,
+       (ou.verification_tier <> 'none') as other_verified
      FROM conversation_members cm
      JOIN conversations c ON c.id = cm.conversation_id
      LEFT JOIN conversation_members ocm ON ocm.conversation_id = c.id AND ocm.user_id != ${req.user.id} AND c.type = 'dm'
@@ -45,7 +84,8 @@ async function listRequests(req: AuthedRequest, res: Response) {
   const rows: any[] = await prisma.$queryRaw`
     SELECT c.*, cm.unread_count,
        ou.id as other_user_id, ou.handle as other_handle, ou.display_name as other_display_name,
-       ou.avatar_color as other_avatar_color, ou.avatar_initials as other_avatar_initials, ou.verified as other_verified
+       ou.avatar_color as other_avatar_color, ou.avatar_initials as other_avatar_initials,
+       (ou.verification_tier <> 'none') as other_verified
      FROM conversation_members cm
      JOIN conversations c ON c.id = cm.conversation_id
      LEFT JOIN conversation_members ocm ON ocm.conversation_id = c.id AND ocm.user_id != ${req.user.id} AND c.type = 'dm'
@@ -200,7 +240,13 @@ async function listMessages(req: AuthedRequest, res: Response) {
 
   const rows = await prisma.messages.findMany({
     where: { conversationId: req.params.id, isDeleted: false },
-    include: { users: { select: { handle: true, displayName: true, avatarColor: true, avatarInitials: true } } },
+    include: {
+      users: { select: { handle: true, displayName: true, avatarColor: true, avatarInitials: true } },
+      messageMedia: { orderBy: { sortOrder: "asc" } },
+      messages: {
+        include: { users: { select: { handle: true, displayName: true } } },
+      },
+    },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
@@ -209,11 +255,7 @@ async function listMessages(req: AuthedRequest, res: Response) {
     data: { unreadCount: 0, lastReadAt: new Date() },
   });
 
-  const shaped = rows.reverse().map(m => ({
-    id: m.id, content: m.content, language: m.language, contentType: m.contentType, replyToId: m.replyToId,
-    sender: { id: m.senderId, handle: m.users.handle, displayName: m.users.displayName, avatarColor: m.users.avatarColor, avatarInitials: m.users.avatarInitials },
-    createdAt: m.createdAt,
-  }));
+  const shaped = rows.reverse().map(shapeMessage);
 
   await TranslationEngine.translateEntitiesForViewer(shaped, req.query.lang as string, req.user.id, { contentType: "message" });
   return ok(res, { messages: shaped });
@@ -221,13 +263,32 @@ async function listMessages(req: AuthedRequest, res: Response) {
 
 // ── POST /messages/conversations/:id/messages ────────────────────────────
 async function sendMessage(req: AuthedRequest, res: Response) {
-  const { content, contentType } = req.body;
-  if (!content?.trim()) return fail(res, 400, "content is required");
+  const { content, replyToId } = req.body;
+  const cleanContent = typeof content === "string" ? content.trim() : "";
+  const mediaIds = Array.isArray(req.body.mediaIds)
+    ? [...new Set(req.body.mediaIds.filter((id: unknown) => typeof id === "string"))] as string[]
+    : [];
+  if (!cleanContent && !mediaIds.length) return fail(res, 400, "content or media is required");
+  if (mediaIds.length > 4) return fail(res, 400, "A message can contain at most 4 attachments");
 
   const member = await prisma.conversationMembers.findUnique({
     where: { conversationId_userId: { conversationId: req.params.id, userId: req.user.id } },
   });
   if (!member || member.leftAt) return fail(res, 403, "Not a member of this conversation");
+
+  const [mediaAssets, repliedMessage] = await Promise.all([
+    mediaIds.length ? prisma.mediaAssets.findMany({ where: { id: { in: mediaIds }, uploadedBy: req.user.id } }) : Promise.resolve([]),
+    replyToId ? prisma.messages.findFirst({
+      where: { id: replyToId, conversationId: req.params.id, isDeleted: false },
+      select: {
+        id: true, content: true, contentType: true, senderId: true,
+        users: { select: { displayName: true, handle: true } },
+      },
+    }) : Promise.resolve(null),
+  ]);
+  if (mediaAssets.length !== mediaIds.length) return fail(res, 400, "One or more attachments are invalid or do not belong to you");
+  if (replyToId && !repliedMessage) return fail(res, 400, "The message being replied to was not found in this conversation");
+  mediaAssets.sort((a, b) => mediaIds.indexOf(a.id) - mediaIds.indexOf(b.id));
 
   // C-13: replying to a request is a stronger signal than tapping "accept" —
   // treat it as one, so the conversation moves to the inbox automatically.
@@ -238,15 +299,45 @@ async function sendMessage(req: AuthedRequest, res: Response) {
     });
   }
 
-  const cleanContent = content.trim();
-  const language = await LanguageDetector.detect(cleanContent, "en");
-  const msg = await prisma.messages.create({
-    data: { conversationId: req.params.id, senderId: req.user.id, content: cleanContent, contentType: contentType || "text", language },
+  const language = cleanContent ? await LanguageDetector.detect(cleanContent, "en") : "en";
+  const firstMediaType = mediaAssets[0]?.mediaType;
+  const contentType = firstMediaType === "document" ? "file"
+    : firstMediaType === "audio" ? "audio"
+    : firstMediaType === "video" ? "video"
+    : firstMediaType === "image" || firstMediaType === "gif" ? "image"
+    : "text";
+  const msg = await prisma.$transaction(async tx => {
+    const created = await tx.messages.create({
+      data: {
+        conversationId: req.params.id,
+        senderId: req.user.id,
+        content: cleanContent || null,
+        contentType,
+        language,
+        replyToId: repliedMessage?.id || null,
+      },
+    });
+    if (mediaAssets.length) {
+      await tx.messageMedia.createMany({ data: mediaAssets.map((asset, sortOrder) => ({
+        messageId: created.id,
+        mediaType: asset.mediaType,
+        url: asset.url,
+        thumbnailUrl: asset.thumbnailUrl,
+        width: asset.width,
+        height: asset.height,
+        durationMs: asset.durationMs,
+        sizeBytes: asset.sizeBytes,
+        sortOrder,
+      })) });
+    }
+    return created;
   });
+
+  const preview = cleanContent || (firstMediaType === "audio" ? "Voice note" : firstMediaType === "document" ? "Document" : firstMediaType ? `${firstMediaType[0].toUpperCase()}${firstMediaType.slice(1)}` : "Message");
 
   const conv = await prisma.conversations.update({
     where: { id: req.params.id },
-    data: { lastMessageId: msg.id, lastMessageAt: new Date(), lastMessagePreview: content.slice(0, 100) },
+    data: { lastMessageId: msg.id, lastMessageAt: new Date(), lastMessagePreview: preview.slice(0, 100) },
     select: { type: true, name: true },
   });
   await prisma.conversationMembers.updateMany({
@@ -270,7 +361,37 @@ async function sendMessage(req: AuthedRequest, res: Response) {
 
   // Real-time push over Socket.IO if available
   const io = req.app.get("io");
-  if (io) io.to(`conversation:${req.params.id}`).emit("message:new", { conversationId: req.params.id, message: { id: msg.id, content: msg.content, language: msg.language, senderId: req.user.id, createdAt: msg.createdAt } });
+  const sentMessage = {
+    id: msg.id,
+    content: msg.content,
+    language: msg.language,
+    contentType: msg.contentType,
+    replyToId: msg.replyToId,
+    replyTo: repliedMessage ? {
+      id: repliedMessage.id,
+      content: repliedMessage.content,
+      contentType: repliedMessage.contentType,
+      sender: {
+        id: repliedMessage.senderId,
+        displayName: repliedMessage.users.displayName,
+        handle: repliedMessage.users.handle,
+      },
+    } : null,
+    media: mediaAssets.map(asset => ({
+      id: asset.id,
+      mediaType: asset.mediaType,
+      url: asset.url,
+      thumbnailUrl: asset.thumbnailUrl,
+      width: asset.width,
+      height: asset.height,
+      durationMs: asset.durationMs,
+      sizeBytes: Number(asset.sizeBytes),
+    })),
+    senderId: req.user.id,
+    sender: { id: req.user.id, displayName: req.user.displayName },
+    createdAt: msg.createdAt,
+  };
+  if (io) io.to(`conversation:${req.params.id}`).emit("message:new", { conversationId: req.params.id, message: sentMessage });
 
   // FCM push for backgrounded/closed apps — skip anyone muted or opted out.
   // Socket.IO above already covers the app-open case; this is additive, not
@@ -289,14 +410,14 @@ async function sendMessage(req: AuthedRequest, res: Response) {
           .filter(o => !optedOut.has(o.userId))
           .map(o => PushEngine.sendToUser(
             o.userId,
-            { title: req.user.displayName, body: cleanContent.slice(0, 100) },
+            { title: req.user.displayName, body: preview.slice(0, 100) },
             { conversationId: req.params.id, type: "chat" },
           )),
       );
     }
   }
 
-  return ok(res, { message: { id: msg.id, content: msg.content, language: msg.language, contentType: msg.contentType, createdAt: msg.createdAt } }, 201);
+  return ok(res, { message: sentMessage }, 201);
 }
 
 export = { listConversations, listRequests, acceptRequest, declineRequest, getOrCreateDm, createGroup, addMember, leaveGroup, listMessages, sendMessage };

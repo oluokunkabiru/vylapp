@@ -7,6 +7,11 @@ import vibesController from "../controllers/vibes.controller";
 const { requireAuth, optionalAuth } = authMiddleware;
 const { requirePermission, requireAnyPermission } = rbacMiddleware;
 
+// A feed reply is not a new top-level post. Keep the permissions separate so
+// roles can join a conversation without also being allowed to publish vibes.
+const requireVibeCreate = requirePermission("vibes.create");
+const requireVibeReply = requirePermission("vibes.reply");
+
 const router = express.Router();
 
 // ── GET /vibes/feed — personalized home feed ─────────────────────────────
@@ -19,7 +24,12 @@ router.get("/category/:category", optionalAuth, asyncHandler(vibesController.cat
 router.get("/:id", optionalAuth, asyncHandler(vibesController.getOne));
 
 // ── POST /vibes — create a vibe (post / reply / quote) ───────────────────
-router.post("/", requireAuth, requirePermission("vibes.create"), asyncHandler(vibesController.create));
+router.post(
+  "/",
+  requireAuth,
+  (req, res, next) => (req.body?.replyTo ? requireVibeReply : requireVibeCreate)(req, res, next),
+  asyncHandler(vibesController.create),
+);
 
 // ── PATCH /vibes/:id — V-18: edit own vibe, sets a permanent "edited" marker ─
 router.patch("/:id", requireAuth, requirePermission("vibes.update.own"), asyncHandler(vibesController.update));

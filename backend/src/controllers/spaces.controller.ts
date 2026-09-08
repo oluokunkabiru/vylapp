@@ -27,7 +27,7 @@ function shapeSpace(row: any) {
 // vibes.controller.ts's VIBE_FIELDS: preserves the exact join/ordering
 // (status='live' first, NULLS LAST) and the snake_case shape shapeSpace
 // already expects.
-const SPACE_FIELDS = `s.*, u.handle, u.display_name, u.avatar_color, u.avatar_initials, u.verified`;
+const SPACE_FIELDS = `s.*, u.handle, u.display_name, u.avatar_color, u.avatar_initials, (u.verification_tier <> 'none') AS verified`;
 
 // ── GET /spaces — live + upcoming ─────────────────────────────────────────
 async function list(req: AuthedRequest, res: Response) {

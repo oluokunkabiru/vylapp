@@ -26,7 +26,7 @@ function shapeStory(story: any) {
       avatarColor: story.users.avatarColor,
       avatarInitials: story.users.avatarInitials,
       avatarUrl: story.users.avatarUrl,
-      verified: story.users.verified,
+      verified: story.users.verificationTier !== "none",
     },
   };
 }

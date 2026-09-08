@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
+import { humanizeIdentifier } from "../../lib/format.js";
 
 const PAGE_SIZE = 20;
 
@@ -112,7 +113,7 @@ function ModeratorsModal({ category, onClose }) {
           <>
             {moderators.map(m => (
               <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border2)" }}>
-                <span style={{ fontSize: 13 }}>@{m.user.handle} <span style={{ color: "var(--text3)" }}>({m.role})</span></span>
+                <span style={{ fontSize: 13 }}>@{m.user.handle} <span title={m.role} style={{ color: "var(--text3)" }}>({humanizeIdentifier(m.role)})</span></span>
                 <button disabled={busy} onClick={() => remove(m.id)} style={btnStyle("var(--coral)")}>Remove</button>
               </div>
             ))}
@@ -123,9 +124,9 @@ function ModeratorsModal({ category, onClose }) {
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <input value={handle} onChange={e => setHandle(e.target.value)} placeholder="user handle" style={{ ...inputStyle, flex: 1 }} />
           <select value={role} onChange={e => setRole(e.target.value)} style={inputStyle}>
-            <option value="moderator">moderator</option>
-            <option value="senior_moderator">senior_moderator</option>
-            <option value="community_admin">community_admin</option>
+            <option value="moderator">Moderator</option>
+            <option value="senior_moderator">Senior Moderator</option>
+            <option value="community_admin">Community Admin</option>
           </select>
           <button disabled={busy} onClick={add} style={btnStyle("var(--violet-lt)")}>Add</button>
         </div>
@@ -270,7 +271,7 @@ function ThreadsSection({ categories }) {
                     @{t.author.handle} · {t.category?.name} · {t.reply_count} replies · {t.vote_score} votes · {new Date(t.created_at).toLocaleDateString()}
                   </div>
                 </div>
-                <span style={{ color: THREAD_STATUS_COLORS[t.status] || "var(--text3)", fontWeight: 700, fontSize: 12, textTransform: "capitalize" }}>{t.status}</span>
+                <span title={t.status} style={{ color: THREAD_STATUS_COLORS[t.status] || "var(--text3)", fontWeight: 700, fontSize: 12 }}>{humanizeIdentifier(t.status)}</span>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button disabled={busyId === t.id} onClick={() => patch(t.id, { is_pinned: !t.is_pinned }, t.is_pinned ? "Unpinned" : "Pinned")} style={btnStyle("var(--violet-lt)")}>
                     {t.is_pinned ? "Unpin" : "Pin"}

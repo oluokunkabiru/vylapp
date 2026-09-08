@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
+import { humanizeIdentifier } from "../../lib/format.js";
 
 const PAGE_SIZE = 30;
 
@@ -36,12 +37,12 @@ export default function AdminAudit() {
             {entries.map(e => (
               <div key={e.id} style={{ padding: "14px 18px", borderBottom: "1px solid var(--border2)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <span style={{ fontWeight: 700, fontSize: 13.5, fontFamily: "var(--mono)" }}>{e.action}</span>
+                  <span title={e.action} style={{ fontWeight: 700, fontSize: 13.5 }}>{humanizeIdentifier(e.action.replace(/\./g, "_"))}</span>
                   <span style={{ fontSize: 11.5, color: "var(--text3)" }}>{new Date(e.created_at).toLocaleString()}</span>
                 </div>
                 <div style={{ fontSize: 12.5, color: "var(--text2)", marginTop: 4 }}>
                   by @{e.admin.handle} ({e.admin.display_name})
-                  {e.target_type && ` · target: ${e.target_type}${e.target_id ? ` #${e.target_id.slice(0, 8)}` : ""}`}
+                  {e.target_type && ` · target: ${humanizeIdentifier(e.target_type)}${e.target_id ? ` #${e.target_id.slice(0, 8)}` : ""}`}
                 </div>
               </div>
             ))}

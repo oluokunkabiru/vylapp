@@ -170,7 +170,8 @@ frontend/src/
 └── stores/                  Zustand state
 ```
 
-**⚠ PENDING SECURITY REMEDIATION:** The frontend currently stores JWT tokens in `localStorage`. This is accessible to JavaScript and is therefore vulnerable to XSS token theft. The correct remediation is to migrate to `httpOnly` cookies (inaccessible to JavaScript), which requires adding cookie-based auth support to the backend. This is tracked as a pending item. Until it is resolved, ensure all user-facing input fields are escaped and no third-party scripts are loaded without Subresource Integrity (SRI) hashes.
+The web frontend uses `httpOnly` access/refresh cookies plus a double-submit
+CSRF token. JWTs are not exposed to frontend JavaScript or `localStorage`.
 
 ---
 
@@ -251,16 +252,18 @@ Follow the Flutter deployment docs for each platform. Enable code obfuscation on
 These are known gaps, tracked honestly. They are not bugs — they are unbuilt features in priority order.
 
 **Critical:**
-- `localStorage` JWT storage on web (XSS vulnerability — migrate to httpOnly cookies)
-- 10 of 12 Flutter screens are UI stubs (architecture wired, UI unbuilt)
-- Firebase config files missing (must be added before mobile builds)
-- LiveKit not connected in SpaceRoom screen
-- Socket.IO not wired to Flutter Chat screen
+- Flutter auth still expects access/refresh tokens in login/register JSON, while the current web-oriented backend returns them in cookies. Refresh/logout have the same contract mismatch; mobile authentication must be reconciled before device QA.
+- Flutter registration does not collect the backend-required date of birth, and Flutter login does not handle the two-step-verification challenge.
+- The Flutter Share action does not open a composer. Learn, Forum, Search/Explore, onboarding, dashboard/account assurance, settings, and role-aware/403 surfaces do not have mobile screens/routes.
+- Spaces can join the presence API/socket room, but LiveKit media and room-access tokens are not connected, so there is no real live audio.
+- Android Firebase configuration is a placeholder and the iOS `GoogleService-Info.plist` is missing.
+- The only Flutter test is the generated counter test and no longer compiles (`MyApp` does not exist).
 
 **High:**
+- Flutter chat supports REST text messages and subscribes to Socket.IO, but message requests, groups, translation display, replies, attachments, and voice notes are not implemented there.
+- Flutter profile supports viewing/following, but not messaging from a profile, editing a profile, verification/security management, or dashboard links.
 - Stripe Connect — schema-only, no actual money movement
 - Production media storage — local authenticated upload/processing is implemented; move media to object storage/CDN with signed direct uploads before a multi-instance deployment
-- Transactional email — no account verification, password reset, or digest emails
 - Android certificate pinning values are placeholders
 - Kotlin BLE GATT read/write implementation is incomplete (channel defined, native code placeholder)
 

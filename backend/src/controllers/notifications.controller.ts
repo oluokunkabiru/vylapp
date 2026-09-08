@@ -10,7 +10,7 @@ function shapeNotification(row: any) {
   const actor = row.usersNotificationsActorIdTousers;
   return {
     id: row.id, type: row.type, body: row.body, isRead: row.isRead, createdAt: row.createdAt,
-    actor: actor ? { id: actor.id, handle: actor.handle, displayName: actor.displayName, avatarColor: actor.avatarColor, avatarInitials: actor.avatarInitials, verified: actor.verified } : null,
+    actor: actor ? { id: actor.id, handle: actor.handle, displayName: actor.displayName, avatarColor: actor.avatarColor, avatarInitials: actor.avatarInitials, verified: actor.verificationTier !== "none" } : null,
     vibeId: row.vibeId, spaceId: row.spaceId, conversationId: row.conversationId,
     // G: grouping — groupCount > 1 means this card already represents
     // several like/repost events collapsed into one (see vibes.controller.ts's
@@ -26,7 +26,7 @@ async function list(req: AuthedRequest, res: Response) {
     where: { userId: req.user.id },
     include: {
       usersNotificationsActorIdTousers: {
-        select: { id: true, handle: true, displayName: true, avatarColor: true, avatarInitials: true, verified: true },
+        select: { id: true, handle: true, displayName: true, avatarColor: true, avatarInitials: true, verificationTier: true },
       },
     },
     orderBy: { createdAt: "desc" },

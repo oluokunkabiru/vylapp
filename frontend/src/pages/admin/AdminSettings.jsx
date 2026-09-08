@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { api } from "../../lib/api.js";
 import { useToast } from "../../context/ToastContext.jsx";
 import { Spinner } from "../../components/ui/index.jsx";
+import { humanizeIdentifier } from "../../lib/format.js";
 
 function btnStyle(color) {
   return {
@@ -78,7 +79,8 @@ function FlagsSection() {
           {flags.map(f => (
             <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", borderBottom: "1px solid var(--border2)" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, fontFamily: "var(--mono)" }}>{f.key}</div>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{humanizeIdentifier(f.key.replace(/\./g, "_"))}</div>
+                <div style={{ color:"var(--text3)", fontSize:10.5, fontFamily:"var(--mono)" }}>{f.key}</div>
                 {f.description && <div style={{ color: "var(--text3)", fontSize: 12 }}>{f.description}</div>}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -126,7 +128,7 @@ function ConfigRow({ row, onSave, onDelete, busy }) {
   return (
     <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: 16, marginBottom: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ fontWeight: 800, fontSize: 13.5, fontFamily: "var(--mono)" }}>{row.key}</span>
+        <span style={{ fontWeight: 800, fontSize: 13.5 }}>{humanizeIdentifier(row.key.replace(/\./g, "_"))}<small style={{ display:"block", color:"var(--text3)", fontFamily:"var(--mono)", fontWeight:500, marginTop:2 }}>{row.key}</small></span>
         <button disabled={busy} onClick={() => onDelete(row.key)} style={btnStyle("var(--coral)")}>Delete</button>
       </div>
       <input value={description} onChange={e => setDescription(e.target.value)} placeholder="Description"

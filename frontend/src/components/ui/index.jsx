@@ -126,14 +126,15 @@ export function PrimaryButton({ children, onClick, full, loading, disabled, styl
   );
 }
 
-export function GhostButton({ children, onClick, style: sx }) {
+export function GhostButton({ children, onClick, disabled = false, loading = false, style: sx }) {
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onClick} disabled={disabled || loading} style={{
       padding:"10px 18px", borderRadius:"var(--radius-pill)",
       border:"1.5px solid var(--border)", background:"transparent",
       color:"var(--text)", fontWeight:700, fontSize:14,
-      transition:"all 0.15s", ...sx,
-    }}>{children}</button>
+      transition:"all 0.15s", opacity: disabled || loading ? 0.55 : 1,
+      cursor: disabled || loading ? "not-allowed" : "pointer", ...sx,
+    }}>{loading ? "Opening…" : children}</button>
   );
 }
 

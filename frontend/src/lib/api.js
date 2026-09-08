@@ -52,6 +52,16 @@ async function refreshOnce() {
   return status === 200;
 }
 
+async function recoverCsrfToken() {
+  let result = await rawFetch("/auth/me");
+  if (result.status === 401 && await refreshOnce()) result = await rawFetch("/auth/me");
+  return result.status === 200 && !!_csrfToken;
+}
+
+function isCsrfFailure(status, json) {
+  return status === 403 && json?.error?.message === "CSRF token missing or invalid";
+}
+
 export async function request(method, path, body) {
   let { status, json } = await rawFetch(path, {
     method,
@@ -61,7 +71,7 @@ export async function request(method, path, body) {
   if (status === 401 && path !== "/auth/login" && path !== "/auth/register") {
     const refreshed = await refreshOnce();
     if (refreshed) {
-      ({ json } = await rawFetch(path, {
+      ({ status, json } = await rawFetch(path, {
         method,
         body: body ? JSON.stringify(body) : undefined,
       }));
@@ -70,7 +80,23 @@ export async function request(method, path, body) {
     }
   }
 
-  if (!json?.ok && json?.error) throw new Error(json.error.message || "Request failed");
+  // The CSRF value is intentionally memory-only. A restored cookie session,
+  // stale tab, or frontend hot reload can therefore have valid httpOnly auth
+  // cookies before JavaScript has recovered their matching token. Refresh it
+  // from the safe self endpoint and retry once instead of surfacing a raw 403.
+  if (method !== "GET" && isCsrfFailure(status, json) && await recoverCsrfToken()) {
+    ({ status, json } = await rawFetch(path, {
+      method,
+      body: body ? JSON.stringify(body) : undefined,
+    }));
+  }
+
+  if (!json?.ok && json?.error) {
+    const error = new Error(json.error.message || "Request failed");
+    error.status = status;
+    error.code = json.error.code;
+    throw error;
+  }
   return json?.data ?? json;
 }
 
@@ -78,10 +104,18 @@ export async function upload(path, formData) {
   let { status, json } = await rawFetch(path, { method: "POST", body: formData });
   if (status === 401) {
     const refreshed = await refreshOnce();
-    if (refreshed) ({ json } = await rawFetch(path, { method: "POST", body: formData }));
+    if (refreshed) ({ status, json } = await rawFetch(path, { method: "POST", body: formData }));
     else _onLogout?.();
   }
-  if (!json?.ok && json?.error) throw new Error(json.error.message || "Upload failed");
+  if (isCsrfFailure(status, json) && await recoverCsrfToken()) {
+    ({ status, json } = await rawFetch(path, { method: "POST", body: formData }));
+  }
+  if (!json?.ok && json?.error) {
+    const error = new Error(json.error.message || "Upload failed");
+    error.status = status;
+    error.code = json.error.code;
+    throw error;
+  }
   return json?.data ?? json;
 }
 

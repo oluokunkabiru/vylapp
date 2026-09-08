@@ -35,12 +35,14 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line
 
-  const login = useCallback(async (emailOrHandle, password) => {
-    const { user: u } = await api.post("/auth/login", { emailOrHandle, password });
+  const login = useCallback(async (emailOrHandle, password, twoFactorCode) => {
+    const result = await api.post("/auth/login", { emailOrHandle, password, twoFactorCode });
+    if (result.twoFactorRequired) return result;
+    const u = result.user;
     setUser(u);
     connectSocket();
     checkAdmin();
-    return u;
+    return { user: u };
   }, [checkAdmin]);
 
   const register = useCallback(async ({ email, handle, password, displayName, dateOfBirth }) => {
