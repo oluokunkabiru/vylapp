@@ -20,6 +20,9 @@ router.get("/feed", optionalAuth, asyncHandler(vibesController.feed));
 // ── GET /vibes/category/:category — category feed (Explore filter chips) ─
 router.get("/category/:category", optionalAuth, asyncHandler(vibesController.categoryFeed));
 
+// ── GET /vibes/user/:handle — chronological posts for a public profile ────
+router.get("/user/:handle", optionalAuth, asyncHandler(vibesController.userVibes));
+
 // ── GET /vibes/:id — single vibe + its replies (comments) ───────────────
 router.get("/:id", optionalAuth, asyncHandler(vibesController.getOne));
 

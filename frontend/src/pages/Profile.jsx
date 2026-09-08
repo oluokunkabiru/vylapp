@@ -4,6 +4,7 @@ import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
 import { Avatar, VerifiedBadge, PrimaryButton, GhostButton, TapIcon, Spinner, Empty, Ic, ic, numFmt, Tabs } from "../components/ui/index.jsx";
+import PostCard from "../components/feed/PostCard.jsx";
 
 const CAT_GRADS = { TECH_VIBES:"linear-gradient(135deg,#38BDF8,#7C3AED)", GLOBAL_CONNECT:"linear-gradient(135deg,#10F5A0,#2DD4BF)", CREATIVE_LEARN:"linear-gradient(135deg,#FFB830,#FF6B6B)", HUMAN_POTENTIAL:"linear-gradient(135deg,#A78BFA,#7C3AED)", SPACES_INVITE:"linear-gradient(135deg,#FF6B6B,#FFB830)", GENERAL:"linear-gradient(135deg,#7C3AED,#2DD4BF)" };
 const CAT_EMOJI = { TECH_VIBES:"⚡", GLOBAL_CONNECT:"🌍", CREATIVE_LEARN:"🎨", HUMAN_POTENTIAL:"🧠", SPACES_INVITE:"🎙️", GENERAL:"✦" };
@@ -46,10 +47,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!profile?.id) return;
-    // Load vibes from feed filtered to this user's handle
-    api.get(`/vibes/feed?pageSize=30`).then(({ vibes: v }) => {
-      setVibes((v || []).filter(x => x.author?.handle === profile.handle));
-    }).catch(() => {});
+    api.get(`/vibes/user/${encodeURIComponent(profile.handle)}?pageSize=30`).then(({ vibes: v }) => setVibes(v || [])).catch(() => {});
     if (isMe) {
       api.get("/vibes/me/bookmarks").then(({ vibes: v }) => setSaved(v || [])).catch(() => {});
     }
@@ -178,18 +176,12 @@ export default function Profile() {
         onChange={setTab}
       />
 
-      {/* Grid */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:2, padding:"2px" }}>
-        {displayVibes.map((v,i) => (
-          <div key={v.id||i} style={{
-            aspectRatio:"1/1", background:CAT_GRADS[v.category]||CAT_GRADS.GENERAL,
-            display:"flex", alignItems:"center", justifyContent:"center", fontSize:28,
-          }}>{CAT_EMOJI[v.category]||"✦"}</div>
-        ))}
+      {/* Profile timeline: this is the user's complete chronological posts,
+          not a filtered slice of the personalized home feed. */}
+      <div>
+        {displayVibes.map((v,i) => <PostCard key={v.id||i} vibe={v} lang={me?.uiLanguage || "en"} />)}
         {displayVibes.length === 0 && (
-          <div style={{ gridColumn:"1/-1" }}>
-            <Empty emoji="✦" title={tab==="vibes"?"No vibes yet":"Nothing saved"} sub={tab==="vibes"?"Share the first one!":"Saved vibes will show here."} />
-          </div>
+          <Empty emoji="✦" title={tab==="vibes"?"No vibes yet":"Nothing saved"} sub={tab==="vibes"?"Share the first one!":"Saved vibes will show here."} />
         )}
       </div>
 

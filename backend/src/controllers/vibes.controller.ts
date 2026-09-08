@@ -197,6 +197,30 @@ async function feed(req: AuthedRequest, res: Response) {
   return ok(res, { vibes: shaped, page, pageSize, hasMore });
 }
 
+// ── GET /vibes/user/:handle — complete chronological profile timeline ───────
+// Profiles must not be populated by filtering the ranked home feed: that
+// candidate window is intentionally limited and can omit an author's older
+// posts. This is the authoritative timeline for a person.
+async function userVibes(req: AuthedRequest, res: Response) {
+  const page = Math.max(0, parseInt((req.query.page as string) || "0", 10) || 0);
+  const pageSize = Math.min(50, Math.max(1, parseInt((req.query.pageSize as string) || "30", 10) || 30));
+  const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
+  const rows: any[] = await prisma.$queryRawUnsafe(`
+    SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
+     WHERE u.handle = $1 AND v.is_deleted = FALSE AND v.reply_to IS NULL ${sensitiveClause}
+     ORDER BY v.created_at DESC LIMIT $2 OFFSET $3
+  `, req.params.handle, pageSize, page * pageSize);
+  const withState = await attachViewerState(rows, req.user?.id);
+  const shaped = withState.map(({ row, state }) => shapeVibe(row, state));
+  if (req.user && shaped.length) {
+    const follows = await prisma.connections.findUnique({ where: { followerId_followingId: { followerId: req.user.id, followingId: shaped[0].author.id } } });
+    shaped.forEach(vibe => { vibe.author.viewerFollows = !!follows; });
+  }
+  await attachMediaToVibes(shaped);
+  await translateVibesForViewer(shaped, req.query.lang as string, req.user?.id);
+  return ok(res, { vibes: shaped, page, pageSize, hasMore: shaped.length === pageSize });
+}
+
 // ── GET /vibes/category/:category — category feed (Explore filter chips) ─
 async function categoryFeed(req: AuthedRequest, res: Response) {
   const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
@@ -472,5 +496,5 @@ async function myBookmarks(req: AuthedRequest, res: Response) {
 
 export = {
   shapeVibe, VIBE_FIELDS,
-  feed, categoryFeed, getOne, create, update, remove, like, unlike, repost, unrepost, bookmark, unbookmark, myBookmarks,
+  feed, userVibes, categoryFeed, getOne, create, update, remove, like, unlike, repost, unrepost, bookmark, unbookmark, myBookmarks,
 };
