@@ -169,7 +169,7 @@ function PayoutsTab() {
       )}
 
       {failTarget && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16, overflowY: "auto", boxSizing: "border-box" }}>
           <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, width: 360 }}>
             <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>Mark payout failed</div>
             <textarea value={failReason} onChange={e => setFailReason(e.target.value)} placeholder="Failure reason"

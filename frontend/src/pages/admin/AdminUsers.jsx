@@ -121,7 +121,7 @@ export default function AdminUsers() {
       )}
 
       {reasonFor && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16, overflowY: "auto", boxSizing: "border-box" }}>
           <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, width: 360 }}>
             <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>Suspend user</div>
             <textarea
@@ -175,7 +175,7 @@ function UserDetailModal({ detail, loading, onClose }) {
 
 function SectionTitle({ title }) { return <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 10 }}>{title}</div>; }
 function EmptyLine({ text }) { return <div style={{ color: "var(--text3)", fontSize: 13 }}>{text}</div>; }
-const overlayStyle = { position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,.62)", display: "flex", justifyContent: "flex-end" };
+const overlayStyle = { position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.62)", display: "flex", justifyContent: "flex-end", overflowY: "auto" };
 const modalStyle = { width: "min(760px, 100%)", height: "100%", overflowY: "auto", background: "var(--bg1)", borderLeft: "1px solid var(--border)", padding: "28px 24px 48px" };
 const sectionStyle = { background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: 16, marginBottom: 14 };
 const metricGrid = { display: "grid", gridTemplateColumns: "repeat(5, minmax(70px, 1fr))", gap: 10, marginTop: 15 };

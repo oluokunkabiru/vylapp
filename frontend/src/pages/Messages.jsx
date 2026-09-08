@@ -109,7 +109,7 @@ function NewGroupModal({ onClose, onCreated }) {
   };
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:100 }} onClick={onClose}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.5)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:16, overflowY:"auto", boxSizing:"border-box" }} onClick={onClose}>
       <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:16, padding:24, width:360, maxHeight:"75vh", display:"flex", flexDirection:"column" }} onClick={e => e.stopPropagation()}>
         <div style={{ fontWeight:800, fontSize:16, marginBottom:14 }}>New group</div>
         <input

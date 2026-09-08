@@ -194,7 +194,7 @@ export default function Profile() {
       </div>
 
       {socialView && (
-        <div style={{ position:"fixed", inset:0, zIndex:100, background:"rgba(0,0,0,.55)", display:"flex", alignItems:"center", justifyContent:"center" }} onClick={closeSocial}>
+        <div style={{ position:"fixed", inset:0, zIndex:1000, background:"rgba(0,0,0,.55)", display:"flex", alignItems:"center", justifyContent:"center", padding:16, overflowY:"auto", boxSizing:"border-box" }} onClick={closeSocial}>
           <div style={{ width:"min(440px, calc(100% - 28px))", maxHeight:"70vh", overflowY:"auto", background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:18, padding:20 }} onClick={e => e.stopPropagation()}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}><div style={{ fontWeight:850 }}>{socialView === "followers" ? "Followers" : "Following"}</div><GhostButton onClick={closeSocial}>Close</GhostButton></div>
             {socialLoading ? <div style={{ display:"flex", justifyContent:"center", padding:24 }}><Spinner size={24} /></div> : socialUsers.map(person => <Link key={person.id} to={`/profile/${person.handle}`} onClick={closeSocial} style={{ display:"flex", justifyContent:"space-between", padding:"11px 0", borderTop:"1px solid var(--border2)", color:"var(--text)", textDecoration:"none" }}><span style={{ fontWeight:700 }}>{person.displayName}</span><span style={{ color:"var(--text3)" }}>@{person.handle}</span></Link>)}

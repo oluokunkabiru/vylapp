@@ -142,7 +142,7 @@ function VibesTab() {
       )}
 
       {removeTarget && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16, overflowY: "auto", boxSizing: "border-box" }}>
           <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, width: 360 }}>
             <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>Remove vibe</div>
             <textarea value={reason} onChange={e => setReason(e.target.value)} placeholder="Reason (optional)"
@@ -163,15 +163,15 @@ function Actor({ actor }) {
   return actor ? <AdminUserLink handle={actor.handle} /> : <span style={{ color: "var(--text3)" }}>Anonymous</span>;
 }
 
-function VibeDetailModal({ detail, loading, onClose }) {
+function VibeDetailModal({ detail, loading, onClose, fullPage = false }) {
   const vibe = detail?.vibe;
   const groups = detail ? [
     ["Likes", detail.engagement.likes], ["Reshares", detail.engagement.reposts], ["Bookmarks", detail.engagement.bookmarks], ["Views", detail.engagement.views],
   ] : [];
   return (
-    <div style={overlayStyle} onClick={onClose}>
-      <div style={modalStyle} onClick={e => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 18 }}><div><div style={{ fontWeight: 900, fontSize: 19 }}>Content review</div><div style={{ color: "var(--text3)", fontSize: 12 }}>Post, comments and attributable engagement</div></div><button onClick={onClose} style={btnStyle("var(--text3)")}>Close</button></div>
+    <div style={fullPage ? detailPageShellStyle : overlayStyle} onClick={fullPage ? undefined : onClose}>
+      <div style={fullPage ? detailPageStyle : modalStyle} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 18 }}><div><div style={{ fontWeight: 900, fontSize: 19 }}>Content review</div><div style={{ color: "var(--text3)", fontSize: 12 }}>Post, comments and attributable engagement</div></div><button onClick={onClose} style={btnStyle("var(--text3)")}>{fullPage ? "← Back to content" : "Close"}</button></div>
         {loading ? <div style={{ display: "flex", justifyContent: "center", padding: 50 }}><Spinner size={28} /></div> : vibe && <>
           <section style={sectionStyle}>
             <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}><Actor actor={vibe.author} /> · {humanizeIdentifier(vibe.category)} · {new Date(vibe.created_at).toLocaleString()}</div>
@@ -199,13 +199,15 @@ function AdminVibeDetail() {
     api.get(`/admin/content/vibes/${vibeId}`).then(setDetail).catch(e => toast(e.message, "error")).finally(() => setLoading(false));
   }, [vibeId]); // eslint-disable-line
 
-  return <VibeDetailModal detail={detail} loading={loading} onClose={() => navigate("/admin/content")} />;
+  return <VibeDetailModal detail={detail} loading={loading} fullPage onClose={() => navigate("/admin/content")} />;
 }
 
 function SectionTitle({ title }) { return <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 10 }}>{title}</div>; }
 function EmptyLine({ text }) { return <div style={{ color: "var(--text3)", fontSize: 13 }}>{text}</div>; }
-const overlayStyle = { position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,.62)", display: "flex", justifyContent: "flex-end" };
-const modalStyle = { width: "min(760px, 100%)", height: "100%", overflowY: "auto", background: "var(--bg1)", borderLeft: "1px solid var(--border)", padding: "28px 24px 48px" };
+const overlayStyle = { position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.62)", display: "flex", justifyContent: "flex-end", overflowY: "auto" };
+const modalStyle = { width: "min(760px, 100%)", minHeight: "100dvh", overflowY: "auto", background: "var(--bg1)", borderLeft: "1px solid var(--border)", padding: "28px 24px 48px", boxSizing: "border-box" };
+const detailPageShellStyle = { padding: "28px 32px 60px", minHeight: "100vh", boxSizing: "border-box" };
+const detailPageStyle = { width: "min(1100px, 100%)", margin: "0 auto", background: "var(--bg1)", border: "1px solid var(--border)", borderRadius: 18, padding: "28px 24px 48px", boxSizing: "border-box" };
 const sectionStyle = { background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 14, padding: 16, marginBottom: 14 };
 const metricGrid = { display: "grid", gridTemplateColumns: "repeat(4, minmax(70px, 1fr))", gap: 10, marginTop: 15 };
 const metricLabel = { color: "var(--text3)", fontSize: 10.5, textTransform: "uppercase", marginBottom: 3 };
@@ -305,7 +307,7 @@ function SpacesTab() {
       )}
 
       {participantsFor && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16, overflowY: "auto", boxSizing: "border-box" }}
           onClick={() => setParticipantsFor(null)}>
           <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 24, width: 400, maxHeight: "70vh", overflowY: "auto" }}
             onClick={e => e.stopPropagation()}>
