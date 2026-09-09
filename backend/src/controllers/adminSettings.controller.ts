@@ -13,6 +13,7 @@ import { AuthedRequest } from "../types/express";
 import respond from "../utils/respond";
 import prisma from "../config/prisma";
 import featureFlags from "../services/featureFlags.service";
+import mailer from "../utils/mailer";
 
 const { ok, fail } = respond;
 
@@ -56,6 +57,16 @@ async function deleteConfig(req: AuthedRequest, res: Response) {
   await prisma.appConfig.delete({ where: { key } });
   await writeAudit(req.user.id, "settings.config.delete", `app_config:${key}`, null, before, null, req.ip || null);
   return ok(res, { deleted: true });
+}
+
+// ── POST /admin/settings/smtp/test — authenticated production-safe smoke test
+async function testSmtp(req: AuthedRequest, res: Response) {
+  const to = typeof req.body?.to === "string" ? req.body.to.trim() : "";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return fail(res, 400, "A valid recipient email is required");
+  if (!(await mailer.verifyMailConfig())) return fail(res, 502, "SMTP connection verification failed; check the server mail settings");
+  const info = await mailer.sendSmtpTestEmail(to);
+  await writeAudit(req.user.id, "settings.smtp.test", "smtp", null, null, { to, message_id: info.messageId }, req.ip || null);
+  return ok(res, { sent: true, to, message_id: info.messageId });
 }
 
 // ── GET /admin/settings/flags ─────────────────────────────────────────────────
@@ -107,4 +118,4 @@ async function deleteFlag(req: AuthedRequest, res: Response) {
   return ok(res, { deleted: true });
 }
 
-export = { listConfig, upsertConfig, deleteConfig, listFlags, createFlag, updateFlag, deleteFlag };
+export = { listConfig, upsertConfig, deleteConfig, testSmtp, listFlags, createFlag, updateFlag, deleteFlag };

@@ -78,6 +78,16 @@ async function verifyMailConfig(): Promise<boolean> {
   }
 }
 
+// Admin-only operational smoke test. Kept here so it uses the identical
+// transport, TLS mode, authentication and From identity as real mail.
+async function sendSmtpTestEmail(to: string) {
+  return send({
+    to,
+    subject: "Vylapp SMTP configuration test",
+    html: "<p>This confirms that Vylapp can connect to your configured SMTP provider and send transactional email.</p>",
+  });
+}
+
 // ── 1. Welcome (after registration) ───────────────────────────────────────────
 async function sendWelcomeEmail(email: string, displayName: string | null | undefined, verifyToken: string) {
   const verifyLink = `${env.clientOrigin}/verify-email?token=${verifyToken}`;
@@ -113,6 +123,7 @@ async function send2FAOTPEmail(email: string, displayName: string | null | undef
 
 export = {
   verifyMailConfig,
+  sendSmtpTestEmail,
   sendWelcomeEmail,
   sendEmailVerificationEmail,
   sendPasswordResetEmail,

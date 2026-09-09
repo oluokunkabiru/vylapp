@@ -105,6 +105,7 @@ router.put("/monetization/payment-providers",       requirePermission("creator.m
 router.get("/settings/config",           requirePermission("admin.system.config"), asyncHandler(adminSettingsController.listConfig));
 router.put("/settings/config/:key",      requirePermission("admin.system.config"), asyncHandler(adminSettingsController.upsertConfig));
 router.delete("/settings/config/:key",   requirePermission("admin.system.config"), asyncHandler(adminSettingsController.deleteConfig));
+router.post("/settings/smtp/test",       requirePermission("admin.system.config"), asyncHandler(adminSettingsController.testSmtp));
 router.get("/settings/flags",            requirePermission("admin.system.config"), asyncHandler(adminSettingsController.listFlags));
 router.post("/settings/flags",           requirePermission("admin.system.config"), asyncHandler(adminSettingsController.createFlag));
 router.patch("/settings/flags/:id",      requirePermission("admin.system.config"), asyncHandler(adminSettingsController.updateFlag));
