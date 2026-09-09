@@ -25,7 +25,16 @@ const ACCESS_MAX_AGE_MS = 15 * 60 * 1000;
 const REFRESH_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 function baseCookieOpts() {
-  const isProd = env.nodeEnv === "production";
+  // NODE_ENV was incorrectly left as development on the live API. That made
+  // an HTTPS frontend on vylapp.com receive SameSite=Lax cookies from the
+  // different miglomicrofix.com.ng site; browsers then withheld every cookie
+  // from API calls and every protected endpoint returned 401. A concrete
+  // HTTPS client origin is independently sufficient evidence that this is a
+  // cross-site web deployment, so do not rely solely on NODE_ENV here.
+  const crossSiteHttpsClient = env.clientOrigins.some(origin => {
+    try { return new URL(origin).protocol === "https:"; } catch { return false; }
+  });
+  const isProd = env.nodeEnv === "production" || crossSiteHttpsClient;
   return {
     httpOnly: true,
     secure: isProd,
