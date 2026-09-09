@@ -13,6 +13,7 @@ import crypto from "../utils/crypto";
 const { hashPassword } = crypto;
 
 const DEMO_PASSWORD = "VylappDemo123!";
+const DEV_ADMIN = { email: "devvboy@vylapp.local", handle: "devvboy", name: "Devvboy Administrator" };
 
 const USERS = {
   aisha: "00000000-0000-0000-0001-000000000001",
@@ -54,6 +55,27 @@ async function seed() {
   // no-op otherwise since the insert above already sets the real hash.
   console.log("[seed] setting known demo password for all seed personas ...");
   await pool.query(`UPDATE users SET password_hash = $1 WHERE id::text LIKE '00000000-0000-0000-0001-%'`, [hash]);
+
+  // Local development needs one actual administrator to exercise the console.
+  // This seed is only run by the development compose command; production only
+  // runs it when SEED_DEMO_DATA=true. Preserve an existing devvboy account and
+  // its password, but always ensure it has the seeded super_admin role.
+  console.log("[seed] ensuring local super admin @devvboy ...");
+  await pool.query(
+    `INSERT INTO users (email, handle, display_name, avatar_color, avatar_initials, verified, verification_tier, onboarding_done, onboarding_step, password_hash)
+     VALUES ($1, $2, $3, '#7C3AED', 'DB', TRUE, 'official', TRUE, 'complete', $4)
+     ON CONFLICT (handle) DO NOTHING`,
+    [DEV_ADMIN.email, DEV_ADMIN.handle, DEV_ADMIN.name, hash],
+  );
+  const { rows: devAdmins } = await pool.query(`SELECT id FROM users WHERE handle = $1`, [DEV_ADMIN.handle]);
+  if (devAdmins[0]) {
+    await pool.query(
+      `INSERT INTO user_has_roles (user_id, role_id, scope_type, scope_id)
+       SELECT $1, id, '', '' FROM roles WHERE name = 'super_admin'
+       ON CONFLICT (user_id, role_id, scope_type, scope_id) DO NOTHING`,
+      [devAdmins[0].id],
+    );
+  }
 
   // Demo personas' vibes/spaces have no natural unique key to ON CONFLICT
   // against, so idempotency is a plain existence check instead — this script
