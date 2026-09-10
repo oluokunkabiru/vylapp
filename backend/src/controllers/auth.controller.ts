@@ -25,6 +25,18 @@ function issueTokens(user: { id: string; handle: string }) {
   return { accessToken, refreshToken };
 }
 
+// Native apps do not share the browser's httpOnly cookie jar. They identify
+// themselves explicitly and receive the same short-lived access/refresh pair
+// for storage in Keychain/Android Keystore; web clients remain cookie-only.
+function isFlutterClient(req: Request) {
+  return req.get("X-Platform")?.toLowerCase() === "flutter";
+}
+
+function authResponse(req: Request, user: any, tokens: { accessToken: string; refreshToken: string }, csrfToken: string) {
+  const base = { user: publicUser(toSnakeUser(user)), csrfToken };
+  return isFlutterClient(req) ? { ...base, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken } : base;
+}
+
 async function storeRefreshToken(userId: string, token: string, deviceInfo?: unknown) {
   const expiresAt = new Date(Date.now() + REFRESH_TTL_DAYS * 86400000);
   await prisma.refreshTokens.create({
@@ -157,7 +169,7 @@ async function register(req: Request, res: Response) {
   }
 
   const csrfToken = authCookies.setAuthCookies(res, { accessToken, refreshToken });
-  return ok(res, { user: publicUser(toSnakeUser(user)), csrfToken }, 201);
+  return ok(res, authResponse(req, user, { accessToken, refreshToken }, csrfToken), 201);
 }
 
 // ── POST /auth/login ───────────────────────────────────────────────────────────
@@ -190,12 +202,12 @@ async function login(req: Request, res: Response) {
   await storeRefreshToken(user.id, refreshToken, { ip: req.ip, ua: req.headers["user-agent"] });
 
   const csrfToken = authCookies.setAuthCookies(res, { accessToken, refreshToken });
-  return ok(res, { user: publicUser(toSnakeUser(user)), csrfToken });
+  return ok(res, authResponse(req, user, { accessToken, refreshToken }, csrfToken));
 }
 
 // ── POST /auth/refresh ─────────────────────────────────────────────────────────
 async function refresh(req: Request, res: Response) {
-  const refreshToken = req.cookies?.[authCookies.REFRESH_COOKIE];
+  const refreshToken = req.cookies?.[authCookies.REFRESH_COOKIE] || (isFlutterClient(req) ? req.body?.refreshToken : null);
   if (!refreshToken) return fail(res, 401, "Missing refresh token");
 
   const record = await prisma.refreshTokens.findFirst({
@@ -211,12 +223,12 @@ async function refresh(req: Request, res: Response) {
   // token → refresh), so it's also the frontend's first chance to recover
   // its in-memory copy (see lib/api.js and this file's csrf.ts exemption).
   const csrfToken = req.cookies?.[authCookies.CSRF_COOKIE] || null;
-  return ok(res, { refreshed: true, csrfToken });
+  return ok(res, isFlutterClient(req) ? { refreshed: true, accessToken } : { refreshed: true, csrfToken });
 }
 
 // ── POST /auth/logout ──────────────────────────────────────────────────────────
 async function logout(req: Request, res: Response) {
-  const refreshToken = req.cookies?.[authCookies.REFRESH_COOKIE];
+  const refreshToken = req.cookies?.[authCookies.REFRESH_COOKIE] || (isFlutterClient(req) ? req.body?.refreshToken : null);
   if (refreshToken) await prisma.refreshTokens.updateMany({ where: { token: refreshToken }, data: { revokedAt: new Date() } });
   authCookies.clearAuthCookies(res);
   return ok(res, { loggedOut: true });

@@ -12,7 +12,8 @@ import '../../../../core/utils/input_sanitiser.dart';
 // ── Events ────────────────────────────────────────────────────────────────────
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
-  @override List<Object?> get props => [];
+  @override
+  List<Object?> get props => [];
 }
 
 class AuthCheckSession extends AuthEvent {
@@ -23,7 +24,8 @@ class AuthLogin extends AuthEvent {
   final String emailOrHandle;
   final String password;
   const AuthLogin({required this.emailOrHandle, required this.password});
-  @override List<Object?> get props => [emailOrHandle];
+  @override
+  List<Object?> get props => [emailOrHandle];
 }
 
 class AuthRegister extends AuthEvent {
@@ -31,11 +33,16 @@ class AuthRegister extends AuthEvent {
   final String handle;
   final String password;
   final String displayName;
+  final String dateOfBirth;
   const AuthRegister({
-    required this.email, required this.handle,
-    required this.password, required this.displayName,
+    required this.email,
+    required this.handle,
+    required this.password,
+    required this.displayName,
+    required this.dateOfBirth,
   });
-  @override List<Object?> get props => [email, handle];
+  @override
+  List<Object?> get props => [email, handle];
 }
 
 class AuthLogout extends AuthEvent {
@@ -45,34 +52,48 @@ class AuthLogout extends AuthEvent {
 class AuthUpdateUser extends AuthEvent {
   final UserModel user;
   const AuthUpdateUser(this.user);
-  @override List<Object?> get props => [user];
+  @override
+  List<Object?> get props => [user];
 }
 
 // ── States ────────────────────────────────────────────────────────────────────
 abstract class AuthState extends Equatable {
   const AuthState();
-  @override List<Object?> get props => [];
+  @override
+  List<Object?> get props => [];
 }
 
-class AuthInitial       extends AuthState { const AuthInitial(); }
-class AuthLoading       extends AuthState { const AuthLoading(); }
+class AuthInitial extends AuthState {
+  const AuthInitial();
+}
+
+class AuthLoading extends AuthState {
+  const AuthLoading();
+}
+
 class AuthAuthenticated extends AuthState {
   final UserModel user;
   const AuthAuthenticated(this.user);
-  @override List<Object?> get props => [user];
+  @override
+  List<Object?> get props => [user];
 }
-class AuthUnauthenticated extends AuthState { const AuthUnauthenticated(); }
+
+class AuthUnauthenticated extends AuthState {
+  const AuthUnauthenticated();
+}
+
 class AuthError extends AuthState {
   final String message;
   const AuthError(this.message);
-  @override List<Object?> get props => [message];
+  @override
+  List<Object?> get props => [message];
 }
 
 // ── BLoC ──────────────────────────────────────────────────────────────────────
 @injectable
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc(this._api, this._tokens, this._socket, this._sanitiser)
-    : super(const AuthInitial()) {
+      : super(const AuthInitial()) {
     on<AuthCheckSession>(_onCheckSession);
     on<AuthLogin>(_onLogin);
     on<AuthRegister>(_onRegister);
@@ -80,12 +101,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthUpdateUser>(_onUpdateUser);
   }
 
-  final ApiClient     _api;
-  final TokenService  _tokens;
+  final ApiClient _api;
+  final TokenService _tokens;
   final SocketService _socket;
   final InputSanitiser _sanitiser;
 
-  Future<void> _onCheckSession(AuthCheckSession event, Emitter<AuthState> emit) async {
+  Future<void> _onCheckSession(
+      AuthCheckSession event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
     try {
       final hasSession = await _tokens.hasValidSession();
@@ -129,15 +151,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ApiConstants.login,
         body: {
           'emailOrHandle': event.emailOrHandle.trim(),
-          'password':      event.password,
+          'password': event.password,
         },
         requiresAuth: false,
       );
-      final user  = UserModel.fromJson(data['user'] as Map<String, dynamic>);
-      final access  = data['accessToken']  as String;
+      final user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+      final access = data['accessToken'] as String;
       final refresh = data['refreshToken'] as String;
       await _tokens.saveTokens(
-        accessToken: access, refreshToken: refresh, userId: user.id);
+          accessToken: access, refreshToken: refresh, userId: user.id);
       await _socket.connect();
       emit(AuthAuthenticated(user));
     } on NetworkException catch (e) {
@@ -149,13 +171,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onRegister(AuthRegister event, Emitter<AuthState> emit) async {
     // Validate before hitting the network
-    final emailCheck  = _sanitiser.validateEmail(event.email);
+    final emailCheck = _sanitiser.validateEmail(event.email);
     final handleCheck = _sanitiser.validateHandle(event.handle);
-    final pwCheck     = _sanitiser.validatePassword(event.password);
+    final pwCheck = _sanitiser.validatePassword(event.password);
 
-    if (!emailCheck.isValid)  return emit(AuthError(emailCheck.message!));
+    if (!emailCheck.isValid) return emit(AuthError(emailCheck.message!));
     if (!handleCheck.isValid) return emit(AuthError(handleCheck.message!));
-    if (!pwCheck.isValid)     return emit(AuthError(pwCheck.message!));
+    if (!pwCheck.isValid) return emit(AuthError(pwCheck.message!));
 
     if (event.displayName.trim().isEmpty) {
       return emit(const AuthError('Display name is required'));
@@ -166,18 +188,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final data = await _api.post(
         ApiConstants.register,
         body: {
-          'email':       event.email.trim().toLowerCase(),
-          'handle':      _sanitiser.sanitiseHandle(event.handle),
-          'password':    event.password,
+          'email': event.email.trim().toLowerCase(),
+          'handle': _sanitiser.sanitiseHandle(event.handle),
+          'password': event.password,
           'displayName': event.displayName.trim(),
+          'date_of_birth': event.dateOfBirth,
         },
         requiresAuth: false,
       );
-      final user    = UserModel.fromJson(data['user'] as Map<String, dynamic>);
-      final access  = data['accessToken']  as String;
+      final user = UserModel.fromJson(data['user'] as Map<String, dynamic>);
+      final access = data['accessToken'] as String;
       final refresh = data['refreshToken'] as String;
       await _tokens.saveTokens(
-        accessToken: access, refreshToken: refresh, userId: user.id);
+          accessToken: access, refreshToken: refresh, userId: user.id);
       await _socket.connect();
       emit(AuthAuthenticated(user));
     } on NetworkException catch (e) {
@@ -200,7 +223,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  Future<void> _onUpdateUser(AuthUpdateUser event, Emitter<AuthState> emit) async {
+  Future<void> _onUpdateUser(
+      AuthUpdateUser event, Emitter<AuthState> emit) async {
     emit(AuthAuthenticated(event.user));
   }
 }

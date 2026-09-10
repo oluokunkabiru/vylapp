@@ -205,10 +205,57 @@ function ConfigSection() {
   );
 }
 
+// ── SMTP diagnostics ─────────────────────────────────────────────────────────
+function SmtpTestSection() {
+  const toast = useToast();
+  const [recipient, setRecipient] = useState("");
+  const [sending, setSending] = useState(false);
+
+  const sendTest = async (event) => {
+    event.preventDefault();
+    if (!recipient.trim()) return toast("Enter a recipient email address", "error");
+    setSending(true);
+    try {
+      await api.post("/admin/settings/smtp/test", { to: recipient.trim() });
+      toast(`SMTP test email sent to ${recipient.trim()}`);
+    } catch (error) {
+      toast(error.message || "SMTP test failed", "error");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <section style={{ marginBottom: 32 }}>
+      <h2 style={{ fontSize: 17, fontWeight: 800, margin: "0 0 8px" }}>Email delivery test</h2>
+      <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, padding: 18 }}>
+        <p style={{ color: "var(--text2)", fontSize: 13, lineHeight: 1.5, margin: "0 0 14px" }}>
+          Verify the configured SMTP connection and send a test message. This action is recorded in the admin audit log.
+        </p>
+        <form onSubmit={sendTest} style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <input
+            aria-label="Test email recipient"
+            type="email"
+            required
+            value={recipient}
+            onChange={event => setRecipient(event.target.value)}
+            placeholder="you@example.com"
+            style={{ ...inputStyle, flex: "1 1 260px" }}
+          />
+          <button type="submit" disabled={sending} style={btnStyle("var(--violet-lt)")}>
+            {sending ? "Sending…" : "Send test email"}
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
 export default function AdminSettings() {
   return (
     <div style={{ padding: "28px 32px 60px" }}>
       <h1 style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-0.5px", margin: "0 0 20px" }}>Platform Settings</h1>
+      <SmtpTestSection />
       <FlagsSection />
       <ConfigSection />
     </div>

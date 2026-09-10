@@ -24,14 +24,14 @@ class ApiClient {
   ApiClient(this._tokenService) {
     _dio = Dio(
       BaseOptions(
-        baseUrl:        ApiConstants.baseUrl,
+        baseUrl: ApiConstants.baseUrl,
         connectTimeout: ApiConstants.connectTimeout,
         receiveTimeout: ApiConstants.receiveTimeout,
-        sendTimeout:    ApiConstants.sendTimeout,
+        sendTimeout: ApiConstants.sendTimeout,
         headers: {
           'Content-Type': 'application/json',
-          'Accept':       'application/json',
-          'X-Platform':   'flutter',
+          'Accept': 'application/json',
+          'X-Platform': 'flutter',
         },
         validateStatus: (status) => status != null && status < 500,
       ),
@@ -107,8 +107,8 @@ class ApiClient {
     final body = resp.data;
     if (body == null) throw const NetworkException.empty();
     if (body['ok'] == true) return body['data'] as Map<String, dynamic>? ?? {};
-    final errorMsg = (body['error'] as Map?)?['message'] as String?
-      ?? 'Something went wrong';
+    final errorMsg = (body['error'] as Map?)?['message'] as String? ??
+        'Something went wrong';
     throw NetworkException.server(errorMsg, statusCode: resp.statusCode);
   }
 }
@@ -137,19 +137,26 @@ class _AuthInterceptor extends Interceptor {
   }
 
   @override
-  Future<void> onError(
-    DioException err,
-    ErrorInterceptorHandler handler,
+  Future<void> onResponse(
+    Response<dynamic> response,
+    ResponseInterceptorHandler handler,
   ) async {
-    if (err.response?.statusCode != 401) return handler.next(err);
-    if (_isRefreshing) return handler.next(err);
+    final options = response.requestOptions;
+    final requiresAuth = options.extra['requiresAuth'] as bool? ?? true;
+    final retried = options.extra['retried'] == true;
+    if (response.statusCode != 401 ||
+        !requiresAuth ||
+        retried ||
+        _isRefreshing) {
+      return handler.next(response);
+    }
 
     _isRefreshing = true;
     try {
       final refreshToken = await _tokenService.getRefreshToken();
       if (refreshToken == null) {
         await _tokenService.clearAll();
-        return handler.next(err);
+        return handler.next(response);
       }
 
       final resp = await _dio.post<Map<String, dynamic>>(
@@ -159,20 +166,21 @@ class _AuthInterceptor extends Interceptor {
       );
 
       final newAccess = resp.data?['data']?['accessToken'] as String?;
-      if (newAccess == null) {
+      if (resp.statusCode != 200 || newAccess == null) {
         await _tokenService.clearAll();
-        return handler.next(err);
+        return handler.next(response);
       }
 
       await _tokenService.saveAccessToken(newAccess);
 
       // Retry the original request with the new token
-      err.requestOptions.headers['Authorization'] = 'Bearer $newAccess';
-      final retried = await _dio.fetch<Map<String, dynamic>>(err.requestOptions);
-      return handler.resolve(retried);
+      options.headers['Authorization'] = 'Bearer $newAccess';
+      options.extra['retried'] = true;
+      final retryResponse = await _dio.fetch<dynamic>(options);
+      return handler.resolve(retryResponse);
     } catch (_) {
       await _tokenService.clearAll();
-      return handler.next(err);
+      return handler.next(response);
     } finally {
       _isRefreshing = false;
     }
