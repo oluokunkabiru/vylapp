@@ -9,6 +9,7 @@ export interface AuthUser {
   handle: string;
   displayName: string;
   isMinor: boolean;
+  ageBand: "child" | "teen" | "adult";
 }
 
 export interface ResolvedPermissions {

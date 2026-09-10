@@ -103,6 +103,11 @@ function computeAge(dobInput: unknown): number | null {
   return age;
 }
 
+function ageBandFromDate(dob: Date | null): "child" | "teen" | "adult" {
+  const age = computeAge(dob?.toISOString().slice(0, 10));
+  return age === null || age < 12 ? "child" : age < 18 ? "teen" : "adult";
+}
+
 // ── Helper: create + store an email-verification token ────────────────────────
 async function issueEmailVerificationToken(userId: string) {
   const token = crypto.generateEmailVerificationToken();
@@ -266,7 +271,7 @@ async function accountStatus(req: AuthedRequest, res: Response) {
         currentCountry: true, currentCity: true, language: true,
         contentLanguage: true, subscriptionPlan: true, provider: true,
         verified: true, verificationTier: true, twoFactorEnabled: true,
-        isCreator: true, isMinor: true, createdAt: true,
+        isCreator: true, isMinor: true, birthday: true, createdAt: true,
       },
     }),
     rbac.getUserPermissionSummary(req.user.id),
@@ -327,6 +332,8 @@ async function accountStatus(req: AuthedRequest, res: Response) {
       contentLanguages: user.contentLanguage,
       location: user.location || [user.currentCity, user.currentCountry].filter(Boolean).join(", ") || null,
       isMinor: user.isMinor,
+      ageBand: ageBandFromDate(user.birthday),
+      contentAccess: ageBandFromDate(user.birthday) === "child" ? "kids_only" : ageBandFromDate(user.birthday) === "teen" ? "under_18" : "adult",
     },
     verification: {
       assuranceScore,

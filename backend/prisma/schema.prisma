@@ -2265,6 +2265,7 @@ model Vibes {
   autopilotMomentum                  TrendMomentum?       @map("autopilot_momentum")
   impactBadge                        String?              @map("impact_badge")
   isSensitive                        Boolean              @default(false) @map("is_sensitive")
+  contentAudience                    String               @default("general") @map("content_audience")
   isDeleted                          Boolean              @default(false) @map("is_deleted")
   deletedAt                          DateTime?            @map("deleted_at") @db.Timestamptz(6)
   // V-18: the visible marker itself. Set once and never cleared — an edited

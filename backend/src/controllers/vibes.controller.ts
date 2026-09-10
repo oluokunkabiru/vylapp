@@ -50,7 +50,7 @@ const VIBE_FIELDS = `
   v.reply_to, v.repost_of, v.quote_of, v.is_paid_content,
   v.event_title, v.event_time, v.event_reminded_count, v.event_interested_count,
   v.likes_count, v.reposts_count, v.replies_count, v.views_count, v.bookmarks_count,
-  v.is_autopilot, v.impact_badge, v.created_at, v.is_edited, v.is_sensitive,
+  v.is_autopilot, v.impact_badge, v.created_at, v.is_edited, v.is_sensitive, v.content_audience,
   u.handle, u.display_name, u.avatar_color, u.avatar_initials, u.avatar_url,
   (u.verification_tier <> 'none') AS verified, u.role_tag
 `;
@@ -69,6 +69,7 @@ function shapeVibe(row: any, viewerState?: any) {
     event: row.event_title ? { title: row.event_title, time: row.event_time, reminded: row.event_reminded_count, interested: row.event_interested_count } : null,
     counts: { likes: row.likes_count, reposts: row.reposts_count, replies: row.replies_count, views: row.views_count, bookmarks: row.bookmarks_count },
     isAutopilot: row.is_autopilot,
+    contentAudience: row.content_audience || "general",
     impactBadge: row.impact_badge,
     createdAt: row.created_at,
     isEdited: !!row.is_edited,
@@ -143,7 +144,10 @@ async function feed(req: AuthedRequest, res: Response) {
   // hidden client-side — the is_sensitive flag is exactly the flag_for_review
   // moderation outcome set at post time, so this excludes it from the
   // candidate window before ranking ever sees it.
-  const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
+  const audienceClause = req.user?.ageBand === "child"
+    ? "AND v.content_audience = 'kids'"
+    : req.user?.ageBand === "teen" ? "AND v.content_audience <> 'adult' AND v.is_sensitive = FALSE"
+    : !req.user ? "AND v.content_audience = 'kids'" : "";
   // S (rest): muted words. POSITION(...) rather than ILIKE '%word%' — a
   // muted word is raw user input and ILIKE would treat any literal % or _
   // in it as a wildcard; POSITION does a plain substring check instead.
@@ -154,7 +158,7 @@ async function feed(req: AuthedRequest, res: Response) {
   ` : "";
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
-     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL ${sensitiveClause} ${relationshipClause}
+     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL ${audienceClause} ${relationshipClause}
      ORDER BY v.created_at DESC LIMIT 100
   `, ...(req.user ? [req.user.id] : []));
 
@@ -204,10 +208,13 @@ async function feed(req: AuthedRequest, res: Response) {
 async function userVibes(req: AuthedRequest, res: Response) {
   const page = Math.max(0, parseInt((req.query.page as string) || "0", 10) || 0);
   const pageSize = Math.min(50, Math.max(1, parseInt((req.query.pageSize as string) || "30", 10) || 30));
-  const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
+  const audienceClause = req.user?.ageBand === "child"
+    ? "AND v.content_audience = 'kids'"
+    : req.user?.ageBand === "teen" ? "AND v.content_audience <> 'adult' AND v.is_sensitive = FALSE"
+    : !req.user ? "AND v.content_audience = 'kids'" : "";
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
-     WHERE u.handle = $1 AND v.is_deleted = FALSE AND v.reply_to IS NULL ${sensitiveClause}
+     WHERE u.handle = $1 AND v.is_deleted = FALSE AND v.reply_to IS NULL ${audienceClause}
      ORDER BY v.created_at DESC LIMIT $2 OFFSET $3
   `, req.params.handle, pageSize, page * pageSize);
   const withState = await attachViewerState(rows, req.user?.id);
@@ -223,7 +230,10 @@ async function userVibes(req: AuthedRequest, res: Response) {
 
 // ── GET /vibes/category/:category — category feed (Explore filter chips) ─
 async function categoryFeed(req: AuthedRequest, res: Response) {
-  const sensitiveClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
+  const audienceClause = req.user?.ageBand === "child"
+    ? "AND v.content_audience = 'kids'"
+    : req.user?.ageBand === "teen" ? "AND v.content_audience <> 'adult' AND v.is_sensitive = FALSE"
+    : !req.user ? "AND v.content_audience = 'kids'" : "";
   const relationshipClause = req.user ? `
     AND NOT EXISTS (SELECT 1 FROM user_mutes um WHERE um.muter_id = $2 AND um.muted_id = v.user_id)
     AND NOT EXISTS (SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id = $2 AND ub.blocked_id = v.user_id) OR (ub.blocked_id = $2 AND ub.blocker_id = v.user_id))
@@ -231,7 +241,7 @@ async function categoryFeed(req: AuthedRequest, res: Response) {
   ` : "";
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
-     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL AND v.category = $1 ${sensitiveClause} ${relationshipClause}
+     WHERE v.is_deleted = FALSE AND v.reply_to IS NULL AND v.category = $1 ${audienceClause} ${relationshipClause}
      ORDER BY v.created_at DESC LIMIT 50
   `, req.params.category, ...(req.user ? [req.user.id] : []));
   const withState = await attachViewerState(rows, req.user?.id);
@@ -250,9 +260,10 @@ async function getOne(req: AuthedRequest, res: Response) {
   if (!rows.length) return fail(res, 404, "Vibe not found");
   // S-28: a minor can't route around the feed filter by opening a sensitive
   // vibe's direct link — treat it the same as not existing for them.
-  if (req.user?.isMinor && rows[0].is_sensitive) return fail(res, 404, "Vibe not found");
+  const audience = rows[0].content_audience || "general";
+  if (!req.user || req.user.ageBand === "child" ? audience !== "kids" : req.user.ageBand === "teen" && (audience === "adult" || rows[0].is_sensitive)) return fail(res, 404, "Vibe not found");
 
-  const replyClause = req.user?.isMinor ? "AND v.is_sensitive = FALSE" : "";
+  const replyClause = req.user?.ageBand === "child" ? "AND v.content_audience = 'kids'" : req.user?.ageBand === "teen" ? "AND v.content_audience <> 'adult' AND v.is_sensitive = FALSE" : !req.user ? "AND v.content_audience = 'kids'" : "";
   const replies: any[] = await prisma.$queryRawUnsafe(
     `SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id WHERE v.reply_to = $1 AND v.is_deleted = FALSE ${replyClause} ORDER BY v.created_at ASC LIMIT 100`,
     req.params.id
@@ -272,7 +283,9 @@ async function getOne(req: AuthedRequest, res: Response) {
 
 // ── POST /vibes — create a vibe (post / reply / quote) ───────────────────
 async function create(req: AuthedRequest, res: Response) {
-  const { content, category, tags, replyTo, quoteOf, eventTitle, eventTime, mediaIds, language: declaredLanguage } = req.body;
+  const { content, category, tags, replyTo, quoteOf, eventTitle, eventTime, mediaIds, language: declaredLanguage, audience } = req.body;
+  const contentAudience = ["kids", "general", "adult"].includes(audience) ? audience : "general";
+  if (contentAudience === "adult" && req.user.ageBand !== "adult") return fail(res, 403, "Only adults can publish adult-audience content");
   const cleanContent = typeof content === "string" ? content.trim() : "";
   const uniqueMediaIds = Array.isArray(mediaIds) ? [...new Set(mediaIds.filter((id: unknown) => typeof id === "string"))] as string[] : [];
   if (!cleanContent && !uniqueMediaIds.length) return fail(res, 400, "content or media is required");
@@ -315,6 +328,7 @@ async function create(req: AuthedRequest, res: Response) {
         eventTitle: eventTitle || null,
         eventTime: eventTime || null,
         isSensitive: moderation.action === "flag_for_review",
+        contentAudience,
         language,
       },
     });
@@ -363,6 +377,7 @@ async function create(req: AuthedRequest, res: Response) {
       event_title: vibe.eventTitle, event_time: vibe.eventTime, event_reminded_count: vibe.eventRemindedCount, event_interested_count: vibe.eventInterestedCount,
       likes_count: vibe.likesCount, reposts_count: vibe.repostsCount, replies_count: vibe.repliesCount, views_count: vibe.viewsCount, bookmarks_count: vibe.bookmarksCount,
       is_autopilot: vibe.isAutopilot, impact_badge: vibe.impactBadge, created_at: vibe.createdAt, id: vibe.id,
+      content_audience: vibe.contentAudience,
       handle: req.user.handle, display_name: req.user.displayName,
   });
   await attachMediaToVibes([shaped]);

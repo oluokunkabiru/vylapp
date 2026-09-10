@@ -198,6 +198,8 @@ export default function Dashboard() {
               <div style={{ marginTop:16, padding:"12px 14px", borderRadius:12, background:"rgba(255,184,48,.08)", border:"1px solid rgba(255,184,48,.22)", color:"var(--text2)", fontSize:12.5, lineHeight:1.5 }}>
                 A verified badge represents a platform identity tier—not merely an email confirmation. Always verify payment requests independently and report suspicious messages.
               </div>
+              {accountStatus.account?.contentAccess === "kids_only" && <div style={{ marginTop:10, padding:"12px 14px", borderRadius:12, background:"rgba(56,189,248,.08)", border:"1px solid rgba(56,189,248,.2)", color:"var(--text2)", fontSize:12.5, lineHeight:1.5 }}>Your account is protected with kids-only content controls because you are under 12.</div>}
+              {accountStatus.account?.contentAccess === "under_18" && <div style={{ marginTop:10, padding:"12px 14px", borderRadius:12, background:"rgba(56,189,248,.08)", border:"1px solid rgba(56,189,248,.2)", color:"var(--text2)", fontSize:12.5, lineHeight:1.5 }}>Age-appropriate content controls are active for your account. Adult-audience content is hidden.</div>}
             </div>
           )}
 

@@ -41,6 +41,7 @@ export default function CreateModal({ onClose, onCreated, onSettled, defaultLang
   const [content, setContent] = useState(draft?.content || "");
   const [cat, setCat] = useState(draft?.cat || "TECH_VIBES");
   const [language, setLanguage] = useState(draft?.language || defaultLang);
+  const [audience, setAudience] = useState(draft?.audience || "general");
   const [media, setMedia] = useState(Array.isArray(draft?.media) ? draft.media : []);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
@@ -54,8 +55,8 @@ export default function CreateModal({ onClose, onCreated, onSettled, defaultLang
 
   useEffect(() => {
     if (!content.trim() && !media.length) { localStorage.removeItem(DRAFT_KEY); return; }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, cat, language, media }));
-  }, [content, cat, language, media]);
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ content, cat, language, audience, media }));
+  }, [content, cat, language, audience, media]);
 
   // V-13/V-14 — @mention and #hashtag autocomplete. `trigger` holds where the
   // active @/# token starts in `content` so a selected suggestion can
@@ -154,7 +155,7 @@ export default function CreateModal({ onClose, onCreated, onSettled, defaultLang
     onCreated?.(pendingVibe);
     onClose();
     try {
-      const { vibe } = await api.post("/vibes", { content: content.trim(), category: cat, tags, language, mediaIds: media.map(item => item.id) });
+      const { vibe } = await api.post("/vibes", { content: content.trim(), category: cat, tags, language, audience, mediaIds: media.map(item => item.id) });
       localStorage.removeItem(DRAFT_KEY);
       onSettled?.(tempId, vibe);
     } catch (e) {
@@ -215,6 +216,21 @@ export default function CreateModal({ onClose, onCreated, onSettled, defaultLang
                 fontWeight:700, fontSize:13,
               }}>{l.nativeName}</button>
             ))}
+          </div>
+
+          <div style={{ fontSize:13, fontWeight:700, color:"var(--text2)", marginBottom:8 }}>Audience</div>
+          <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:16 }}>
+            {[['kids', 'Kids'], ['general', 'General'], ['adult', 'Adults only']].map(([key, label]) => (
+              <button key={key} onClick={() => setAudience(key)} style={{
+                padding:"7px 13px", borderRadius:"var(--radius-pill)",
+                border:`1.5px solid ${audience===key ? "var(--violet-lt)" : "var(--border)"}`,
+                background: audience===key ? "var(--violet-dim)" : "transparent",
+                color: audience===key ? "var(--violet-lt)" : "var(--text2)", fontWeight:700, fontSize:13,
+              }}>{label}</button>
+            ))}
+          </div>
+          <div style={{ color:"var(--text3)", fontSize:11.5, lineHeight:1.45, marginBottom:14 }}>
+            Adult-audience posts are unavailable to minors and cannot be published from a minor account.
           </div>
 
           <div style={{ fontSize:13, fontWeight:700, color:"var(--text2)", marginBottom:8 }}>Choose a topic</div>

@@ -35,6 +35,16 @@ import { CanOptions, ResolvedPermissions } from "../types/express";
 
 const { fail } = respond;
 
+function ageBand(birthday: Date | null): "child" | "teen" | "adult" {
+  if (!birthday) return "child";
+  const now = new Date();
+  let age = now.getUTCFullYear() - birthday.getUTCFullYear();
+  const beforeBirthday = now.getUTCMonth() < birthday.getUTCMonth() ||
+    (now.getUTCMonth() === birthday.getUTCMonth() && now.getUTCDate() < birthday.getUTCDate());
+  if (beforeBirthday) age--;
+  return age < 12 ? "child" : age < 18 ? "teen" : "adult";
+}
+
 // ── authenticate (required auth) ──────────────────────────────────────────────
 async function authenticate(req: Request, res: Response, next: NextFunction) {
   try {
@@ -46,13 +56,13 @@ async function authenticate(req: Request, res: Response, next: NextFunction) {
 
     const user = await prisma.users.findFirst({
       where: { id: result.payload.sub, deletedAt: null },
-      select: { id: true, handle: true, displayName: true, isSuspended: true, isDeactivated: true, isMinor: true },
+      select: { id: true, handle: true, displayName: true, isSuspended: true, isDeactivated: true, isMinor: true, birthday: true },
     });
     if (!user) return fail(res, 401, "User no longer exists");
     if (user.isSuspended) return fail(res, 403, "Account suspended");
     if (user.isDeactivated) return fail(res, 403, "Account deactivated");
 
-    req.user = { id: user.id, handle: user.handle, displayName: user.displayName, isMinor: user.isMinor };
+    req.user = { id: user.id, handle: user.handle, displayName: user.displayName, isMinor: user.isMinor, ageBand: ageBand(user.birthday) };
 
     // Resolve permissions (cache-first — typically zero DB queries)
     const resolved = await rbac.resolveUserPermissions(user.id);
@@ -92,13 +102,13 @@ async function optionalAuth(req: Request, res: Response, next: NextFunction) {
     }
     const user = await prisma.users.findFirst({
       where: { id: result.payload.sub, deletedAt: null, isSuspended: false },
-      select: { id: true, handle: true, displayName: true, isMinor: true },
+      select: { id: true, handle: true, displayName: true, isMinor: true, birthday: true },
     });
     if (!user) {
       setAnonymous();
       return next();
     }
-    req.user = { id: user.id, handle: user.handle, displayName: user.displayName, isMinor: user.isMinor };
+    req.user = { id: user.id, handle: user.handle, displayName: user.displayName, isMinor: user.isMinor, ageBand: ageBand(user.birthday) };
     const resolved = await rbac.resolveUserPermissions(user.id);
     req.userPermissions = resolved;
     req.can = (perm: string, opts: CanOptions = {}) => _checkPerm(resolved, perm, opts);
