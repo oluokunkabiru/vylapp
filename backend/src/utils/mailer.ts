@@ -26,6 +26,11 @@ const {
 // ── Singleton transporter ──────────────────────────────────────────────────────
 let _transporter: Transporter | undefined;
 
+function isLocalCaptureHost(host: string) {
+  const value = host.toLowerCase();
+  return value === "localhost" || value === "127.0.0.1" || value === "::1" || value === "mailpit" || value.startsWith("172.");
+}
+
 function getTransporter(): Transporter {
   if (!_transporter) {
     const config: Record<string, unknown> = {
@@ -67,6 +72,10 @@ async function send({ to, subject, html }: SendArgs) {
 // ── SMTP health check ──────────────────────────────────────────────────────────
 async function verifyMailConfig(): Promise<boolean> {
   try {
+    if (env.nodeEnv === "production" && isLocalCaptureHost(env.mailHost)) {
+      logger.error("SMTP is configured to use a local capture service in production", { host: env.mailHost, port: env.mailPort });
+      return false;
+    }
     await getTransporter().verify();
     logger.info(`SMTP OK — sending as ${env.mailFromAddress}`, { host: env.mailHost, port: env.mailPort });
     return true;
@@ -90,7 +99,7 @@ async function sendSmtpTestEmail(to: string) {
 
 function getMailTransportInfo() {
   const host = env.mailHost.toLowerCase();
-  const localCapture = host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "mailpit" || host.startsWith("172.");
+  const localCapture = isLocalCaptureHost(host);
   return {
     host: env.mailHost,
     port: env.mailPort,
