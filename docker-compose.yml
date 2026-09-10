@@ -33,7 +33,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U vylapp -d vylapp_dev"]
       interval: 5s
@@ -53,7 +53,7 @@ services:
       NODE_ENV:     development
       PORT:         4000
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
     volumes:
       - ./backend/src:/app/src       # hot-reload in dev; remove :ro in production
       - ./backend/prisma:/app/prisma # so new migrations are picked up without a rebuild
@@ -74,8 +74,8 @@ services:
     image: axllent/mailpit
     restart: unless-stopped
     ports:
-      - "1026:1025"   # SMTP
-      - "8026:8025"   # Web UI
+      - "127.0.0.1:1026:1025"   # SMTP
+      - "127.0.0.1:8026:8025"   # Web UI
 
   # ── Frontend ───────────────────────────────────────────────────────────────
   # 🔀 BACKEND SWITCH: change BACKEND_BASE_URL below to point to a different backend
@@ -90,7 +90,7 @@ services:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
     ports:
-      - "5180:5173"
+      - "127.0.0.1:5180:5173"
     environment:
       - VITE_PORT=5173
       - BACKEND_BASE_URL=http://backend:4000  # ← change this to switch backends
@@ -102,7 +102,7 @@ services:
     image: sosedoff/pgweb:latest
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     environment:
       - DATABASE_URL=postgres://vylapp:vylappdev@postgres:5432/vylapp_dev?sslmode=disable
     depends_on:
@@ -120,7 +120,7 @@ services:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     depends_on:
       - backend
       - postgres-exporter
@@ -135,7 +135,7 @@ services:
     environment:
       DATA_SOURCE_NAME: "postgresql://vylapp:vylappdev@postgres:5432/vylapp_dev?sslmode=disable"
     ports:
-      - "9187:9187"
+      - "127.0.0.1:9187:9187"
     depends_on:
       postgres:
         condition: service_healthy
@@ -155,7 +155,7 @@ services:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - prometheus
 
