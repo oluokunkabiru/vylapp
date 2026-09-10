@@ -66,7 +66,7 @@ async function testSmtp(req: AuthedRequest, res: Response) {
   if (!(await mailer.verifyMailConfig())) return fail(res, 502, "SMTP connection verification failed; check the server mail settings");
   const info = await mailer.sendSmtpTestEmail(to);
   await writeAudit(req.user.id, "settings.smtp.test", "smtp", null, null, { to, message_id: info.messageId }, req.ip || null);
-  return ok(res, { sent: true, to, message_id: info.messageId });
+  return ok(res, { sent: true, to, message_id: info.messageId, transport: mailer.getMailTransportInfo(), delivery_note: "accepted_by_smtp; inbox placement depends on the provider" });
 }
 
 // ── GET /admin/settings/flags ─────────────────────────────────────────────────

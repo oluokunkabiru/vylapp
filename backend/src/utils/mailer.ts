@@ -88,6 +88,18 @@ async function sendSmtpTestEmail(to: string) {
   });
 }
 
+function getMailTransportInfo() {
+  const host = env.mailHost.toLowerCase();
+  const localCapture = host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "mailpit" || host.startsWith("172.");
+  return {
+    host: env.mailHost,
+    port: env.mailPort,
+    scheme: env.mailScheme || (env.mailPort === 465 ? "ssl" : env.mailPort === 587 ? "tls" : "plain"),
+    from: env.mailFromAddress,
+    local_capture: localCapture,
+  };
+}
+
 // ── 1. Welcome (after registration) ───────────────────────────────────────────
 async function sendWelcomeEmail(email: string, displayName: string | null | undefined, verifyToken: string) {
   const verifyLink = `${env.clientOrigin}/verify-email?token=${verifyToken}`;
@@ -123,6 +135,7 @@ async function send2FAOTPEmail(email: string, displayName: string | null | undef
 
 export = {
   verifyMailConfig,
+  getMailTransportInfo,
   sendSmtpTestEmail,
   sendWelcomeEmail,
   sendEmailVerificationEmail,

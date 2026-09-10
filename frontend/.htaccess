@@ -1,0 +1,59 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    ############################################
+    # Security: Block dangerous HTTP methods
+    ############################################
+    RewriteCond %{REQUEST_METHOD} ^(TRACE|DELETE|TRACK|DEBUG|PUT|PATCH) [NC]
+    RewriteRule .* - [F,L]
+
+    ############################################
+    # Security: Block malicious query strings
+    ############################################
+    RewriteCond %{QUERY_STRING} (\.\./|<|>|'|"|%0A|%0D|%00|%27|%3C|%3E) [NC]
+    RewriteRule .* - [F,L]
+
+    ############################################
+    # Security: Block base64 & PHP globals attacks
+    ############################################
+    RewriteCond %{QUERY_STRING} base64_encode [NC,OR]
+    RewriteCond %{QUERY_STRING} (GLOBALS|_REQUEST|_SESSION|_ENV|_FILES) [NC]
+    RewriteRule .* - [F,L]
+
+    ############################################
+    # Security: Block common scanners & bots
+    ############################################
+    RewriteCond %{HTTP_USER_AGENT} (curl|wget|python|nikto|sqlmap|masscan|nmap) [NC]
+    RewriteRule .* - [F,L]
+
+    ############################################
+    # Normalize URLs: Remove trailing slash
+    ############################################
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [R=301,L]
+
+    ############################################
+    # SPA Routing (React / Vue / Angular)
+    ############################################
+    RewriteRule ^index\.html$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-l
+    RewriteRule ^ /index.html [L]
+</IfModule>
+
+############################################
+# Security: Deny access to hidden files
+############################################
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+############################################
+# Extra protection for .htaccess
+############################################
+<Files ".htaccess">
+    Require all denied
+</Files>
