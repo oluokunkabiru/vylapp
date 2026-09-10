@@ -176,6 +176,7 @@ function VibeDetailModal({ detail, loading, onClose, fullPage = false }) {
           <section style={sectionStyle}>
             <div style={{ color: "var(--text3)", fontSize: 12, marginBottom: 8 }}><Actor actor={vibe.author} /> · {humanizeIdentifier(vibe.category)} · {new Date(vibe.created_at).toLocaleString()}</div>
             <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{vibe.content || "Media-only vibe"}</div>
+            <AudienceControl vibe={vibe} onUpdated={next => { detail.vibe = { ...vibe, ...next }; }} />
             <div style={metricGrid}>{Object.entries(detail.engagement.totals).map(([k, value]) => <Link key={k} to={`/admin/content/vibes/${vibe.id}/analytics/${k}`} style={{ color: "var(--text)", textDecoration: "none", borderRadius: 10, padding: 8, background: "var(--bg3)" }}><div style={metricLabel}>{humanizeIdentifier(k)}</div><div style={{ fontWeight: 800 }}>{value}</div><div style={{ color: "var(--sky)", fontSize: 10, marginTop: 3 }}>Analyse →</div></Link>)}</div>
           </section>
           <section style={sectionStyle}><SectionTitle title={`Comments / replies (${detail.engagement.replies.length})`} />{detail.engagement.replies.map(reply => <div key={reply.id} style={rowStyle}><div><Actor actor={reply.actor} /> <Link to={`/admin/content/vibes/${reply.id}`} style={{ color: "var(--text)", textDecoration: "none", marginLeft: 6 }}>{reply.content || "Media-only reply"}</Link></div><span style={{ color: "var(--text3)", fontSize: 11 }}>{new Date(reply.created_at).toLocaleString()}</span></div>)}{!detail.engagement.replies.length && <EmptyLine text="No replies" />}</section>
@@ -185,6 +186,32 @@ function VibeDetailModal({ detail, loading, onClose, fullPage = false }) {
       </div>
     </div>
   );
+}
+
+function AudienceControl({ vibe, onUpdated }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const [audience, setAudience] = useState(vibe.content_audience || "general");
+  const [sensitive, setSensitive] = useState(!!vibe.is_sensitive);
+  const save = async () => {
+    setBusy(true);
+    try {
+      const { vibe: updated } = await api.patch(`/admin/content/vibes/${vibe.id}/audience`, { audience, sensitive });
+      onUpdated(updated);
+      toast("Age-safety policy updated");
+    } catch (error) { toast(error.message, "error"); } finally { setBusy(false); }
+  };
+  return <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--border2)" }}>
+    <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 8 }}>Age-safety controls</div>
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <select value={audience} onChange={event => setAudience(event.target.value)} style={{ ...inputStyle, padding: "7px 10px" }}>
+        <option value="kids">Kids</option><option value="general">General</option><option value="adult">Adults only</option>
+      </select>
+      <label style={{ display: "flex", gap: 6, alignItems: "center", color: "var(--text2)", fontSize: 12.5 }}><input type="checkbox" checked={sensitive} onChange={event => setSensitive(event.target.checked)} /> Sensitive / flagged</label>
+      <button disabled={busy} onClick={save} style={btnStyle("var(--violet-lt)")}>{busy ? "Saving…" : "Save policy"}</button>
+    </div>
+    <div style={{ color: "var(--text3)", fontSize: 11.5, marginTop: 7 }}>This controls what child and teen accounts can receive. Every change is audited.</div>
+  </div>;
 }
 
 function AdminVibeDetail() {

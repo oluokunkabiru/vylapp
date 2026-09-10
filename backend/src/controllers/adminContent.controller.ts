@@ -29,7 +29,7 @@ function shapeVibe(v: any) {
   return {
     id: v.id, content: v.content, category: v.category, language: v.language, tags: v.tags,
     likes_count: v.likesCount, reposts_count: v.repostsCount, replies_count: v.repliesCount, views_count: v.viewsCount,
-    is_sensitive: v.isSensitive, is_deleted: v.isDeleted, deleted_at: v.deletedAt, moderation_note: v.moderationNote,
+    is_sensitive: v.isSensitive, content_audience: v.contentAudience, is_deleted: v.isDeleted, deleted_at: v.deletedAt, moderation_note: v.moderationNote,
     created_at: v.createdAt,
     author: { id: v.users.id, handle: v.users.handle, display_name: v.users.displayName, avatar_url: v.users.avatarUrl },
   };
@@ -121,6 +121,22 @@ async function restoreVibe(req: AuthedRequest, res: Response) {
   return ok(res, { vibe });
 }
 
+// ── PATCH /admin/content/vibes/:id/audience — age-safety override ────────────
+async function updateVibeAudience(req: AuthedRequest, res: Response) {
+  const { audience, sensitive } = req.body || {};
+  if (audience !== undefined && !["kids", "general", "adult"].includes(audience)) return fail(res, 400, "Audience must be kids, general, or adult");
+  if (sensitive !== undefined && typeof sensitive !== "boolean") return fail(res, 400, "sensitive must be a boolean");
+  const before = await prisma.vibes.findUnique({ where: { id: req.params.id }, select: { contentAudience: true, isSensitive: true } });
+  if (!before) return fail(res, 404, "Vibe not found");
+  const updated = await prisma.vibes.update({
+    where: { id: req.params.id },
+    data: { ...(audience !== undefined ? { contentAudience: audience } : {}), ...(sensitive !== undefined ? { isSensitive: sensitive } : {}) },
+    select: { id: true, contentAudience: true, isSensitive: true },
+  });
+  await writeAudit(req.user.id, "content.vibe.audience.update", "vibe", req.params.id, before, updated, req.ip || null);
+  return ok(res, { vibe: updated });
+}
+
 function shapeSpaceAdmin(s: any) {
   return {
     id: s.id, title: s.title, description: s.description, category: s.category, status: s.status,
@@ -186,4 +202,4 @@ async function spaceParticipants(req: AuthedRequest, res: Response) {
   return ok(res, { participants: shaped });
 }
 
-export = { listVibes, getVibeDetails, removeVibe, restoreVibe, listSpaces, forceEndSpace, spaceParticipants };
+export = { listVibes, getVibeDetails, removeVibe, restoreVibe, updateVibeAudience, listSpaces, forceEndSpace, spaceParticipants };

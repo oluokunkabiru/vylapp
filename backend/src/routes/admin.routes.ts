@@ -58,6 +58,7 @@ router.get("/content/vibes",                requirePermission("admin.content.man
 router.get("/content/vibes/:id",            requirePermission("admin.content.manage"), asyncHandler(adminContentController.getVibeDetails));
 router.post("/content/vibes/:id/remove",     requirePermission("admin.content.manage"), asyncHandler(adminContentController.removeVibe));
 router.post("/content/vibes/:id/restore",    requirePermission("admin.content.manage"), asyncHandler(adminContentController.restoreVibe));
+router.patch("/content/vibes/:id/audience",   requirePermission("admin.content.manage"), asyncHandler(adminContentController.updateVibeAudience));
 router.get("/content/spaces",                requirePermission("admin.content.manage"), asyncHandler(adminContentController.listSpaces));
 router.post("/content/spaces/:id/end",       requirePermission("admin.content.manage"), asyncHandler(adminContentController.forceEndSpace));
 router.get("/content/spaces/:id/participants", requirePermission("admin.content.manage"), asyncHandler(adminContentController.spaceParticipants));
