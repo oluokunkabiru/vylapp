@@ -52,11 +52,6 @@ services:
       DATABASE_URL: postgresql://vylapp:vylappdev@postgres:5432/vylapp_dev
       NODE_ENV:     development
       PORT:         4000
-      MAIL_HOST:    mailpit
-      MAIL_PORT:    1025
-      MAIL_SCHEME:  ""
-      MAIL_USERNAME: ""
-      MAIL_PASSWORD: ""
     ports:
       - "4000:4000"
     volumes:
