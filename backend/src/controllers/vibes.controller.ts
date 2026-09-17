@@ -55,6 +55,24 @@ const VIBE_FIELDS = `
   (u.verification_tier <> 'none') AS verified, u.role_tag
 `;
 
+// Age-band content gating (2026-09-10). "child"/anonymous originally required
+// content_audience = 'kids' exactly — but content_audience defaults to
+// 'general' for every vibe and is only ever set to 'kids' by an author
+// opting in on the composer, so in practice almost nothing is tagged 'kids'
+// and that clause silently emptied the feed for every logged-out visitor and
+// every account with no birthday on file (most OAuth/phone signups, and any
+// account under 12) instead of actually restricting it. Treat child the same
+// as teen — exclude explicitly adult-tagged and flagged-sensitive content,
+// same safety guarantee, but still show the general-audience content that
+// makes up the overwhelming majority of the platform. A true curated
+// kids-only tier needs real content classification, not a query clause.
+function audienceClauseFor(ageBand: "child" | "teen" | "adult" | undefined, hasUser: boolean): string {
+  if (!hasUser || ageBand === "child" || ageBand === "teen") {
+    return "AND v.content_audience <> 'adult' AND v.is_sensitive = FALSE";
+  }
+  return "";
+}
+
 function shapeVibe(row: any, viewerState?: any) {
   return {
     id: row.id,
@@ -144,10 +162,7 @@ async function feed(req: AuthedRequest, res: Response) {
   // hidden client-side — the is_sensitive flag is exactly the flag_for_review
   // moderation outcome set at post time, so this excludes it from the
   // candidate window before ranking ever sees it.
-  const audienceClause = req.user?.ageBand === "child"
-    ? "AND v.content_audience = 'kids'"
-    : req.user?.ageBand === "teen" ? "AND v.content_audience <> 'adult' AND v.is_sensitive = FALSE"
-    : !req.user ? "AND v.content_audience = 'kids'" : "";
+  const audienceClause = audienceClauseFor(req.user?.ageBand, !!req.user);
   // S (rest): muted words. POSITION(...) rather than ILIKE '%word%' — a
   // muted word is raw user input and ILIKE would treat any literal % or _
   // in it as a wildcard; POSITION does a plain substring check instead.
@@ -208,10 +223,7 @@ async function feed(req: AuthedRequest, res: Response) {
 async function userVibes(req: AuthedRequest, res: Response) {
   const page = Math.max(0, parseInt((req.query.page as string) || "0", 10) || 0);
   const pageSize = Math.min(50, Math.max(1, parseInt((req.query.pageSize as string) || "30", 10) || 30));
-  const audienceClause = req.user?.ageBand === "child"
-    ? "AND v.content_audience = 'kids'"
-    : req.user?.ageBand === "teen" ? "AND v.content_audience <> 'adult' AND v.is_sensitive = FALSE"
-    : !req.user ? "AND v.content_audience = 'kids'" : "";
+  const audienceClause = audienceClauseFor(req.user?.ageBand, !!req.user);
   const rows: any[] = await prisma.$queryRawUnsafe(`
     SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id
      WHERE u.handle = $1 AND v.is_deleted = FALSE AND v.reply_to IS NULL ${audienceClause}
@@ -230,10 +242,7 @@ async function userVibes(req: AuthedRequest, res: Response) {
 
 // ── GET /vibes/category/:category — category feed (Explore filter chips) ─
 async function categoryFeed(req: AuthedRequest, res: Response) {
-  const audienceClause = req.user?.ageBand === "child"
-    ? "AND v.content_audience = 'kids'"
-    : req.user?.ageBand === "teen" ? "AND v.content_audience <> 'adult' AND v.is_sensitive = FALSE"
-    : !req.user ? "AND v.content_audience = 'kids'" : "";
+  const audienceClause = audienceClauseFor(req.user?.ageBand, !!req.user);
   const relationshipClause = req.user ? `
     AND NOT EXISTS (SELECT 1 FROM user_mutes um WHERE um.muter_id = $2 AND um.muted_id = v.user_id)
     AND NOT EXISTS (SELECT 1 FROM user_blocks ub WHERE (ub.blocker_id = $2 AND ub.blocked_id = v.user_id) OR (ub.blocked_id = $2 AND ub.blocker_id = v.user_id))
@@ -261,9 +270,10 @@ async function getOne(req: AuthedRequest, res: Response) {
   // S-28: a minor can't route around the feed filter by opening a sensitive
   // vibe's direct link — treat it the same as not existing for them.
   const audience = rows[0].content_audience || "general";
-  if (!req.user || req.user.ageBand === "child" ? audience !== "kids" : req.user.ageBand === "teen" && (audience === "adult" || rows[0].is_sensitive)) return fail(res, 404, "Vibe not found");
+  const restricted = !req.user || req.user.ageBand === "child" || req.user.ageBand === "teen";
+  if (restricted && (audience === "adult" || rows[0].is_sensitive)) return fail(res, 404, "Vibe not found");
 
-  const replyClause = req.user?.ageBand === "child" ? "AND v.content_audience = 'kids'" : req.user?.ageBand === "teen" ? "AND v.content_audience <> 'adult' AND v.is_sensitive = FALSE" : !req.user ? "AND v.content_audience = 'kids'" : "";
+  const replyClause = audienceClauseFor(req.user?.ageBand, !!req.user);
   const replies: any[] = await prisma.$queryRawUnsafe(
     `SELECT ${VIBE_FIELDS} FROM vibes v JOIN users u ON u.id = v.user_id WHERE v.reply_to = $1 AND v.is_deleted = FALSE ${replyClause} ORDER BY v.created_at ASC LIMIT 100`,
     req.params.id
