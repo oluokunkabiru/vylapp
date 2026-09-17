@@ -10,6 +10,7 @@ const NAV = [
   { to:"/explore",       icon:ic.search,  label:"nav.search"    },
   { to:"/spaces",        icon:ic.spaces,  label:"nav.spaces"    },
   { to:"/learn",         icon:ic.book,    label:"nav.learn"     },
+  { to:"/forum",         icon:ic.comment, label:"nav.forum"     },
   { to:"/notifications", icon:ic.bell,    label:"nav.activity"  },
   { to:"/messages",      icon:ic.send,    label:"nav.messages"  },
   { to:"/autopilot",     icon:ic.zap,     label:"nav.autopilot" },

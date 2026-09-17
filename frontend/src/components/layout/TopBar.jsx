@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 const TOPBAR_LANGUAGES = COMMON_LANGUAGE_CODES.map(code => LANGUAGES.find(l => l.code === code));
 
 const TITLES = {
-  "/explore": "nav.search", "/spaces": "nav.spaces", "/learn": "nav.learn",
+  "/explore": "nav.search", "/spaces": "nav.spaces", "/learn": "nav.learn", "/forum": "nav.forum",
   "/profile": "nav.profile", "/notifications": "nav.activity", "/messages": "nav.messages",
   "/autopilot": "nav.autopilot", "/creator": "page.creatorEarnings", "/raven": "nav.raven",
 };

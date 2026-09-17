@@ -9,7 +9,7 @@ const resources = {
     translation: {
       nav: {
         dashboard: "Dashboard", feed: "Feed", search: "Search", spaces: "Spaces",
-        learn: "Learn", activity: "Activity", messages: "Messages", autopilot: "Autopilot",
+        learn: "Learn", forum: "Forum", activity: "Activity", messages: "Messages", autopilot: "Autopilot",
         earnings: "Earnings", raven: "Raven", profile: "Profile", admin: "Admin",
         share: "Share", more: "More", logOut: "Log out",
       },
@@ -21,7 +21,7 @@ const resources = {
     translation: {
       nav: {
         dashboard: "لوحة التحكم", feed: "المنشورات", search: "بحث", spaces: "المساحات",
-        learn: "تعلّم", activity: "النشاط", messages: "الرسائل", autopilot: "النشر التلقائي",
+        learn: "تعلّم", forum: "المنتدى", activity: "النشاط", messages: "الرسائل", autopilot: "النشر التلقائي",
         earnings: "الأرباح", raven: "رافن", profile: "الملف الشخصي", admin: "الإدارة",
         share: "مشاركة", more: "المزيد", logOut: "تسجيل الخروج",
       },
@@ -33,7 +33,7 @@ const resources = {
     translation: {
       nav: {
         dashboard: "ዳሽቦርድ", feed: "ምግብ", search: "ፍለጋ", spaces: "ስፔሶች",
-        learn: "ተማር", activity: "እንቅስቃሴ", messages: "መልዕክቶች", autopilot: "ራስ-ሰር",
+        learn: "ተማር", forum: "መድረክ", activity: "እንቅስቃሴ", messages: "መልዕክቶች", autopilot: "ራስ-ሰር",
         earnings: "ገቢዎች", raven: "ሬቨን", profile: "መገለጫ", admin: "አስተዳደር",
         share: "አጋራ", more: "ተጨማሪ", logOut: "ውጣ",
       },

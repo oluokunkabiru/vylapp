@@ -124,7 +124,7 @@ async function listThreads(req: AuthedRequest, res: Response) {
 
   sql += ` ORDER BY t.is_pinned DESC, ${orderBy} LIMIT ${pageSize} OFFSET ${offset}`;
   const threads: any[] = await prisma.$queryRawUnsafe(sql, ...params);
-  await TranslationEngine.translateEntitiesForViewer(threads, req.query.lang as string, req.user?.id, { contentType: "thread_title", textKey: "title" });
+  await TranslationEngine.translateEntitiesForViewer(threads, req.query.lang as string, req.user?.id, { contentType: "thread_title", textKey: "title", translationKey: "titleTranslation" });
   res.json({ ok: true, data: { threads, page, page_size: pageSize } });
 }
 
@@ -141,10 +141,16 @@ async function getThread(req: AuthedRequest, res: Response) {
   // Increment view count (fire and forget)
   prisma.forumThreads.update({ where: { id: req.params.id }, data: { viewCount: { increment: 1 } } }).catch(() => {});
 
-  // Fetch top-level replies (depth=0) with their immediate children
+  // Fetch top-level replies (depth=0) with their immediate children.
+  // author_id must be selected — the first real forum frontend needs it to
+  // show a "Delete" affordance only on the viewer's own replies; without it,
+  // every reply looks like it belongs to someone else once it's fetched via
+  // this path (found live: the just-posted reply's own optimistic client
+  // state showed Delete correctly, then it vanished the moment the page
+  // reloaded and re-fetched through this query).
   const replies: any[] = await prisma.$queryRaw`
     SELECT r.id, r.body, r.language, r.vote_score, r.is_accepted, r.depth, r.parent_reply_id,
-      r.created_at, r.is_removed, u.handle AS author_handle, u.display_name AS author_name
+      r.created_at, r.is_removed, r.author_id, u.handle AS author_handle, u.display_name AS author_name
     FROM thread_replies r JOIN users u ON u.id = r.author_id
     WHERE r.thread_id=${req.params.id} AND r.is_removed=FALSE ORDER BY r.is_accepted DESC, r.vote_score DESC, r.created_at ASC
     LIMIT 100
@@ -152,9 +158,15 @@ async function getThread(req: AuthedRequest, res: Response) {
 
   const targetLang = req.query.lang as string;
   const thread = threads[0];
-  await TranslationEngine.translateEntitiesForViewer([thread], targetLang, req.user?.id, { contentType: "thread_title", textKey: "title" });
-  await TranslationEngine.translateEntitiesForViewer([thread], targetLang, req.user?.id, { contentType: "thread", textKey: "body" });
-  await TranslationEngine.translateEntitiesForViewer(replies, targetLang, req.user?.id, { contentType: "reply", textKey: "body" });
+  // Both calls write to the same [thread] item — each needs its own
+  // translationKey or the second call silently clobbers the first (the
+  // engine defaults to a single shared "translation" field). Found live
+  // while wiring up the first-ever forum frontend: without this, a
+  // translated thread's title translation was always overwritten by its
+  // body translation, same class of bug as Learn's title/description split.
+  await TranslationEngine.translateEntitiesForViewer([thread], targetLang, req.user?.id, { contentType: "thread_title", textKey: "title", translationKey: "titleTranslation" });
+  await TranslationEngine.translateEntitiesForViewer([thread], targetLang, req.user?.id, { contentType: "thread", textKey: "body", translationKey: "bodyTranslation" });
+  await TranslationEngine.translateEntitiesForViewer(replies, targetLang, req.user?.id, { contentType: "reply", textKey: "body", translationKey: "bodyTranslation" });
 
   res.json({ ok: true, data: { thread, replies } });
 }

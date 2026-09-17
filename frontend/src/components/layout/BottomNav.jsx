@@ -15,6 +15,7 @@ const PRIMARY_NAV = [
 const MORE_ITEMS = [
   { to:"/explore",       icon:ic.search, label:"nav.search",    color:"var(--sky)",        auth:false },
   { to:"/learn",         icon:ic.book,   label:"nav.learn",     color:"var(--amber)",      auth:false },
+  { to:"/forum",         icon:ic.comment,label:"nav.forum",     color:"var(--sky)",        auth:false },
   { to:"/autopilot",     icon:ic.zap,    label:"nav.autopilot", color:"var(--violet-lt)",  auth:true  },
   { to:"/creator",       icon:ic.dollar, label:"nav.earnings",  color:"var(--green)",      auth:true  },
   { to:"/notifications", icon:ic.bell,   label:"nav.activity",  color:"var(--purple)",     auth:true  },
