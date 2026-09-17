@@ -6,6 +6,7 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/feed/presentation/screens/home_screen.dart';
 import '../../features/feed/presentation/screens/vibe_detail_screen.dart';
+import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/spaces/presentation/screens/spaces_screen.dart';
 import '../../features/spaces/presentation/screens/space_room_screen.dart';
 import '../../features/messages/presentation/screens/conversations_screen.dart';
@@ -22,6 +23,7 @@ abstract final class Routes {
   static const register       = '/register';
   static const home           = '/';
   static const vibeDetail     = '/vibes/:id';
+  static const search         = '/search';
   static const spaces         = '/spaces';
   static const spaceRoom      = '/spaces/:id';
   static const messages       = '/messages';
@@ -89,6 +91,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
               ),
             ],
           ),
+          GoRoute(path: Routes.search,        builder: (c, s) => const SearchScreen()),
           GoRoute(path: Routes.notifications, builder: (c, s) => const NotificationsScreen()),
           GoRoute(path: Routes.myProfile,     builder: (c, s) => const ProfileScreen()),
           GoRoute(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../shared/widgets/vyl_widgets.dart';
@@ -125,6 +126,11 @@ class _Header extends StatelessWidget {
             items: _langs.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
             onChanged: (v) { if(v!=null) onLangChange(v); },
           ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => context.push('/search'),
+          child: const Icon(Icons.search, color: AppColors.textSecondary, size: 26),
         ),
         const SizedBox(width: 8),
         GestureDetector(
