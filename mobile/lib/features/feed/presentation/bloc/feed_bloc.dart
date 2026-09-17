@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:injectable/injectable.dart';
@@ -6,6 +7,20 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/network_exceptions.dart';
 import '../../../../core/constants/api_constants.dart';
 import '../../../../core/utils/input_sanitiser.dart';
+
+// Result of a FeedCreateVibe attempt, delivered on FeedBloc.createResults —
+// a side channel deliberately separate from FeedState. Emitting this on the
+// main state stream instead would make HomeScreen's BlocBuilder (which
+// pattern-matches a closed set of FeedState subtypes and falls back to an
+// empty vibe list for anything else) briefly render the whole feed as empty
+// every time the composer posts, an unacceptable regression on the feed
+// screen just to fix an unrelated compose-screen gap.
+class CreateVibeResult {
+  final bool success;
+  final String? error;
+  const CreateVibeResult.success() : success = true, error = null;
+  const CreateVibeResult.failure(this.error) : success = false;
+}
 
 // ── Events ────────────────────────────────────────────────────────────────────
 abstract class FeedEvent extends Equatable {
@@ -91,6 +106,15 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
   final ApiClient      _api;
   final InputSanitiser _sanitiser;
+
+  final _createResults = StreamController<CreateVibeResult>.broadcast();
+  Stream<CreateVibeResult> get createResults => _createResults.stream;
+
+  @override
+  Future<void> close() {
+    _createResults.close();
+    return super.close();
+  }
 
   Future<void> _onLoad(FeedLoad event, Emitter<FeedState> emit) async {
     emit(const FeedLoading());
@@ -227,7 +251,14 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
 
   Future<void> _onCreate(FeedCreateVibe event, Emitter<FeedState> emit) async {
     final validation = _sanitiser.validateVibe(event.content);
-    if (!validation.isValid) return; // Caller shows the error
+    if (!validation.isValid) {
+      // Callers are expected to pre-validate before dispatching (so the
+      // error can be shown inline as the user types), but a mismatch
+      // between a caller's own check and this one used to fail completely
+      // silently — the composer would just sit there having done nothing.
+      _createResults.add(CreateVibeResult.failure(validation.message));
+      return;
+    }
 
     try {
       final clean = _sanitiser.sanitiseVibe(event.content);
@@ -246,8 +277,11 @@ class FeedBloc extends Bloc<FeedEvent, FeedState> {
       if (current is FeedLoaded) {
         emit(current.copyWith(vibes: [newVibe, ...current.vibes]));
       }
+      _createResults.add(const CreateVibeResult.success());
     } on NetworkException catch (e) {
-      // Propagate to UI via a separate event if needed
-    } catch (_) {}
+      _createResults.add(CreateVibeResult.failure(e.message));
+    } catch (_) {
+      _createResults.add(const CreateVibeResult.failure('Failed to post. Try again.'));
+    }
   }
 }

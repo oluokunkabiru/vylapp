@@ -142,7 +142,7 @@ class _CreateSheet extends StatelessWidget {
           _SheetOption(
             icon: Icons.bolt_outlined, color: AppColors.violetLight,
             label: 'Share a Vibe', sub: 'Post to your community',
-            onTap: () { Navigator.pop(context); /* navigate to compose */ },
+            onTap: () { Navigator.pop(context); context.push(Routes.compose); },
           ),
           _SheetOption(
             icon: Icons.headphones_outlined, color: AppColors.vibeGreen,
