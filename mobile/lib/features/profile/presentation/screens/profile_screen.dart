@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/network/api_client.dart';
@@ -85,8 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  void _logout() => context.read<AuthBloc>().add(const AuthLogout());
-
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: AppColors.bg,
@@ -97,7 +96,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       title: Text(_user != null ? '@${_user!.handle}' : 'Profile', style: AppTextStyles.h2),
       actions: [
         if (_isOwnProfile)
-          IconButton(icon: const Icon(Icons.logout, size: 20), onPressed: _logout),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, size: 22),
+            onPressed: () => context.push('/settings'),
+          ),
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(0.5),

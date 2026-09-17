@@ -13,6 +13,7 @@ import '../../features/messages/presentation/screens/conversations_screen.dart';
 import '../../features/messages/presentation/screens/chat_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/profile/presentation/screens/settings_screen.dart';
 import '../../features/autopilot/presentation/screens/autopilot_screen.dart';
 import '../../features/creator/presentation/screens/creator_screen.dart';
 import '../../features/raven/presentation/screens/raven_screen.dart';
@@ -24,6 +25,7 @@ abstract final class Routes {
   static const home           = '/';
   static const vibeDetail     = '/vibes/:id';
   static const search         = '/search';
+  static const settings       = '/settings';
   static const spaces         = '/spaces';
   static const spaceRoom      = '/spaces/:id';
   static const messages       = '/messages';
@@ -94,6 +96,7 @@ GoRouter buildRouter(AuthBloc authBloc) {
           GoRoute(path: Routes.search,        builder: (c, s) => const SearchScreen()),
           GoRoute(path: Routes.notifications, builder: (c, s) => const NotificationsScreen()),
           GoRoute(path: Routes.myProfile,     builder: (c, s) => const ProfileScreen()),
+          GoRoute(path: Routes.settings,      builder: (c, s) => const SettingsScreen()),
           GoRoute(
             path: '/profile/:handle',
             builder: (c, s) => ProfileScreen(handle: s.pathParameters['handle']),

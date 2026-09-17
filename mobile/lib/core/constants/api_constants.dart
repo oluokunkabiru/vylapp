@@ -89,6 +89,13 @@ abstract final class ApiConstants {
   static const String refresh  = '/auth/refresh';
   static const String logout   = '/auth/logout';
   static const String me       = '/auth/me';
+  static const String accountStatus   = '/auth/account-status';
+  static const String twoFactorEnroll = '/auth/2fa/enroll';
+  static const String twoFactorVerify = '/auth/2fa/verify';
+
+  static const String updateMe   = '/users/me';
+  static const String mutedWords = '/users/me/muted-words';
+  static String mutedWordById(String id) => '/users/me/muted-words/$id';
 
   static const String feed              = '/vibes/feed';
   static const String createVibe        = '/vibes';

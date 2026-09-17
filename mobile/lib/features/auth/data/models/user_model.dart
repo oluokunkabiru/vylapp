@@ -23,6 +23,9 @@ class UserModel extends Equatable {
   final int      connectionsCount;
   final int      followingCount;
   final bool?    viewerFollows;
+  final String   uiLanguage;
+  final bool     privateAccount;
+  final bool     allowDms;
 
   const UserModel({
     required this.id,
@@ -47,6 +50,9 @@ class UserModel extends Equatable {
     this.connectionsCount = 0,
     this.followingCount = 0,
     this.viewerFollows,
+    this.uiLanguage = 'en',
+    this.privateAccount = false,
+    this.allowDms = true,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
@@ -72,6 +78,9 @@ class UserModel extends Equatable {
     connectionsCount:json['connectionsCount'] as int? ?? 0,
     followingCount:  json['followingCount'] as int? ?? 0,
     viewerFollows:   json['viewerFollows'] as bool?,
+    uiLanguage:      json['uiLanguage'] as String? ?? 'en',
+    privateAccount:  json['privateAccount'] as bool? ?? false,
+    allowDms:        json['allowDms'] as bool? ?? true,
   );
 
   Map<String, dynamic> toJson() => {
@@ -96,6 +105,9 @@ class UserModel extends Equatable {
     'vibesCount':      vibesCount,
     'connectionsCount':connectionsCount,
     'followingCount':  followingCount,
+    'uiLanguage':      uiLanguage,
+    'privateAccount':  privateAccount,
+    'allowDms':        allowDms,
   };
 
   UserModel copyWith({
@@ -114,6 +126,9 @@ class UserModel extends Equatable {
     int?          vibesCount,
     int?          connectionsCount,
     int?          followingCount,
+    String?       uiLanguage,
+    bool?         privateAccount,
+    bool?         allowDms,
   }) => UserModel(
     id:              id,
     handle:          handle,
@@ -136,11 +151,18 @@ class UserModel extends Equatable {
     vibesCount:      vibesCount ?? this.vibesCount,
     connectionsCount:connectionsCount ?? this.connectionsCount,
     followingCount:  followingCount ?? this.followingCount,
+    uiLanguage:      uiLanguage ?? this.uiLanguage,
+    privateAccount:  privateAccount ?? this.privateAccount,
+    allowDms:        allowDms ?? this.allowDms,
   );
 
   bool get isPro   => subscriptionPlan != 'free';
   bool get needsOnboarding => !onboardingDone;
 
+  // uiLanguage/privateAccount/allowDms included so a Settings-driven update
+  // actually emits a new AuthAuthenticated state — Bloc.emit() skips
+  // duplicate-equal (by props) states, so leaving these out would make a
+  // toggle change silently fail to propagate to anything watching AuthBloc.
   @override
-  List<Object?> get props => [id, handle, displayName, verified, subscriptionPlan];
+  List<Object?> get props => [id, handle, displayName, verified, subscriptionPlan, uiLanguage, privateAccount, allowDms];
 }
