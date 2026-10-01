@@ -750,7 +750,10 @@ async function oauthCallback(req: Request, res: Response) {
     await storeRefreshToken(user.id, refreshToken, { ip: req.ip, ua: req.headers["user-agent"], oauth: provider });
     authCookies.setAuthCookies(res, { accessToken, refreshToken });
 
-    return frontendRedirect(res, stateRow.redirectTo || "/");
+    // Successful OAuth sign-in must never fall back to the public landing
+    // page. The frontend will still send new users through onboarding based
+    // on the authenticated user's onboarding state.
+    return frontendRedirect(res, stateRow.redirectTo || "/dashboard");
   } catch (err: any) {
     logger.warn("OAuth callback failed", { provider, error: err.message });
     return frontendRedirect(res, "/login", { oauth_error: err.status === 409 ? "account_exists" : "oauth_failed" });

@@ -44,7 +44,7 @@ export default function PhoneSignIn() {
     try {
       await verifyPhoneOtp(phone.trim(), code.trim());
       toast("Welcome!");
-      navigate("/");
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       toast(err.message || "That code didn't work", "error");
     } finally {

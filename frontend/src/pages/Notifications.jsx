@@ -31,7 +31,7 @@ export default function Notifications({ onClearBadge }) {
   const destinationFor = (notification) => {
     if (notification.conversationId) return `/messages?conversation=${encodeURIComponent(notification.conversationId)}`;
     if (notification.spaceId) return `/spaces?space=${encodeURIComponent(notification.spaceId)}`;
-    if (notification.vibeId) return `/?vibe=${encodeURIComponent(notification.vibeId)}`;
+    if (notification.vibeId) return `/vibes/${encodeURIComponent(notification.vibeId)}`;
     if (["follow", "connection_request"].includes(notification.type) && notification.actor?.handle) return `/profile/${notification.actor.handle}`;
     return null;
   };

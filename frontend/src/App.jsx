@@ -30,6 +30,7 @@ import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
+import VerifyEmail from "./pages/VerifyEmail.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Home from "./pages/Home.jsx";
 import Explore from "./pages/Explore.jsx";
@@ -48,6 +49,7 @@ import CreatorEarnings from "./pages/CreatorEarnings.jsx";
 import RavenLeaderboard from "./pages/RavenLeaderboard.jsx";
 import Onboarding from "./pages/Onboarding.jsx";
 import Settings from "./pages/Settings.jsx";
+import VibeDetail from "./pages/VibeDetail.jsx";
 
 import { Spinner } from "./components/ui/index.jsx";
 
@@ -57,6 +59,9 @@ function FullscreenSpinner() {
 
 // ── Outer gate: unauthenticated visitors never reach the inner (vibes) app ──
 function AuthGate() {
+  const location = useLocation();
+  const requestedPath = `${location.pathname}${location.search}${location.hash}`;
+
   return (
     <div className="vy-app-shell" style={{ display:"flex", flexDirection:"column", minHeight:"100vh", background:"var(--bg)" }}>
       <main style={{ flex: 1 }}>
@@ -66,7 +71,12 @@ function AuthGate() {
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/vibes/:id" element={<VibeDetail />} />
+          <Route
+            path="*"
+            element={<Navigate to={`/login?redirect=${encodeURIComponent(requestedPath)}`} replace />}
+          />
         </Routes>
       </main>
     </div>
@@ -155,7 +165,10 @@ function InnerApp() {
   const mainContent = (
     <Routes>
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/vibes/:id" element={<VibeDetail lang={lang} />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/" element={<Home {...commonProps} newVibe={justCreated} vibeSettle={vibeSettle} />} />
+      <Route path="/feed" element={<Home {...commonProps} newVibe={justCreated} vibeSettle={vibeSettle} />} />
       <Route path="/explore" element={<Explore />} />
       <Route path="/spaces" element={<SpacesPage />} />
       <Route path="/learn" element={<LearnHome />} />
@@ -172,10 +185,11 @@ function InnerApp() {
       <Route path="/autopilot" element={<Autopilot />} />
       <Route path="/creator" element={<CreatorEarnings />} />
       <Route path="/raven" element={<RavenLeaderboard />} />
-      <Route path="/login" element={<Navigate to="/" replace />} />
-      <Route path="/register" element={<Navigate to="/" replace />} />
-      <Route path="/forgot-password" element={<Navigate to="/" replace />} />
-      <Route path="/reset-password" element={<Navigate to="/" replace />} />
+      <Route path="/onboarding/*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/register" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/forgot-password" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/reset-password" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

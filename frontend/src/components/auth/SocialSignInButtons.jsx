@@ -63,7 +63,7 @@ export default function SocialSignInButtons() {
         return (
           <a
             key={p}
-            href={`/api/auth/oauth/${p}`}
+            href={`/api/auth/oauth/${p}?redirect_to=${encodeURIComponent("/dashboard")}`}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
               padding: "10px 14px", borderRadius: 6, border: "1px solid var(--border2)",

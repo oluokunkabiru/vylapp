@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api } from "../lib/api.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useToast } from "../context/ToastContext.jsx";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Ic, ic, Avatar, VylappWordmark, PrimaryButton, GhostButton, Spinner } from "../components/ui/index.jsx";
 import { COUNTRIES, flagEmoji, countryName } from "../data/countries.js";
 import { isRtl } from "../lib/languages.js";
@@ -51,14 +52,21 @@ function StepShell({ title, subtitle, children }) {
 export default function Onboarding() {
   const { user, updateUser } = useAuth();
   const toast = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const routeStep = location.pathname.startsWith("/onboarding/")
+    ? decodeURIComponent(location.pathname.slice("/onboarding/".length).split("/")[0])
+    : null;
   // "language" isn't a backend-tracked onboarding_step (the DB enum has no
   // such value, and every account defaults to "welcome" until it advances)
   // — so "welcome" here means "hasn't started," and starts at language.
   // Anyone further along resumes exactly where the backend says, skipping
   // language rather than re-asking someone already past it.
   const [step, setStep] = useState(
-    user?.onboardingStep && STEP_ORDER.includes(user.onboardingStep) && user.onboardingStep !== "welcome"
-      ? user.onboardingStep
+    routeStep && STEP_ORDER.includes(routeStep)
+      ? routeStep
+      : user?.onboardingStep && STEP_ORDER.includes(user.onboardingStep) && user.onboardingStep !== "welcome"
+        ? user.onboardingStep
       : "language"
   );
   const [busy, setBusy] = useState(false);
@@ -82,6 +90,22 @@ export default function Onboarding() {
 
   const [firstVibeText, setFirstVibeText] = useState("");
 
+  // Onboarding is a real deep-linkable flow. Keep the visible step and the
+  // browser URL in sync so refresh, back/forward, and shared step links all
+  // reopen the same screen.
+  useEffect(() => {
+    if (routeStep && STEP_ORDER.includes(routeStep)) {
+      setStep(routeStep);
+    } else {
+      navigate(`/onboarding/${step}`, { replace: true });
+    }
+  }, [routeStep]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const goToStep = nextStep => {
+    setStep(nextStep);
+    navigate(`/onboarding/${nextStep}`);
+  };
+
   useEffect(() => {
     api.get("/translate/languages").then(({ languages: l }) => setLanguages(l || [])).catch(() => {});
   }, []);
@@ -104,7 +128,7 @@ export default function Onboarding() {
     api.patch("/users/me", { ui_language: primaryLang })
       .then(({ user: updatedUser }) => updateUser(updatedUser || { uiLanguage: primaryLang }))
       .catch(() => {});
-    setStep("welcome");
+    goToStep("welcome");
   };
   const toggleFollow = id => setSelectedFollows(s => {
     const next = new Set(s);
@@ -124,7 +148,7 @@ export default function Onboarding() {
       setFirstVibePrompt(fp || "");
       setFirstVibeText(fp || "");
       updateUser({ onboardingStep: "handle", contentLanguages: selectedLangs });
-      setStep("handle");
+      goToStep("handle");
     } catch (e) { toast(e.message, "error"); }
     finally { setBusy(false); }
   };
@@ -135,7 +159,7 @@ export default function Onboarding() {
     try {
       await api.post("/onboarding/handle", { handle });
       updateUser({ handle, onboardingStep: "avatar" });
-      setStep("avatar");
+      goToStep("avatar");
     } catch (e) { toast(e.message, "error"); }
     finally { setBusy(false); }
   };
@@ -145,7 +169,7 @@ export default function Onboarding() {
     try {
       await api.post("/onboarding/avatar", { avatarColor });
       updateUser({ avatarColor, onboardingStep: "location" });
-      setStep("location");
+      goToStep("location");
     } catch (e) { toast(e.message, "error"); }
     finally { setBusy(false); }
   };
@@ -163,7 +187,7 @@ export default function Onboarding() {
     try {
       await api.post("/onboarding/location", { currentCountry, currentCity, heritageCountries });
       updateUser({ currentCountry, currentCity, heritageCountries, onboardingStep: "follow_suggestions" });
-      setStep("follow_suggestions");
+      goToStep("follow_suggestions");
     } catch (e) { toast(e.message, "error"); }
     finally { setBusy(false); }
   };
@@ -173,7 +197,7 @@ export default function Onboarding() {
     try {
       await api.post("/onboarding/follow-suggestions", { userIds: [...selectedFollows] });
       updateUser({ onboardingStep: "complete" });
-      setStep("complete");
+      goToStep("complete");
     } catch (e) { toast(e.message, "error"); }
     finally { setBusy(false); }
   };
@@ -195,6 +219,7 @@ export default function Onboarding() {
     try {
       await api.post("/onboarding/complete");
       updateUser({ onboardingDone: true });
+      navigate("/dashboard", { replace: true });
     } catch (e) { toast(e.message, "error"); }
     finally { setBusy(false); }
   };
@@ -256,7 +281,7 @@ export default function Onboarding() {
                 </div>
               </div>
             ))}
-            <PrimaryButton full sx={{ marginTop:12 }} onClick={() => setStep("interests")}>Get started</PrimaryButton>
+            <PrimaryButton full sx={{ marginTop:12 }} onClick={() => goToStep("interests")}>Get started</PrimaryButton>
           </StepShell>
         )}
 

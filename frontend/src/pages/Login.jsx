@@ -52,7 +52,8 @@ export default function Login() {
         return;
       }
       toast(t("auth.welcomeBack"));
-      navigate("/");
+      const redirectTo = searchParams.get("redirect");
+      navigate(redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//") ? redirectTo : "/dashboard", { replace: true });
     } catch (err) {
       toast(err.message || t("auth.invalidCredentials"), "error");
     } finally {

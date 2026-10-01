@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 
 const NAV = [
   { to:"/dashboard",     icon:ic.chart,   label:"nav.dashboard" },
-  { to:"/",              icon:ic.home,    label:"nav.feed"      },
+  { to:"/feed",          icon:ic.home,    label:"nav.feed"      },
   { to:"/explore",       icon:ic.search,  label:"nav.search"    },
   { to:"/spaces",        icon:ic.spaces,  label:"nav.spaces"    },
   { to:"/learn",         icon:ic.book,    label:"nav.learn"     },

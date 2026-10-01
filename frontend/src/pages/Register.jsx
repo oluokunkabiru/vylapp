@@ -37,7 +37,7 @@ export default function Register() {
     try {
       await register(form);
       toast("Account created — welcome to Vylapp");
-      navigate("/");
+      navigate("/onboarding/language", { replace: true });
     } catch (err) {
       toast(err.message || "Failed to create account", "error");
     } finally {

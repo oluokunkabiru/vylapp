@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 
 const PRIMARY_NAV = [
   { to:"/dashboard", icon:ic.chart,  label:"nav.dashboard" },
-  { to:"/",          icon:ic.home,   label:"nav.feed" },
+  { to:"/feed",      icon:ic.home,   label:"nav.feed" },
   { to:"__create",                   label:"nav.share" },
   { to:"/spaces",    icon:ic.spaces, label:"nav.spaces" },
   { to:"__more",                     label:"nav.more" },

@@ -156,7 +156,7 @@ export default function Explore() {
               aspectRatio:"1/1", background:CAT_GRADS[v.category]||CAT_GRADS.GENERAL,
               display:"flex", alignItems:"center", justifyContent:"center",
               fontSize:30, cursor:"pointer", position:"relative", overflow:"hidden",
-            }} onClick={()=>toast("Full vibe view coming soon")}>
+            }} onClick={()=>navigate(`/vibes/${encodeURIComponent(v.id)}`)}>
               {v.media?.[0]
                 ? v.media[0].mediaType === "video"
                   ? v.media[0].thumbnailUrl
