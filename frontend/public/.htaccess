@@ -3,6 +3,23 @@
     RewriteBase /
 
     ############################################
+    # Reverse proxy: /api and /socket.io → backend
+    # Serving the API same-origin makes the vyl_at/vyl_rt auth cookies
+    # first-party. Mobile browsers (all of iOS, Brave, Firefox strict,
+    # Samsung Internet) block third-party cookies outright, so calling the
+    # backend's own domain directly logs users straight back out on phones.
+    # Must stay ABOVE every other rule: the method block below would 403
+    # PUT/PATCH/DELETE API calls and the trailing-slash 301 would break
+    # /socket.io/. Requires mod_proxy + mod_proxy_http (and
+    # mod_proxy_wstunnel for websockets; socket.io falls back to polling
+    # without it) plus SSLProxyEngine On in the vhost for an https target.
+    ############################################
+    RewriteCond %{HTTP:Upgrade} =websocket [NC]
+    RewriteRule ^socket\.io/(.*)$ wss://vylapp.miglomicrofix.com.ng/socket.io/$1 [P,L]
+    RewriteRule ^socket\.io/(.*)$ https://vylapp.miglomicrofix.com.ng/socket.io/$1 [P,L]
+    RewriteRule ^api/(.*)$ https://vylapp.miglomicrofix.com.ng/$1 [P,L]
+
+    ############################################
     # Security: Block dangerous HTTP methods
     ############################################
     RewriteCond %{REQUEST_METHOD} ^(TRACE|DELETE|TRACK|DEBUG|PUT|PATCH) [NC]
