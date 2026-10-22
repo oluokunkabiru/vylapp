@@ -5,12 +5,14 @@ let socket = null;
 export function getSocket() { return socket; }
 
 // Dev: same-origin, proxied to the backend via vite.config.js's /socket.io
-// proxy. Production build: same-origin too when VITE_BACKEND_URL is a
-// relative path like /api (public/.htaccess proxies /socket.io) — must
-// connect to "/" then, since io("/api") would mean the "/api" namespace,
-// not a URL. Only an absolute VITE_BACKEND_URL connects cross-origin.
+// proxy. Production build: connects to the backend directly at
+// VITE_SOCKET_URL — the API goes through public/api/index.php, but PHP can't
+// proxy websockets, so the socket stays cross-origin. Falls back to
+// VITE_BACKEND_URL only when that's absolute: io("/api") would mean the
+// "/api" namespace, not a URL.
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "/";
-const SOCKET_URL = import.meta.env.DEV || !/^https?:\/\//.test(BACKEND_URL) ? "/" : BACKEND_URL;
+const SOCKET_URL = import.meta.env.DEV ? "/"
+  : (import.meta.env.VITE_SOCKET_URL || (/^https?:\/\//.test(BACKEND_URL) ? BACKEND_URL : "/"));
 
 // The access token lives in an httpOnly cookie now — withCredentials makes
 // the browser attach it automatically, no JS-readable token to pass here.

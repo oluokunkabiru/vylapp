@@ -1,0 +1,19 @@
+# Same settings as .user.ini, for hosts running PHP as an Apache module
+# (which ignores .user.ini). No rewrite rules here on purpose — the parent
+# public/.htaccess routes /api/* to index.php.
+<IfModule mod_php.c>
+    php_flag enable_post_data_reading Off
+    php_value post_max_size 160M
+    php_value upload_max_filesize 150M
+    php_value max_execution_time 180
+    php_flag output_buffering Off
+    php_flag zlib.output_compression Off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag enable_post_data_reading Off
+    php_value post_max_size 160M
+    php_value upload_max_filesize 150M
+    php_value max_execution_time 180
+    php_flag output_buffering Off
+    php_flag zlib.output_compression Off
+</IfModule>
